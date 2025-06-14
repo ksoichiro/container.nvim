@@ -80,7 +80,7 @@ function M.open(path)
   return true
 end
 
--- イメージをビルド
+-- イメージを準備（ビルドまたはプル）
 function M.build()
   if not state.current_config then
     log.error("No devcontainer configuration loaded")
@@ -89,16 +89,16 @@ function M.build()
   
   docker = docker or require('devcontainer.docker')
   
-  log.info("Building devcontainer image")
+  log.info("Preparing devcontainer image")
   
-  return docker.build_image(state.current_config, function(data)
+  return docker.prepare_image(state.current_config, function(data)
     -- プログレス表示
     print(data)
   end, function(success, result)
     if success then
-      log.info("Successfully built devcontainer image")
+      log.info("Successfully prepared devcontainer image")
     else
-      log.error("Failed to build devcontainer image")
+      log.error("Failed to prepare devcontainer image: %s", result.stderr or "unknown error")
     end
   end)
 end
@@ -111,6 +111,19 @@ function M.start()
   end
   
   docker = docker or require('devcontainer.docker')
+  
+  -- イメージが準備されているかチェック
+  local has_image = state.current_config.built_image or 
+                   state.current_config.prepared_image or 
+                   state.current_config.image
+  
+  if not has_image then
+    log.info("Image not prepared, building/pulling first...")
+    M.build()
+    -- 非同期処理のため、ここでは一旦終了
+    -- 実際のstart処理はbuildの完了後に手動で呼び出す必要がある
+    return true
+  end
   
   -- 既存のコンテナをチェック
   local containers = docker.list_containers("name=" .. state.current_config.name)

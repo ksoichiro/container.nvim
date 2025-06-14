@@ -1,114 +1,98 @@
 -- lua/devcontainer/parser.lua
--- devcontainer.json パーサー
+-- devcontainer.json の解析
 
 local M = {}
 local fs = require('devcontainer.utils.fs')
 local log = require('devcontainer.utils.log')
 
--- devcontainer.jsonの検索候補
-local DEVCONTAINER_PATHS = {
-  '.devcontainer/devcontainer.json',
-  '.devcontainer.json',
-}
+-- JSON文字列のコメントを除去
+local function remove_json_comments(content)
+  -- 行コメント // を除去
+  content = content:gsub('//[^\n]*', '')
+  -- ブロックコメント /* */ を除去
+  content = content:gsub('/%*.-*/', '')
+  return content
+end
 
--- 変数の展開パターン
-local VARIABLE_PATTERNS = {
-  ['${localWorkspaceFolder}'] = function(context)
-    return context.workspace_folder or vim.fn.getcwd()
-  end,
-  ['${localWorkspaceFolderBasename}'] = function(context)
-    local workspace = context.workspace_folder or vim.fn.getcwd()
-    return fs.basename(workspace)
-  end,
-  ['${containerWorkspaceFolder}'] = function(context)
-    return context.container_workspace or '/workspace'
-  end,
-  ['${localEnv:([^}]+)}'] = function(context, var_name)
+-- JSON解析
+local function parse_json(content)
+  content = remove_json_comments(content)
+  
+  local success, result = pcall(vim.json.decode, content)
+  if not success then
+    return nil, "Invalid JSON: " .. result
+  end
+  
+  return result
+end
+
+-- 変数展開
+local function expand_variables(str, context)
+  if type(str) ~= 'string' then
+    return str
+  end
+  
+  context = context or {}
+  
+  -- ${localWorkspaceFolder} の展開
+  str = str:gsub('${localWorkspaceFolder}', context.workspace_folder or vim.fn.getcwd())
+  
+  -- ${containerWorkspaceFolder} の展開
+  str = str:gsub('${containerWorkspaceFolder}', context.container_workspace or '/workspace')
+  
+  -- ${localEnv:変数名} の展開
+  str = str:gsub('${localEnv:([^}]+)}', function(var_name)
     return os.getenv(var_name) or ''
-  end,
-}
+  end)
+  
+  -- ${containerEnv:変数名} の展開（プレースホルダーとして保持）
+  str = str:gsub('${containerEnv:([^}]+)}', function(var_name)
+    return '${containerEnv:' .. var_name .. '}'
+  end)
+  
+  return str
+end
 
--- devcontainer.jsonファイルを検索
+-- 設定のすべての文字列フィールドで変数展開
+local function expand_config_variables(config, context)
+  if type(config) ~= 'table' then
+    return config
+  end
+  
+  local result = {}
+  
+  for key, value in pairs(config) do
+    if type(value) == 'string' then
+      result[key] = expand_variables(value, context)
+    elseif type(value) == 'table' then
+      result[key] = expand_config_variables(value, context)
+    else
+      result[key] = value
+    end
+  end
+  
+  return result
+end
+
+-- devcontainer.jsonファイルの検索
 function M.find_devcontainer_json(start_path)
   start_path = start_path or vim.fn.getcwd()
   
   log.debug("Searching for devcontainer.json from: %s", start_path)
   
-  for _, relative_path in ipairs(DEVCONTAINER_PATHS) do
-    local found_path = fs.find_file_upward(start_path, relative_path)
-    if found_path then
-      log.info("Found devcontainer.json: %s", found_path)
-      return found_path
-    end
+  -- .devcontainer/devcontainer.json を検索
+  local devcontainer_path = fs.find_file_upward(start_path, '.devcontainer/devcontainer.json')
+  if devcontainer_path then
+    return devcontainer_path
   end
   
-  log.warn("No devcontainer.json found from path: %s", start_path)
+  -- devcontainer.json を検索
+  devcontainer_path = fs.find_file_upward(start_path, 'devcontainer.json')
+  if devcontainer_path then
+    return devcontainer_path
+  end
+  
   return nil
-end
-
--- JSONコメントを削除
-local function strip_json_comments(content)
-  -- 行コメント (//) を削除
-  content = content:gsub('//[^\r\n]*', '')
-  
-  -- ブロックコメント (/* */) を削除
-  content = content:gsub('/%*.--%*/', '')
-  
-  -- 末尾のカンマを削除（JSONCでは許可されている）
-  content = content:gsub(',(%s*[%]}])', '%1')
-  
-  return content
-end
-
--- 変数の展開
-local function expand_variables(value, context)
-  if type(value) ~= 'string' then
-    return value
-  end
-  
-  local result = value
-  
-  -- 固定パターンの展開
-  for pattern, expander in pairs(VARIABLE_PATTERNS) do
-    if pattern:match('%(') then
-      -- 動的パターン（正規表現）
-      result = result:gsub(pattern, function(captured)
-        return expander(context, captured)
-      end)
-    else
-      -- 固定パターン
-      result = result:gsub(pattern, expander(context), 1)
-    end
-  end
-  
-  return result
-end
-
--- 設定値を再帰的に展開
-local function expand_config_variables(config, context)
-  if type(config) == 'table' then
-    local expanded = {}
-    for key, value in pairs(config) do
-      expanded[key] = expand_config_variables(value, context)
-    end
-    return expanded
-  else
-    return expand_variables(config, context)
-  end
-end
-
--- JSONの解析
-local function parse_json(content)
-  -- コメントを削除
-  content = strip_json_comments(content)
-  
-  -- JSONを解析
-  local success, result = pcall(vim.json.decode, content)
-  if not success then
-    return nil, "Failed to parse JSON: " .. result
-  end
-  
-  return result
 end
 
 -- Dockerfileパスの解決
@@ -119,29 +103,24 @@ local function resolve_dockerfile_path(config, base_path)
   
   local dockerfile_path = config.dockerFile
   if not fs.is_absolute_path(dockerfile_path) then
-    -- contextからの相対パスかベースパスからの相対パス
-    local context_path = config.build and config.build.context or config.context or "."
-    if not fs.is_absolute_path(context_path) then
-      context_path = fs.join_path(base_path, context_path)
-    end
-    dockerfile_path = fs.join_path(context_path, dockerfile_path)
+    dockerfile_path = fs.join_path(base_path, dockerfile_path)
   end
   
-  return fs.normalize_path(dockerfile_path)
+  return fs.resolve_path(dockerfile_path)
 end
 
--- Docker Composeファイルパスの解決
+-- docker-compose.ymlパスの解決
 local function resolve_compose_file_path(config, base_path)
   if not config.dockerComposeFile then
     return nil
   end
   
-  local compose_file = config.dockerComposeFile
-  if not fs.is_absolute_path(compose_file) then
-    compose_file = fs.join_path(base_path, compose_file)
+  local compose_path = config.dockerComposeFile
+  if not fs.is_absolute_path(compose_path) then
+    compose_path = fs.join_path(base_path, compose_path)
   end
   
-  return fs.normalize_path(compose_file)
+  return fs.resolve_path(compose_path)
 end
 
 -- ポート設定の正規化
@@ -151,33 +130,38 @@ local function normalize_ports(ports)
   end
   
   local normalized = {}
+  
   for _, port in ipairs(ports) do
     if type(port) == 'number' then
       table.insert(normalized, {
-        container_port = port,
         host_port = port,
+        container_port = port,
         protocol = 'tcp',
       })
     elseif type(port) == 'string' then
-      -- "8080:3000" or "8080" 形式をパース
       local host_port, container_port = port:match('(%d+):(%d+)')
       if host_port and container_port then
         table.insert(normalized, {
-          container_port = tonumber(container_port),
           host_port = tonumber(host_port),
+          container_port = tonumber(container_port),
           protocol = 'tcp',
         })
       else
-        local single_port = port:match('(%d+)')
+        local single_port = tonumber(port)
         if single_port then
-          local port_num = tonumber(single_port)
           table.insert(normalized, {
-            container_port = port_num,
-            host_port = port_num,
+            host_port = single_port,
+            container_port = single_port,
             protocol = 'tcp',
           })
         end
       end
+    elseif type(port) == 'table' then
+      table.insert(normalized, {
+        host_port = port.hostPort or port.containerPort,
+        container_port = port.containerPort,
+        protocol = port.protocol or 'tcp',
+      })
     end
   end
   
@@ -191,11 +175,12 @@ local function normalize_mounts(mounts, context)
   end
   
   local normalized = {}
+  
   for _, mount in ipairs(mounts) do
     if type(mount) == 'string' then
-      -- "source=...,target=...,type=..." 形式をパース
+      -- "source=...,target=...,type=..." 形式の文字列を解析
       local mount_config = {}
-      for pair in mount:gmatch('([^,]+)') do
+      for pair in mount:gmatch('[^,]+') do
         local key, value = pair:match('([^=]+)=(.+)')
         if key and value then
           mount_config[key:match('^%s*(.-)%s*$')] = expand_variables(value:match('^%s*(.-)%s*$'), context)
@@ -249,7 +234,8 @@ function M.parse(file_path, context)
   
   -- ベースパスを設定
   local base_path = fs.dirname(file_path)
-  context.workspace_folder = context.workspace_folder or base_path
+  -- workspace_folderは.devcontainerの親ディレクトリ（プロジェクトルート）に設定
+  context.workspace_folder = context.workspace_folder or fs.dirname(base_path)
   context.devcontainer_folder = base_path
   
   -- 変数展開のコンテキストを設定
@@ -301,81 +287,101 @@ function M.validate(config)
     table.insert(errors, "Must specify one of: dockerFile, image, or dockerComposeFile")
   end
   
-  -- Docker Compose使用時のサービス名確認
-  if config.dockerComposeFile and not config.service then
-    table.insert(errors, "service field is required when using dockerComposeFile")
-  end
-  
-  -- Dockerfileの存在確認
-  if config.resolved_dockerfile and not fs.is_file(config.resolved_dockerfile) then
-    table.insert(errors, "Dockerfile not found: " .. config.resolved_dockerfile)
-  end
-  
-  -- Docker Composeファイルの存在確認
-  if config.resolved_compose_file and not fs.is_file(config.resolved_compose_file) then
-    table.insert(errors, "Docker Compose file not found: " .. config.resolved_compose_file)
-  end
-  
-  -- ポート範囲の確認
-  for _, port in ipairs(config.normalized_ports or {}) do
-    if port.container_port < 1 or port.container_port > 65535 then
-      table.insert(errors, "Invalid container port: " .. port.container_port)
+  -- ポート設定の検証
+  if config.normalized_ports then
+    for _, port in ipairs(config.normalized_ports) do
+      if not port.container_port or port.container_port <= 0 or port.container_port > 65535 then
+        table.insert(errors, "Invalid container port: " .. tostring(port.container_port))
+      end
+      if not port.host_port or port.host_port <= 0 or port.host_port > 65535 then
+        table.insert(errors, "Invalid host port: " .. tostring(port.host_port))
+      end
     end
-    if port.host_port < 1 or port.host_port > 65535 then
-      table.insert(errors, "Invalid host port: " .. port.host_port)
+  end
+  
+  -- マウント設定の検証
+  if config.normalized_mounts then
+    for _, mount in ipairs(config.normalized_mounts) do
+      if not mount.source or mount.source == "" then
+        table.insert(errors, "Mount source cannot be empty")
+      end
+      if not mount.target or mount.target == "" then
+        table.insert(errors, "Mount target cannot be empty")
+      end
     end
   end
   
   return errors
 end
 
--- 設定の正規化（プラグイン内で使用する形式に変換）
+-- プラグイン用の設定に正規化
 function M.normalize_for_plugin(config)
-  return {
-    name = config.name,
-    image = config.image,
-    dockerfile = config.resolved_dockerfile,
-    compose_file = config.resolved_compose_file,
-    service = config.service,
-    context = config.context,
-    build_args = config.build and config.build.args or {},
-    workspace_folder = config.workspaceFolder,
-    mounts = config.normalized_mounts,
-    ports = config.normalized_ports,
-    port_attributes = config.portsAttributes or {},
-    environment = config.containerEnv or {},
-    remote_user = config.remoteUser,
-    post_create_command = config.postCreateCommand,
-    post_start_command = config.postStartCommand,
-    post_attach_command = config.postAttachCommand,
-    features = config.features or {},
-    customizations = config.customizations or {},
-    force_rebuild = config.build and config.build.forceRebuild or false,
-    privileged = config.privileged or false,
-    cap_add = config.capAdd or {},
-    security_opt = config.securityOpt or {},
-    init = config.init,
-    overrides = config.overrideCommand,
-  }
+  local normalized = {}
+  
+  -- 基本設定
+  normalized.name = config.name or "devcontainer"
+  normalized.image = config.image
+  normalized.dockerfile = config.resolved_dockerfile
+  normalized.context = config.build and config.build.context or "."
+  normalized.build_args = config.build and config.build.args or {}
+  normalized.workspace_folder = config.workspaceFolder or "/workspace"
+  normalized.remote_user = config.remoteUser
+  
+  -- 環境変数
+  normalized.environment = config.remoteEnv or {}
+  
+  -- ポート設定
+  normalized.ports = config.normalized_ports or {}
+  
+  -- マウント設定
+  normalized.mounts = config.normalized_mounts or {}
+  
+  -- フィーチャー設定
+  normalized.features = config.features or {}
+  
+  -- カスタマイゼーション
+  normalized.customizations = config.customizations or {}
+  
+  -- ライフサイクルコマンド
+  normalized.post_create_command = config.postCreateCommand
+  normalized.post_start_command = config.postStartCommand
+  normalized.post_attach_command = config.postAttachCommand
+  
+  -- セキュリティ設定
+  normalized.privileged = config.privileged or false
+  normalized.cap_add = config.capAdd or {}
+  normalized.security_opt = config.securityOpt or {}
+  normalized.init = config.init
+  
+  -- その他のDocker設定
+  normalized.run_args = config.runArgs or {}
+  normalized.override_command = config.overrideCommand
+  normalized.shutdown_action = config.shutdownAction
+  
+  -- 強制リビルドフラグ
+  normalized.force_rebuild = false
+  
+  -- ポート属性
+  normalized.port_attributes = config.portsAttributes or {}
+  
+  return normalized
 end
 
--- プラグイン設定のマージ
+-- プラグイン設定とのマージ
 function M.merge_with_plugin_config(devcontainer_config, plugin_config)
-  local config = require('devcontainer.config')
-  
-  -- devcontainer.jsonの設定をプラグイン設定にマージ
-  if devcontainer_config.customizations and devcontainer_config.customizations.neovim then
-    local neovim_config = devcontainer_config.customizations.neovim
-    
-    -- ネストした設定のマージ
-    if neovim_config.settings then
-      for key, value in pairs(neovim_config.settings) do
-        config.set_value(key, value)
-      end
-    end
+  -- プラグイン設定で上書き可能な項目
+  if plugin_config.container_runtime then
+    devcontainer_config.container_runtime = plugin_config.container_runtime
   end
   
-  return config.get()
+  if plugin_config.log_level then
+    devcontainer_config.log_level = plugin_config.log_level
+  end
+  
+  -- プラグイン固有の設定をマージ
+  devcontainer_config.plugin_config = plugin_config
+  
+  return devcontainer_config
 end
 
 return M
