@@ -28,6 +28,8 @@ M.defaults = {
     auto_setup = true,
     timeout = 5000,
     port_range = { 8000, 9000 },
+    servers = {}, -- Server-specific configurations
+    on_attach = nil, -- Custom on_attach function
   },
   
   -- ターミナル設定

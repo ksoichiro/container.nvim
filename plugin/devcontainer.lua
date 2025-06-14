@@ -97,6 +97,81 @@ local function create_commands()
   end, {
     desc = 'Show debug information',
   })
+
+  -- LSP関連コマンド
+  vim.api.nvim_create_user_command('DevcontainerLspStatus', function()
+    require('devcontainer').lsp_status()
+  end, {
+    desc = 'Show LSP status in devcontainer',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerLspSetup', function()
+    require('devcontainer').lsp_setup()
+  end, {
+    desc = 'Setup LSP servers in devcontainer',
+  })
+
+  -- デバッグコマンド
+  vim.api.nvim_create_user_command('DevcontainerTestDocker', function()
+    require('devcontainer').test_docker()
+  end, {
+    desc = 'Test Docker availability and basic operations',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerStartStepByStep', function()
+    require('devcontainer').start_step_by_step()
+  end, {
+    desc = 'Start container with detailed step-by-step output (non-blocking)',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTestBasic', function()
+    require('devcontainer').test_container_basic()
+  end, {
+    desc = 'Test basic container operations without blocking',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTestMinimal', function()
+    require('devcontainer').test_minimal()
+  end, {
+    desc = 'Minimal test with no external dependencies',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerStartExisting', function()
+    require('devcontainer').start_existing_container()
+  end, {
+    desc = 'Start existing container (non-blocking, for testing)',
+  })
+
+  -- デバッグコマンド
+  vim.api.nvim_create_user_command('DevcontainerCheckStatus', function()
+    require('devcontainer').check_container_status()
+  end, {
+    desc = 'Check current container status',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerDebugDetailed', function()
+    require('devcontainer').debug_detailed()
+  end, {
+    desc = 'Show detailed debug information',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTestPull', function()
+    require('devcontainer').test_simple_pull()
+  end, {
+    desc = 'Test simple docker pull to isolate issues',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerReconnect', function()
+    require('devcontainer').reconnect()
+  end, {
+    desc = 'Reconnect to existing devcontainer',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerDebugExec', function()
+    require('devcontainer').debug_exec()
+  end, {
+    desc = 'Debug Docker exec command construction',
+  })
 end
 
 -- オートコマンドグループの作成
