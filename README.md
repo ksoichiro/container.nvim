@@ -146,7 +146,7 @@ require('devcontainer').setup({
   auto_start = false,
   log_level = 'info',
   container_runtime = 'docker', -- 'docker' or 'podman'
-  
+
   -- UI settings
   ui = {
     use_telescope = true,
@@ -160,7 +160,7 @@ require('devcontainer').setup({
       error = "❌",
     },
   },
-  
+
   -- Terminal settings
   terminal = {
     shell = '/bin/bash',
@@ -168,14 +168,14 @@ require('devcontainer').setup({
     direction = 'horizontal', -- 'horizontal', 'vertical', 'float'
     close_on_exit = false,
   },
-  
+
   -- Port forwarding
   port_forwarding = {
     auto_forward = true,
     notification = true,
     common_ports = {3000, 8080, 5000, 3001},
   },
-  
+
   -- Workspace settings
   workspace = {
     auto_mount = true,
@@ -384,23 +384,23 @@ lua test_basic.lua
 ### Setup Development Environment
 
 ```bash
-# Install development dependencies
+# One-time setup: install development dependencies and pre-commit hooks
 make install-dev
+make install-hooks
 
-# Run linter (REQUIRED before commits)
+# Manual quality checks (automatically run by pre-commit hooks)
 make lint
-
-# Run tests
 make test
-
-# Run both lint and test
 make pre-commit
 ```
 
 ### Code Quality Standards
 
-- **Linting**: All Lua code must pass `make lint` checks
+- **Pre-commit Hooks**: Automatically enforce quality checks on every commit
+- **Linting**: All Lua code must pass luacheck validation
 - **Testing**: Changes should pass existing tests
+- **File Formatting**: Automatic cleanup of whitespace, line endings, etc.
+- **Security**: Automatic detection of sensitive data and large files
 - **Style**: Follow existing code patterns and conventions
 - **Documentation**: Keep comments clear and in English
 
@@ -410,12 +410,13 @@ Pull requests and issue reports are welcome!
 
 1. Fork this repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Set up development environment** (`make install-dev`)
+3. **Set up development environment** (`make install-dev && make install-hooks`)
 4. Make your changes
-5. **Run quality checks** (`make pre-commit`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Create a pull request
+5. Commit your changes (`git commit -m 'Add amazing feature'`) - hooks run automatically
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Create a pull request
+
+**Note:** Pre-commit hooks automatically run quality checks. Manual verification: `make pre-commit`
 
 ## License
 

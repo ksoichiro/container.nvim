@@ -189,26 +189,26 @@ Integration Layer
 require('devcontainer').setup({
   plugin_integration = {
     strategy = 'hybrid',
-    
+
     -- Simple command forwarding
     command_plugins = {
       'vim-test',
       'ale',
       'neoformat'
     },
-    
+
     -- Remote execution
     remote_plugins = {
       'nvim-treesitter',
       'telescope.nvim'
     },
-    
+
     -- Direct integration
     native_integration = {
       'nvim-lspconfig',
       'nvim-dap'
     },
-    
+
     -- Custom integrations
     custom = {
       ['my-plugin'] = function(cmd)

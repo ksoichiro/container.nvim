@@ -1,0 +1,99 @@
+# .pre-commit-config.yaml
+# Pre-commit hooks configuration for devcontainer.nvim
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # File formatting and cleanup
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+      # JSON and YAML validation
+      - id: check-json
+      - id: check-yaml
+        args: [--unsafe]  # Allow custom YAML tags
+      - id: pretty-format-json
+        args: [--autofix, --indent=2]
+
+      # Git and merge conflicts
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+
+      # Security and sensitive data
+      - id: detect-private-key
+
+      # File naming and structure
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+
+  # Lua-specific checks
+  - repo: local
+    hooks:
+      # Luacheck linting
+      - id: luacheck
+        name: Lua linting with luacheck
+        entry: make lint
+        language: system
+        files: \.lua$
+        pass_filenames: false
+
+      # Run test suite
+      - id: lua-tests
+        name: Run Lua test suite
+        entry: make test
+        language: system
+        files: \.lua$
+        pass_filenames: false
+
+      # Check that CLAUDE.md is up to date
+      - id: check-claude-md
+        name: Verify CLAUDE.md exists and contains required sections
+        entry: bash
+        args:
+          - -c
+          - |
+            if [[ ! -f "CLAUDE.md" ]]; then
+              echo "Error: CLAUDE.md is missing"
+              exit 1
+            fi
+            if ! grep -q "Code Quality Requirements" CLAUDE.md; then
+              echo "Error: CLAUDE.md missing 'Code Quality Requirements' section"
+              exit 1
+            fi
+            if ! grep -q "make lint" CLAUDE.md; then
+              echo "Error: CLAUDE.md missing linting documentation"
+              exit 1
+            fi
+        language: system
+        files: (CLAUDE\.md|\.lua)$
+        pass_filenames: false
+
+      # Verify Makefile targets exist
+      - id: check-makefile
+        name: Verify required Makefile targets
+        entry: bash
+        args:
+          - -c
+          - |
+            required_targets=("lint" "test" "pre-commit" "install-dev")
+            for target in "${required_targets[@]}"; do
+              if ! grep -q "^${target}:" Makefile; then
+                echo "Error: Makefile missing required target: ${target}"
+                exit 1
+              fi
+            done
+        language: system
+        files: (Makefile|\.lua)$
+        pass_filenames: false
+
+# Global configuration
+default_stages: [pre-commit]
+fail_fast: false
+minimum_pre_commit_version: "2.9.0"

@@ -43,7 +43,7 @@ read_globals = {
   "vim.deepcopy",
   "vim.inspect",
   "vim.defer_fn",
-  
+
   -- Standard library extensions
   "table.unpack",
   "unpack",
@@ -72,7 +72,7 @@ max_cyclomatic_complexity = 15
 
 -- Report only warnings for:
 -- - 111: Setting non-standard global variable
--- - 112: Mutating non-standard global variable  
+-- - 112: Mutating non-standard global variable
 -- - 113: Accessing undefined variable
 -- - 211: Unused local variable
 -- - 311: Value assigned to variable is unused
@@ -84,7 +84,7 @@ max_cyclomatic_complexity = 15
 
 -- Only report these warnings
 only = {
-  "111", "112", "113", 
+  "111", "112", "113",
   "211", "221", "231",
   "311", "321", "331",
   "411", "412", "413",

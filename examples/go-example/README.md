@@ -25,7 +25,7 @@ go-example/
 ## devcontainer.json Features
 
 - **Base Image**: Official Go devcontainer (Go 1.23)
-- **Tools Installation**: 
+- **Tools Installation**:
   - `gopls` (Go LSP server)
   - `dlv` (Delve debugger)
 - **Port Forwarding**: 8080 (HTTP server), 2345 (debugger)

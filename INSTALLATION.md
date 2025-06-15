@@ -19,7 +19,7 @@ return {
         log_level = 'info',
         container_runtime = 'docker', -- 'docker' or 'podman'
         auto_start = false,
-        
+
         -- UI configuration
         ui = {
           show_notifications = true,
@@ -30,7 +30,7 @@ return {
             building = "🔨",
           },
         },
-        
+
         -- Terminal configuration
         terminal = {
           shell = '/bin/bash',
@@ -69,21 +69,21 @@ return {
     -- Use local path during development
     dir = vim.fn.expand("~/path/to/devcontainer.nvim"), -- Change to actual path
     name = "devcontainer.nvim",
-    
+
     -- Disable lazy loading in development mode
     lazy = false,
-    
+
     config = function()
       require('devcontainer').setup({
         -- Development configuration
         log_level = 'debug', -- Display debug information
-        
+
         -- Docker configuration
         container_runtime = 'docker',
-        
+
         -- Disable auto-start (for manual testing)
         auto_start = false,
-        
+
         -- UI configuration
         ui = {
           show_notifications = true,
@@ -91,12 +91,12 @@ return {
           icons = {
             container = "🐳",
             running = "✅",
-            stopped = "⏹️", 
+            stopped = "⏹️",
             building = "🔨",
             error = "❌",
           },
         },
-        
+
         -- Terminal configuration
         terminal = {
           shell = '/bin/bash',
@@ -104,7 +104,7 @@ return {
           direction = 'horizontal',
           close_on_exit = false,
         },
-        
+
         -- Development settings
         dev = {
           reload_on_change = true,
@@ -112,7 +112,7 @@ return {
         },
       })
     end,
-    
+
     -- Key mapping examples
     keys = {
       { "<leader>co", "<cmd>DevcontainerOpen<cr>", desc = "Open devcontainer" },
@@ -229,7 +229,7 @@ vim.api.nvim_create_user_command('DevcontainerReload', function()
       package.loaded[module_name] = nil
     end
   end
-  
+
   -- Reload plugin
   require('devcontainer').setup()
   print("devcontainer.nvim reloaded!")
@@ -245,7 +245,7 @@ config = function()
     -- Set log file
     log_file = vim.fn.stdpath('data') .. '/devcontainer.log',
   })
-  
+
   -- Command to open log file
   vim.api.nvim_create_user_command('DevcontainerLogFile', function()
     vim.cmd('edit ' .. vim.fn.stdpath('data') .. '/devcontainer.log')

@@ -42,7 +42,7 @@ end
 -- Open devcontainer
 function M.open(path)
   log = log or require('devcontainer.utils.log')
-  
+
   if not state.initialized then
     log.error("Plugin not initialized. Call setup() first.")
     return false
@@ -100,7 +100,7 @@ end
 -- Prepare image (build or pull)
 function M.build()
   log = log or require('devcontainer.utils.log')
-  
+
   if not state.current_config then
     log.error("No devcontainer configuration loaded")
     return false
@@ -125,7 +125,7 @@ end
 -- Start container (fully async version)
 function M.start()
   log = log or require('devcontainer.utils.log')
-  
+
   if not state.current_config then
     log.error("No devcontainer configuration loaded")
     return false
@@ -382,7 +382,7 @@ end
 -- Stop container
 function M.stop()
   log = log or require('devcontainer.utils.log')
-  
+
   if not state.current_container then
     log.error("No active container")
     return false
@@ -404,7 +404,7 @@ end
 -- Execute command in container
 function M.exec(command, opts)
   log = log or require('devcontainer.utils.log')
-  
+
   if not state.current_container then
     print("✗ No active container")
     log.error("No active container")
@@ -455,7 +455,7 @@ end
 -- Open terminal
 function M.shell(shell)
   log = log or require('devcontainer.utils.log')
-  
+
   if not state.current_container then
     log.error("No active container")
     return false
@@ -475,7 +475,7 @@ end
 -- Get container status
 function M.status()
   log = log or require('devcontainer.utils.log')
-  
+
   if not state.current_container then
     print("No active container")
     return nil
@@ -516,7 +516,7 @@ end
 -- Display logs
 function M.logs(opts)
   log = log or require('devcontainer.utils.log')
-  
+
   if not state.current_container then
     log.error("No active container")
     return false
@@ -541,7 +541,7 @@ end
 -- Reset plugin state
 function M.reset()
   log = log or require('devcontainer.utils.log')
-  
+
   state.current_container = nil
   state.current_config = nil
   log.info("Plugin state reset")
@@ -551,7 +551,7 @@ end
 function M.lsp_status()
   log = log or require('devcontainer.utils.log')
   config = config or require('devcontainer.config')
-  
+
   -- Initialize LSP module (if not already done)
   if not lsp then
 
@@ -1137,7 +1137,7 @@ end
 -- Attempt to reconnect to existing container
 function M._try_reconnect_existing_container()
   log = log or require('devcontainer.utils.log')
-  
+
   if state.current_container then
     -- Skip if container is already configured
     return
@@ -1230,16 +1230,16 @@ end
 -- Execute postCreateCommand
 function M._run_post_create_command(container_id, callback)
   log = log or require('devcontainer.utils.log')
-  
+
   log.debug("Checking for postCreateCommand...")
   log.debug("Current config exists: %s", tostring(state.current_config ~= nil))
-  
+
   if state.current_config then
     log.debug("Config keys: %s", vim.inspect(vim.tbl_keys(state.current_config)))
     log.debug("postCreateCommand value: %s", tostring(state.current_config.postCreateCommand))
     log.debug("post_create_command value: %s", tostring(state.current_config.post_create_command))
   end
-  
+
   if not state.current_config or not state.current_config.post_create_command then
     print("No postCreateCommand found, skipping...")
     log.debug("No postCreateCommand found, skipping")
@@ -1281,4 +1281,3 @@ function M._run_post_create_command(container_id, callback)
 end
 
 return M
-

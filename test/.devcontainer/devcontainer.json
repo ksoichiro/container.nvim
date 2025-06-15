@@ -1,12 +1,13 @@
 {
-	"name": "Go",
-	"image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
-	"workspaceFolder": "/workspace",
-	"mounts": [
-		"source=${localWorkspaceFolder},target=/workspace,type=bind"
-	],
-	"forwardPorts": [8080],
-	"postCreateCommand": "go version",
-	"remoteUser": "vscode"
+  "forwardPorts": [
+    8080
+  ],
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
+  ],
+  "name": "Go",
+  "postCreateCommand": "go version",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace"
 }
-

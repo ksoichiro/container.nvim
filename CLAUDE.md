@@ -26,27 +26,40 @@ Currently no formal test framework is implemented. Test manually by:
 ### Development Workflow
 
 #### Code Quality Requirements
-**MANDATORY: Run linter before any commit**
+**MANDATORY: Set up pre-commit hooks for automatic quality checks**
 ```bash
-# Always run before committing Lua file changes
+# Set up pre-commit hooks (one-time setup)
+make install-hooks
+
+# Manual quality checks (if needed)
 make lint
+make test
 
 # Install development dependencies if needed
 make install-dev
 ```
 
+**Pre-commit hooks automatically run:**
+- Luacheck linting on all Lua files
+- Test suite execution
+- File formatting (trailing whitespace, end-of-file fixes)
+- JSON/YAML validation
+- Security checks (private keys, large files)
+- Project structure validation (CLAUDE.md, Makefile targets)
+
 #### Development Rules
-1. **Linting**: ALWAYS run `make lint` after modifying any Lua files
-2. **Testing**: Run `make test` to verify functionality after changes
-3. **Code Style**: Follow existing patterns (2-space indentation, clear module separation)
-4. **Error Handling**: Add proper error handling and parameter validation
-5. **Documentation**: Keep comments clear and concise in English
+1. **Pre-commit Hooks**: Set up once with `make install-hooks` - automatically enforces quality
+2. **Code Style**: Follow existing patterns (2-space indentation, clear module separation)
+3. **Error Handling**: Add proper error handling and parameter validation
+4. **Documentation**: Keep comments clear and concise in English
+5. **Manual Checks**: Use `make lint` and `make test` for manual verification when needed
 
 #### Available Make Targets
-- `make lint` - Run luacheck on all Lua files (REQUIRED before commits)
+- `make install-hooks` - Install pre-commit hooks (one-time setup)
+- `make lint` - Run luacheck on all Lua files
 - `make test` - Run test suite
 - `make install-dev` - Install development dependencies (luacheck)
-- `make pre-commit` - Run both lint and test (recommended before commits)
+- `make pre-commit` - Run both lint and test (manual verification)
 - `make help` - Show all available targets
 
 #### Linting Configuration

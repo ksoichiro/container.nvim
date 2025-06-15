@@ -211,4 +211,3 @@ create_commands()
 
 -- Set global function (for Lua API access)
 _G.devcontainer = require('devcontainer')
-

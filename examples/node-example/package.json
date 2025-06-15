@@ -1,21 +1,25 @@
 {
-  "name": "devcontainer-node-example",
-  "version": "1.0.0",
-  "description": "Example Node.js project for testing devcontainer.nvim LSP integration",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js",
-    "test": "echo \"No tests specified\" && exit 1"
-  },
-  "keywords": ["devcontainer", "lsp", "nodejs"],
   "author": "devcontainer.nvim",
-  "license": "MIT",
   "dependencies": {
     "express": "^4.18.0"
   },
+  "description": "Example Node.js project for testing devcontainer.nvim LSP integration",
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
-  }
+  },
+  "keywords": [
+    "devcontainer",
+    "lsp",
+    "nodejs"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "name": "devcontainer-node-example",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js",
+    "test": "echo \"No tests specified\" && exit 1"
+  },
+  "version": "1.0.0"
 }

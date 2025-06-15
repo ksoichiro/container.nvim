@@ -124,38 +124,38 @@ You can run automated tests with the following script:
 -- test_lsp.lua
 local function test_lsp_integration()
   print("=== LSP Integration Test ===")
-  
+
   -- 1. Basic functionality test
   local devcontainer = require('devcontainer')
-  
+
   -- Check if plugin is initialized
   local debug_info = devcontainer.debug_info()
-  
+
   -- 2. LSP status test
   local lsp_status = devcontainer.lsp_status()
   if not lsp_status then
     print("ERROR: LSP not initialized")
     return false
   end
-  
+
   -- 3. Check active LSP clients
   local clients = vim.lsp.get_active_clients()
   print("Active LSP clients: " .. #clients)
   for _, client in ipairs(clients) do
     print("  - " .. client.name)
   end
-  
+
   -- 4. Test path conversion
   local lsp_path = require('devcontainer.lsp.path')
   local test_path = vim.fn.expand('%:p')
   local container_path = lsp_path.to_container_path(test_path)
   local back_to_local = lsp_path.to_local_path(container_path)
-  
+
   print("Path conversion test:")
   print("  Local: " .. test_path)
   print("  Container: " .. (container_path or "nil"))
   print("  Back to local: " .. (back_to_local or "nil"))
-  
+
   return true
 end
 

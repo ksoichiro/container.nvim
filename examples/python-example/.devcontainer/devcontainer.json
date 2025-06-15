@@ -1,11 +1,4 @@
 {
-  "name": "Python LSP Example",
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bullseye",
-  
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
-  
   "customizations": {
     "vscode": {
       "extensions": [
@@ -14,13 +7,16 @@
       ]
     }
   },
-  
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-  "workspaceFolder": "/workspace",
-  
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [
+    8000
+  ],
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bullseye",
+  "name": "Python LSP Example",
   "postCreateCommand": "pip install python-lsp-server[all] pylsp-mypy pyls-isort",
-  
-  "forwardPorts": [8000],
-  
-  "remoteUser": "vscode"
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
 }

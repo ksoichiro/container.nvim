@@ -1,18 +1,19 @@
 # Makefile for devcontainer.nvim
 
-.PHONY: help lint lint-fix test install-dev clean
+.PHONY: help lint lint-fix test install-dev clean install-hooks
 
 # Default target
 help:
 	@echo "devcontainer.nvim Development Commands"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  help        Show this help message"
-	@echo "  lint        Run luacheck on all Lua files"
-	@echo "  lint-fix    Run luacheck and attempt to fix some issues"
-	@echo "  test        Run test suite"
-	@echo "  install-dev Install development dependencies"
-	@echo "  clean       Clean temporary files"
+	@echo "  help         Show this help message"
+	@echo "  lint         Run luacheck on all Lua files"
+	@echo "  lint-fix     Run luacheck and attempt to fix some issues"
+	@echo "  test         Run test suite"
+	@echo "  install-dev  Install development dependencies"
+	@echo "  install-hooks Install pre-commit hooks"
+	@echo "  clean        Clean temporary files"
 
 # Install development dependencies
 install-dev:
@@ -35,6 +36,30 @@ install-dev:
 		exit 1; \
 	fi
 	@echo "Development dependencies installed!"
+
+# Install pre-commit hooks
+install-hooks:
+	@echo "Installing pre-commit hooks..."
+	@if ! command -v pre-commit >/dev/null 2>&1; then \
+		echo "Installing pre-commit..."; \
+		if command -v pip3 >/dev/null 2>&1; then \
+			pip3 install --user pre-commit; \
+		elif command -v pip >/dev/null 2>&1; then \
+			pip install --user pre-commit; \
+		elif command -v brew >/dev/null 2>&1; then \
+			brew install pre-commit; \
+		elif command -v apt-get >/dev/null 2>&1; then \
+			sudo apt-get update && sudo apt-get install -y pre-commit; \
+		else \
+			echo "Error: Could not install pre-commit. Please install manually:"; \
+			echo "  pip install pre-commit"; \
+			echo "  or visit: https://pre-commit.com/#installation"; \
+			exit 1; \
+		fi; \
+	fi
+	@echo "Installing git hooks..."
+	pre-commit install
+	@echo "Pre-commit hooks installed! Run 'pre-commit run --all-files' to test."
 
 # Run linter
 lint:

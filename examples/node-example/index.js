@@ -71,7 +71,7 @@ app.use(express.json());
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: createGreeting('devcontainer.nvim'),
     timestamp: new Date().toISOString()
   });
@@ -79,11 +79,11 @@ app.get('/', (req, res) => {
 
 app.post('/calculate/sum', (req, res) => {
   const { numbers } = req.body;
-  
+
   if (!Array.isArray(numbers)) {
     return res.status(400).json({ error: 'numbers must be an array' });
   }
-  
+
   const sum = calculateSum(numbers);
   res.json({ numbers, sum });
 });
@@ -91,14 +91,14 @@ app.post('/calculate/sum', (req, res) => {
 app.post('/calculate/:operation', (req, res) => {
   const { operation } = req.params;
   const { a, b } = req.body;
-  
+
   if (typeof a !== 'number' || typeof b !== 'number') {
     return res.status(400).json({ error: 'a and b must be numbers' });
   }
-  
+
   const calc = new Calculator();
   let result;
-  
+
   switch (operation) {
     case 'add':
       result = calc.add(a, b);
@@ -109,7 +109,7 @@ app.post('/calculate/:operation', (req, res) => {
     default:
       return res.status(400).json({ error: 'Unsupported operation' });
   }
-  
+
   res.json({
     operation,
     a,

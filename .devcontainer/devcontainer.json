@@ -1,14 +1,4 @@
 {
-  "name": "devcontainer.nvim Development",
-  "image": "mcr.microsoft.com/devcontainers/lua:1-5.4-bullseye",
-  
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "18"
-    }
-  },
-  
   "customizations": {
     "vscode": {
       "extensions": [
@@ -17,17 +7,20 @@
       ]
     }
   },
-  
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18"
+    }
+  },
+  "forwardPorts": [],
+  "image": "mcr.microsoft.com/devcontainers/lua:1-5.4-bullseye",
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
   ],
-  
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-  "workspaceFolder": "/workspace",
-  
+  "name": "devcontainer.nvim Development",
   "postCreateCommand": "apt-get update && apt-get install -y ripgrep fd-find",
-  
-  "forwardPorts": [],
-  
-  "remoteUser": "vscode"
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
 }

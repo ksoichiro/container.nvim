@@ -97,10 +97,10 @@ func TestCalculator(t *testing.T) {
 		// Get history copy and verify it's independent
 		history1 := calc.GetHistory()
 		history2 := calc.GetHistory()
-		
+
 		// Modify one copy
 		history1[0] = "modified"
-		
+
 		// Original should be unchanged
 		assert.NotEqual(t, history1[0], history2[0])
 	})
@@ -108,7 +108,7 @@ func TestCalculator(t *testing.T) {
 
 func TestCalculatorAdd(t *testing.T) {
 	calc := NewCalculator()
-	
+
 	tests := []struct {
 		name string
 		a, b int
@@ -130,7 +130,7 @@ func TestCalculatorAdd(t *testing.T) {
 
 func TestCalculatorMultiply(t *testing.T) {
 	calc := NewCalculator()
-	
+
 	tests := []struct {
 		name string
 		a, b int
@@ -165,7 +165,7 @@ func BenchmarkCalculateSum(b *testing.B) {
 
 func BenchmarkCalculatorAdd(b *testing.B) {
 	calc := NewCalculator()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		calc.Add(i, i+1)

@@ -143,7 +143,7 @@ func main() {
 	port := ":8080"
 	log.Printf("Server starting on port %s", port)
 	log.Printf("Greeting: %s", CreateGreeting("Go devcontainer"))
-	
+
 	if err := r.Run(port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

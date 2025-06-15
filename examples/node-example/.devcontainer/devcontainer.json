@@ -1,11 +1,4 @@
 {
-  "name": "Node.js LSP Example",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-18-bullseye",
-  
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
-  
   "customizations": {
     "vscode": {
       "extensions": [
@@ -14,13 +7,17 @@
       ]
     }
   },
-  
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-  "workspaceFolder": "/workspace",
-  
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [
+    3000,
+    8080
+  ],
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-18-bullseye",
+  "name": "Node.js LSP Example",
   "postCreateCommand": "npm install -g typescript-language-server typescript eslint",
-  
-  "forwardPorts": [3000, 8080],
-  
-  "remoteUser": "node"
+  "remoteUser": "node",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
 }

@@ -231,7 +231,7 @@ function M.parse(file_path, context)
   if not config then
     return nil, parse_err
   end
-  
+
   -- Debug: postCreateCommand after parsing
   log.debug("Raw config postCreateCommand: %s", tostring(config.postCreateCommand))
 
@@ -264,7 +264,7 @@ function M.parse(file_path, context)
 
   -- Debug: final postCreateCommand
   log.debug("Final config postCreateCommand: %s", tostring(config.postCreateCommand))
-  
+
   log.info("Successfully parsed devcontainer.json: %s", config.name)
   return config
 end
@@ -391,4 +391,3 @@ function M.merge_with_plugin_config(devcontainer_config, plugin_config)
 end
 
 return M
-

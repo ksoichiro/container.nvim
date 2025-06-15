@@ -389,7 +389,7 @@ require('devcontainer').setup({
   auto_start = false,
   log_level = 'info',
   container_runtime = 'docker', -- 'docker' or 'podman'
-  
+
   -- UI settings
   ui = {
     use_telescope = true,
@@ -402,7 +402,7 @@ require('devcontainer').setup({
       building = "🔨",
     },
   },
-  
+
   -- LSP settings
   lsp = {
     auto_setup = true,
@@ -414,7 +414,7 @@ require('devcontainer').setup({
       javascript = { cmd = "typescript-language-server" },
     },
   },
-  
+
   -- Terminal settings
   terminal = {
     shell = '/bin/bash',
@@ -422,21 +422,21 @@ require('devcontainer').setup({
     direction = 'horizontal', -- 'horizontal', 'vertical', 'float'
     close_on_exit = false,
   },
-  
+
   -- Port forwarding
   port_forwarding = {
     auto_forward = true,
     notification = true,
     common_ports = {3000, 8080, 5000, 3001},
   },
-  
+
   -- Workspace settings
   workspace = {
     auto_mount = true,
     mount_point = '/workspace',
     sync_settings = true,
   },
-  
+
   -- Docker settings
   docker = {
     build_args = {},
@@ -444,7 +444,7 @@ require('devcontainer').setup({
     privileged = false,
     init = true,
   },
-  
+
   -- Development settings
   dev = {
     reload_on_change = true,
@@ -726,7 +726,7 @@ function M.auto_detect_integrations()
   -- Detect installed plugins
   -- Set up automatic integration for known plugins
   local known_integrations = require('devcontainer.plugin_integration.registry')
-  
+
   for plugin_name, integration_config in pairs(known_integrations) do
     if M.is_plugin_available(plugin_name) then
       M.register_integration(plugin_name, integration_config)
@@ -746,13 +746,13 @@ function M.create_wrapper(original_cmd, container_id)
   return function(...)
     local args = {...}
     local docker = require('devcontainer.docker')
-    
+
     -- Transform command to execute within container
     local container_cmd = M.transform_command(original_cmd, args)
-    
+
     -- Execute and get results
     local result = docker.exec_command(container_id, container_cmd)
-    
+
     -- Transform results to Neovim format
     return M.transform_result(result)
   end
@@ -761,17 +761,17 @@ end
 -- Generic command transformation
 function M.wrap_plugin_commands(plugin_name, command_patterns)
   local original_commands = {}
-  
+
   for _, pattern in ipairs(command_patterns) do
     -- Save original command
     original_commands[pattern] = vim.api.nvim_get_commands({})[pattern]
-    
+
     -- Replace with wrapper
     vim.api.nvim_create_user_command(pattern, function(opts)
       M.execute_in_container(pattern, opts)
     end, { nargs = '*', complete = 'file' })
   end
-  
+
   return original_commands
 end
 ```
@@ -785,23 +785,23 @@ local M = {}
 -- Start remote plugin host in container
 function M.start_remote_host(container_id)
   local docker = require('devcontainer.docker')
-  
+
   -- Remote plugin host setup script
   local setup_script = [[
     # Neovim remote plugin host setup
     pip install pynvim
     npm install -g neovim
-    
+
     # Start the remote plugin host
     nvim --headless --cmd "let g:devcontainer_mode='remote'" \
          --cmd "call remote#host#Start()" &
   ]]
-  
+
   docker.exec_command(container_id, setup_script, { detach = true })
-  
+
   -- Establish RPC channel
   local channel = M.establish_rpc_channel(container_id)
-  
+
   return channel
 end
 
@@ -829,7 +829,7 @@ M.config = {
     "Test*",
     "VimTest*"
   },
-  
+
   setup = function(container_id)
     -- Configure vim-test custom strategy
     vim.g['test#custom_strategies'] = {
@@ -841,11 +841,11 @@ M.config = {
         })
       end
     }
-    
+
     -- Set default strategy to devcontainer
     vim.g['test#strategy'] = 'devcontainer'
   end,
-  
+
   teardown = function()
     -- Cleanup
     vim.g['test#strategy'] = nil
@@ -864,11 +864,11 @@ local M = {}
 
 M.config = {
   type = "hybrid",  -- Combination of command forwarding and port forwarding
-  
+
   setup = function(container_id)
     local dap = require('dap')
     local docker = require('devcontainer.docker')
-    
+
     -- Modify debug adapter configuration
     for lang, configs in pairs(dap.configurations) do
       for i, config in ipairs(configs) do
@@ -876,7 +876,7 @@ M.config = {
         if config.type == "executable" then
           config.program = M.wrap_debugger_command(config.program, container_id)
         end
-        
+
         -- Configure port forwarding
         if config.port then
           config.port = M.forward_debug_port(config.port, container_id)
@@ -884,14 +884,14 @@ M.config = {
       end
     end
   end,
-  
+
   handlers = {
     -- Processing when debug session starts
     before_start = function(config, container_id)
       -- Forward necessary ports
       M.setup_debug_ports(config, container_id)
     end,
-    
+
     -- Path mapping
     resolve_path = function(path, container_id)
       return M.map_path_to_container(path, container_id)
@@ -991,4 +991,3 @@ This hybrid architecture achieves the following:
 5. **Extensibility** - Easy addition of new plugins and integration methods
 
 This design enables functionality equivalent to VSCode's Remote Development extension in a form suited to Neovim's ecosystem.
-
