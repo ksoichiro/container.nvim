@@ -79,6 +79,7 @@ function M.open(path)
 
   -- Normalize configuration for plugin use
   local normalized_config = parser.normalize_for_plugin(devcontainer_config)
+  normalized_config.base_path = path  -- Add base path for container name generation
 
   -- Merge with plugin configuration
   parser.merge_with_plugin_config(devcontainer_config, config.get())
@@ -1157,12 +1158,15 @@ function M._try_reconnect_existing_container()
 
   -- Get normalized configuration
   local normalized_config = parser.normalize_for_plugin(devcontainer_config)
-  local container_name_pattern = normalized_config.name:lower():gsub("[^a-z0-9_.-]", "-") .. "_devcontainer"
+  normalized_config.base_path = cwd  -- Add base path for container name generation
 
-  log.info("Looking for existing container with pattern: %s", container_name_pattern)
+  -- Generate expected container name using same logic as creation
+  local expected_container_name = docker.generate_container_name(normalized_config)
+
+  log.info("Looking for existing container: %s", expected_container_name)
 
   -- Search for existing containers
-  M._list_containers_async("name=" .. container_name_pattern, function(containers)
+  M._list_containers_async("name=" .. expected_container_name, function(containers)
     vim.schedule(function()
       if #containers > 0 then
         local container = containers[1]

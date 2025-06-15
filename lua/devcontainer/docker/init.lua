@@ -511,12 +511,30 @@ function M.create_container_async(config, callback)
   end)
 end
 
+-- Generate unique container name with project path hash
+function M.generate_container_name(config)
+  -- Get project root path for uniqueness
+  local project_path = config.base_path or vim.fn.getcwd()
+
+  -- Create hash of project path for uniqueness
+  local path_hash = vim.fn.sha256(project_path):sub(1, 8)
+
+  -- Clean the config name
+  local clean_name = config.name:lower():gsub("[^a-z0-9_.-]", "-")
+
+  -- Combine name, hash, and suffix for uniqueness
+  local container_name = string.format("%s-%s-devcontainer", clean_name, path_hash)
+
+  log.debug("Generated container name: %s (from project: %s)", container_name, project_path)
+  return container_name
+end
+
 -- Build container creation arguments
 function M._build_create_args(config)
   local args = {"create"}
 
-  -- Container name
-  local container_name = config.name:lower():gsub("[^a-z0-9_.-]", "-") .. "_devcontainer"
+  -- Container name (unique per project)
+  local container_name = M.generate_container_name(config)
   table.insert(args, "--name")
   table.insert(args, container_name)
 
@@ -595,8 +613,8 @@ function M.create_container(config)
 
   local args = {"create"}
 
-  -- Container name
-  local container_name = config.name:lower():gsub("[^a-z0-9_.-]", "-") .. "_devcontainer"
+  -- Container name (unique per project)
+  local container_name = M.generate_container_name(config)
   table.insert(args, "--name")
   table.insert(args, container_name)
 

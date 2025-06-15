@@ -14,21 +14,21 @@ This file records future improvements and plans after the completion of v0.2.0 L
 
 ## Critical Issues Requiring Immediate Fixes
 
-### 🔴 High Priority
+### ✅ Fixes Completed
 
-1. **Container Naming Conflicts**
-   - Current: Container names based only on devcontainer.json name property
-   - Issue: Multiple projects with same name cause container conflicts
-   - Impact: Cannot use multiple projects with same devcontainer name simultaneously
-   - Fix: Include project path/hash in container naming to ensure uniqueness
+1. **Container Naming Conflicts** ✅
+   - Fixed: Container names now include project path hash for uniqueness
+   - Implementation: `name-hash-devcontainer` format using SHA256 of project path
+   - Impact: Multiple projects with same devcontainer name can coexist
+   - Testing: Comprehensive test suite added (test/test_container_naming.lua)
+
+### 🔴 High Priority
 
 2. **LSP Info Client Display Issue**
    - Current: devcontainer pylsp client not shown in `:LspInfo`
    - Impact: Difficult to verify status during debugging (though functionality works normally)
    - Priority: Medium (minimal practical impact)
    - Fix: Improve integration with lspconfig
-
-### ✅ Fixes Completed
 
 3. **Error Log Cleanup** ✅
    - Fixed: Changed all DEBUG prints to log.debug()
@@ -52,22 +52,22 @@ This file records future improvements and plans after the completion of v0.2.0 L
 
 ### 🟡 Medium Priority
 
-7. **Debug Commands Cleanup**
+9. **Debug Commands Cleanup**
    - Review and clean up debug commands added during development
    - Remove obsolete/redundant commands and consolidate remaining ones
    - Impact: Code maintainability and plugin size reduction
 
-8. **Neovim Help Documentation**
+10. **Neovim Help Documentation**
    - Add Neovim help documentation (doc/devcontainer.txt)
    - Update development workflow to maintain help docs alongside README
    - Impact: Better user experience following Neovim plugin conventions
 
-9. **Performance Optimization**
+11. **Performance Optimization**
    - Parallel LSP server detection
    - Docker operation caching
    - Reduction of unnecessary Docker calls
 
-10. **Enhanced Error Handling**
+12. **Enhanced Error Handling**
    - Proper error messages when Docker is not running
    - Recovery functionality for LSP server startup failures
    - Network timeout handling
