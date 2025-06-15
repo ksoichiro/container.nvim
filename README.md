@@ -129,12 +129,20 @@ USER node
 | `:DevcontainerLogs` | Show container logs |
 | `:DevcontainerConfig` | Show configuration |
 
+### LSP Integration
+
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerLspStatus` | Show LSP server status |
+| `:DevcontainerLspSetup` | Setup LSP servers in container |
+
 ### Management
 
 | Command | Description |
 |---------|-------------|
 | `:DevcontainerReset` | Reset plugin state |
-| `:DevcontainerDebug` | Show debug information |
+| `:DevcontainerDebug` | Show comprehensive debug information |
+| `:DevcontainerReconnect` | Reconnect to existing devcontainer |
 
 ## Configuration
 

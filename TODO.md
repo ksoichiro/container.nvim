@@ -50,12 +50,12 @@ This file records future improvements and plans after the completion of v0.2.0 L
    - Fixed: Added Go binary paths (/usr/local/go/bin, /go/bin) to PATH for LSP detection and execution
    - Temporary fix: Until environment-specific devcontainer.json support is implemented
 
-### 🟡 Medium Priority
-
-9. **Debug Commands Cleanup**
-   - Review and clean up debug commands added during development
-   - Remove obsolete/redundant commands and consolidate remaining ones
-   - Impact: Code maintainability and plugin size reduction
+9. **Debug Commands Cleanup** ✅
+   - Removed 8 obsolete debug functions: test_minimal, test_docker, test_container_basic, start_step_by_step, start_existing_container, check_container_status, debug_detailed, test_simple_pull, debug_exec
+   - Removed 10 corresponding user commands from plugin
+   - Enhanced remaining debug_info() function with comprehensive diagnostic information
+   - Updated README.md command documentation with LSP integration section
+   - Impact: Reduced init.lua by ~400 lines, improved maintainability
 
 10. **Neovim Help Documentation**
    - Add Neovim help documentation (doc/devcontainer.txt)
