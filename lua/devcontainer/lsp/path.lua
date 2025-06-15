@@ -51,6 +51,16 @@ function M.to_container_path(local_path)
   return abs_path
 end
 
+-- Get container workspace folder
+function M.get_container_workspace()
+  return path_mappings.container_workspace or '/workspace'
+end
+
+-- Get local workspace folder
+function M.get_local_workspace()
+  return path_mappings.workspace_folder or vim.fn.getcwd()
+end
+
 -- Convert container path to local path
 function M.to_local_path(container_path)
   if not container_path then

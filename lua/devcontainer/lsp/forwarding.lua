@@ -162,32 +162,76 @@ end
 -- Create middleware for LSP client
 function M.create_client_middleware()
   return {
-    -- Intercept requests going to the server
-    ['window/showMessage'] = function(_, result, ctx, config)
-      -- Pass through as-is
-      return vim.lsp.handlers['window/showMessage'](nil, result, ctx, config)
+    -- Handle window/showMessage notifications from LSP server
+    ['window/showMessage'] = function(err, result, ctx, config)
+      -- Check if the default handler exists, otherwise provide fallback
+      local handler = vim.lsp.handlers['window/showMessage']
+      if handler then
+        return handler(err, result, ctx, config)
+      else
+        -- Fallback: Simple notification display
+        if result and result.message then
+          local level = result.type or 1 -- 1=Error, 2=Warning, 3=Info, 4=Log
+          local level_names = {[1] = "ERROR", [2] = "WARN", [3] = "INFO", [4] = "DEBUG"}
+          local level_name = level_names[level] or "INFO"
+
+          log.info("LSP %s: %s", level_name, result.message)
+
+          -- Also show as vim notification if available
+          if vim.notify then
+            local notify_level = vim.log.levels.INFO
+            if level == 1 then notify_level = vim.log.levels.ERROR
+            elseif level == 2 then notify_level = vim.log.levels.WARN
+            elseif level == 3 then notify_level = vim.log.levels.INFO
+            else notify_level = vim.log.levels.DEBUG end
+
+            vim.notify(result.message, notify_level, {title = "LSP"})
+          end
+        end
+      end
     end,
 
-    -- Transform paths in common handlers
+    -- Transform paths in common handlers with safety checks
     ['textDocument/definition'] = function(err, result, ctx, config)
       if result then
         result = path.transform_lsp_params(result, 'to_local')
       end
-      return vim.lsp.handlers['textDocument/definition'](err, result, ctx, config)
+
+      local handler = vim.lsp.handlers['textDocument/definition']
+      if handler then
+        return handler(err, result, ctx, config)
+      else
+        log.warn("LSP handler for textDocument/definition not found")
+        return nil
+      end
     end,
 
     ['textDocument/references'] = function(err, result, ctx, config)
       if result then
         result = path.transform_lsp_params(result, 'to_local')
       end
-      return vim.lsp.handlers['textDocument/references'](err, result, ctx, config)
+
+      local handler = vim.lsp.handlers['textDocument/references']
+      if handler then
+        return handler(err, result, ctx, config)
+      else
+        log.warn("LSP handler for textDocument/references not found")
+        return nil
+      end
     end,
 
     ['textDocument/implementation'] = function(err, result, ctx, config)
       if result then
         result = path.transform_lsp_params(result, 'to_local')
       end
-      return vim.lsp.handlers['textDocument/implementation'](err, result, ctx, config)
+
+      local handler = vim.lsp.handlers['textDocument/implementation']
+      if handler then
+        return handler(err, result, ctx, config)
+      else
+        log.warn("LSP handler for textDocument/implementation not found")
+        return nil
+      end
     end,
   }
 end

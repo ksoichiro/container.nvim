@@ -10,6 +10,9 @@ local state = {
   container_id = nil
 }
 
+-- Track if path mappings have been initialized
+local path_mappings_initialized = false
+
 -- Initialize LSP module
 function M.setup(config)
   log.debug('LSP: Initializing LSP module')
@@ -210,6 +213,8 @@ end
 
 -- Prepare LSP configuration for a server
 function M._prepare_lsp_config(name, server_config)
+  local path_utils = require('devcontainer.lsp.path')
+
   local config = vim.tbl_deep_extend('force', {
     -- Base configuration
     name = name,
@@ -218,18 +223,49 @@ function M._prepare_lsp_config(name, server_config)
     -- Command will be overridden by forwarding module
     cmd = { 'echo', 'LSP server not properly configured' },
 
-    -- Root directory pattern
+    -- Root directory pattern - ensure we use container paths
     root_dir = function(fname)
       local util = require('lspconfig.util')
-      return util.find_git_ancestor(fname) or util.path.dirname(fname)
+      -- Convert local path to container path for LSP server
+      local container_path = path_utils.to_container_path(fname)
+
+      if container_path then
+        -- Use container workspace as root for consistency
+        local workspace = path_utils.get_container_workspace()
+        log.debug('LSP: Using container workspace as root: %s for file %s', workspace, fname)
+        return workspace
+      else
+        -- Fallback to original logic
+        return util.find_git_ancestor(fname) or util.path.dirname(fname)
+      end
     end,
 
     -- Capabilities
     capabilities = vim.lsp.protocol.make_client_capabilities(),
 
+    -- Workspace folders - explicitly set to container workspace
+    workspaceFolders = {
+      {
+        uri = 'file://' .. path_utils.get_container_workspace(),
+        name = 'devcontainer-workspace'
+      }
+    },
+
     -- On attach callback
     on_attach = function(client, bufnr)
       log.debug('LSP: ' .. name .. ' attached to buffer ' .. bufnr)
+
+      -- Initialize path mappings for this client
+      local path_utils = require('devcontainer.lsp.path')
+      local local_workspace = path_utils.get_local_workspace()
+      local container_workspace = path_utils.get_container_workspace()
+
+      if not path_mappings_initialized then
+        path_utils.setup(local_workspace, container_workspace)
+        path_mappings_initialized = true
+        log.debug('LSP: Initialized path mappings for %s', name)
+      end
+
       if M.config.on_attach then
         M.config.on_attach(client, bufnr)
       end
