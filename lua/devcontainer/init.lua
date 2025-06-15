@@ -22,7 +22,7 @@ function M.setup(user_config)
   log = require('devcontainer.utils.log')
   config = require('devcontainer.config')
 
-  local success, result = config.setup(user_config)
+  local success = config.setup(user_config)
   if not success then
     log.error("Failed to setup configuration")
     return false
@@ -41,6 +41,8 @@ end
 
 -- Open devcontainer
 function M.open(path)
+  log = log or require('devcontainer.utils.log')
+  
   if not state.initialized then
     log.error("Plugin not initialized. Call setup() first.")
     return false
@@ -97,6 +99,8 @@ end
 
 -- Prepare image (build or pull)
 function M.build()
+  log = log or require('devcontainer.utils.log')
+  
   if not state.current_config then
     log.error("No devcontainer configuration loaded")
     return false
@@ -120,6 +124,8 @@ end
 
 -- Start container (fully async version)
 function M.start()
+  log = log or require('devcontainer.utils.log')
+  
   if not state.current_config then
     log.error("No devcontainer configuration loaded")
     return false
@@ -220,12 +226,16 @@ function M._start_final_step(container_id)
             lsp.set_container_id(container_id)
 
             -- Configure path mapping
-            local lsp_path = require('devcontainer.lsp.path')
-            lsp_path.setup(
-              vim.fn.getcwd(),
-              state.current_config.workspace_mount or '/workspace',
-              state.current_config.mounts or {}
-            )
+            local ok, lsp_path = pcall(require, 'devcontainer.lsp.path')
+            if ok then
+              lsp_path.setup(
+                vim.fn.getcwd(),
+                state.current_config.workspace_mount or '/workspace',
+                state.current_config.mounts or {}
+              )
+            else
+              log.warn("Failed to load LSP path module")
+            end
 
             -- Setup LSP servers
             lsp.setup_lsp_in_container()
@@ -371,6 +381,8 @@ end
 
 -- Stop container
 function M.stop()
+  log = log or require('devcontainer.utils.log')
+  
   if not state.current_container then
     log.error("No active container")
     return false
@@ -391,6 +403,8 @@ end
 
 -- Execute command in container
 function M.exec(command, opts)
+  log = log or require('devcontainer.utils.log')
+  
   if not state.current_container then
     print("✗ No active container")
     log.error("No active container")
@@ -440,6 +454,8 @@ end
 
 -- Open terminal
 function M.shell(shell)
+  log = log or require('devcontainer.utils.log')
+  
   if not state.current_container then
     log.error("No active container")
     return false
@@ -458,6 +474,8 @@ end
 
 -- Get container status
 function M.status()
+  log = log or require('devcontainer.utils.log')
+  
   if not state.current_container then
     print("No active container")
     return nil
@@ -497,6 +515,8 @@ end
 
 -- Display logs
 function M.logs(opts)
+  log = log or require('devcontainer.utils.log')
+  
   if not state.current_container then
     log.error("No active container")
     return false
@@ -520,6 +540,8 @@ end
 
 -- Reset plugin state
 function M.reset()
+  log = log or require('devcontainer.utils.log')
+  
   state.current_container = nil
   state.current_config = nil
   log.info("Plugin state reset")
@@ -527,10 +549,11 @@ end
 
 -- Get LSP status
 function M.lsp_status()
+  log = log or require('devcontainer.utils.log')
+  config = config or require('devcontainer.config')
+  
   -- Initialize LSP module (if not already done)
   if not lsp then
-    log = log or require('devcontainer.utils.log')
-    config = config or require('devcontainer.config')
 
     if not state.initialized then
       log.warn("Plugin not fully initialized")
@@ -589,12 +612,16 @@ function M.lsp_setup()
   lsp.set_container_id(state.current_container)
 
   -- Configure path mapping
-  local lsp_path = require('devcontainer.lsp.path')
-  lsp_path.setup(
-    vim.fn.getcwd(),
-    (state.current_config and state.current_config.workspace_mount) or '/workspace',
-    (state.current_config and state.current_config.mounts) or {}
-  )
+  local ok, lsp_path = pcall(require, 'devcontainer.lsp.path')
+  if ok then
+    lsp_path.setup(
+      vim.fn.getcwd(),
+      (state.current_config and state.current_config.workspace_mount) or '/workspace',
+      (state.current_config and state.current_config.mounts) or {}
+    )
+  else
+    log.warn("Failed to load LSP path module")
+  end
 
   -- Setup LSP servers
   lsp.setup_lsp_in_container()
@@ -691,7 +718,7 @@ function M.test_container_basic()
         print("✗ No image specified")
         return
       end
-      print("✓ Image: " .. (has_image or "unknown"))
+      print("✓ Image: " .. has_image)
 
       -- Step 3: Check container list (async)
       print("Step 3: Checking for existing containers...")
@@ -807,7 +834,7 @@ function M.start_step_by_step()
         print("✗ No image specified")
         return
       end
-      print("✓ Image: " .. (has_image or "unknown"))
+      print("✓ Image: " .. has_image)
 
       -- Step 3: Check/create container (async)
       print("Step 3: Checking for existing containers...")
@@ -866,12 +893,16 @@ function M._start_container_step4(container_id)
           lsp.setup(config.get_value('lsp'))
           lsp.set_container_id(container_id)
 
-          local lsp_path = require('devcontainer.lsp.path')
-          lsp_path.setup(
-            vim.fn.getcwd(),
-            state.current_config.workspace_mount or '/workspace',
-            state.current_config.mounts or {}
-          )
+          local ok, lsp_path = pcall(require, 'devcontainer.lsp.path')
+          if ok then
+            lsp_path.setup(
+              vim.fn.getcwd(),
+              state.current_config.workspace_mount or '/workspace',
+              state.current_config.mounts or {}
+            )
+          else
+            log.warn("Failed to load LSP path module")
+          end
 
           lsp.setup_lsp_in_container()
           print("✓ LSP setup complete!")
@@ -1105,6 +1136,8 @@ end
 
 -- Attempt to reconnect to existing container
 function M._try_reconnect_existing_container()
+  log = log or require('devcontainer.utils.log')
+  
   if state.current_container then
     -- Skip if container is already configured
     return
@@ -1196,6 +1229,8 @@ end
 
 -- Execute postCreateCommand
 function M._run_post_create_command(container_id, callback)
+  log = log or require('devcontainer.utils.log')
+  
   log.debug("Checking for postCreateCommand...")
   log.debug("Current config exists: %s", tostring(state.current_config ~= nil))
   

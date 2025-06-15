@@ -107,6 +107,15 @@ end
 
 -- Create an LSP client for a server in the container
 function M.create_lsp_client(name, server_config)
+  if not name or type(name) ~= "string" then
+    log.error("Invalid server name provided")
+    return
+  end
+  if not server_config or type(server_config) ~= "table" then
+    log.error("Invalid server config provided")
+    return
+  end
+  
   log.debug("Creating LSP client for %s", name)
   local lsp_config = M._prepare_lsp_config(name, server_config)
 

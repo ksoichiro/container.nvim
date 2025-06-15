@@ -37,7 +37,7 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
   -- Check if container is using host network
   local docker = require('devcontainer.docker.init')
   local inspect_result = docker.exec_command(container_id, 'docker inspect ' .. container_id .. ' --format "{{.HostConfig.NetworkMode}}"')
-  if inspect_result.code == 0 and vim.trim(inspect_result.output) == 'host' then
+  if inspect_result and inspect_result.code == 0 and inspect_result.output and vim.trim(inspect_result.output) == 'host' then
     log.info('Forwarding: Container using host network, no forwarding needed')
     return container_port
   end
@@ -54,11 +54,11 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
 
   -- Check if socat is available
   local socat_check = docker.exec_command(container_id, 'which socat', { output = false })
-  if socat_check.code ~= 0 then
+  if not socat_check or socat_check.code ~= 0 then
     log.warn('Forwarding: socat not available in container, trying direct connection')
     -- Fall back to direct container IP connection
     local ip_result = docker.exec_command(container_id, 'docker inspect ' .. container_id .. ' --format "{{.NetworkSettings.IPAddress}}"')
-    if ip_result.code == 0 and ip_result.output ~= '' then
+    if ip_result and ip_result.code == 0 and ip_result.output and ip_result.output ~= '' then
       local container_ip = vim.trim(ip_result.output)
       active_forwards[server_name] = {
         type = 'direct',

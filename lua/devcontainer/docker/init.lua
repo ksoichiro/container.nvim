@@ -192,7 +192,6 @@ function M.pull_image_async(image_name, on_progress, on_complete)
   local stdout_lines = {}
   local stderr_lines = {}
   local start_time = vim.loop.hrtime()
-  local job_started = false
   local data_received = false
 
   log.debug("About to start docker pull job for: %s", image_name)
