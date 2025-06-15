@@ -16,37 +16,40 @@
 
 ### 🔴 高優先度
 
-1. **LSP Info でのクライアント表示問題**
-   - 現状: `:LspInfo` でpylspクライアントが表示されない
-   - 影響: ユーザーがLSP状態を確認できない
-   - 場所: `lua/devcontainer/lsp/init.lua:148`
-   - 修正案: `vim.lsp.start_client()` の戻り値を適切に処理
+1. **postCreateCommand サポートの欠如**
+   - 現状: devcontainer.json の postCreateCommand が実行されない
+   - 影響: LSPサーバーやツールがインストールされず、LSP機能が使用不可
+   - 重要度: 極めて高い（基本機能の前提条件）
+   - 修正案: コンテナ作成後に postCreateCommand を自動実行する機能追加
 
-2. **エラーログのクリーンアップ**
-   - 現状: Docker exec で多数のデバッグプリントが残っている
-   - 影響: ログが見づらい
-   - 場所: `lua/devcontainer/docker/init.lua:915`, `lua/devcontainer/lsp/init.lua:110,128,144`
-   - 修正案: DEBUG コメントをすべて削除またはログレベル調整
+2. **LSP Info でのクライアント表示問題**
+   - 現状: `:LspInfo` でdevcontainer内pylspクライアントが表示されない
+   - 影響: デバッグ時の状態確認が困難（ただし機能は正常動作）
+   - 優先度: 中（実用上の問題は少ない）
+   - 修正案: lspconfig との統合改善
 
-3. **Docker関数の重複修正**
-   - 現状: `M.M.run_docker_command` の二重参照エラー
-   - 場所: `lua/devcontainer/docker/init.lua:156,377,423`
-   - 修正案: `M.run_docker_command` に修正
+### ✅ 修正完了
 
-4. **起動時の不要なメッセージ表示**
-   - 現状: nvim起動時に "Configuration loaded successfully" と "devcontainer.nvim initialized successfully" が表示される
-   - 影響: ユーザーにとって不要な情報表示
-   - 場所: プラグイン初期化部分
-   - 修正案: ログレベルをDEBUGに変更、またはサイレントモード追加
+3. **エラーログのクリーンアップ** ✅
+   - 修正済み: すべてのDEBUGプリントをlog.debug()に変更
+
+4. **Docker関数の重複修正** ✅
+   - 修正済み: M.M.run_docker_command → M.run_docker_command
+
+5. **起動時の不要なメッセージ表示** ✅
+   - 修正済み: 初期化メッセージをdebugレベルに変更
+
+6. **LSP自動アタッチ機能** ✅
+   - 実装済み: autocommandによる新規バッファへの自動アタッチ
 
 ### 🟡 中優先度
 
-5. **パフォーマンス最適化**
+7. **パフォーマンス最適化**
    - LSPサーバー検出の並列化
    - Docker操作のキャッシュ機能
    - 不要なDocker呼び出しの削減
 
-6. **エラーハンドリング強化**
+8. **エラーハンドリング強化**
    - Docker未起動時の適切なエラーメッセージ
    - LSPサーバー起動失敗時の復旧機能
    - ネットワークタイムアウトの処理

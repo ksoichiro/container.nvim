@@ -163,38 +163,26 @@ function M.create_lsp_client(name, server_config)
       log.debug("Filetype %s not supported by %s (supported: %s)", ft, name, vim.inspect(supported_filetypes))
     end
 
-    -- Store the client ID for later reference
-    state.clients[name] = state.clients[name] or {}
-    state.clients[name].client_id = client_id
+    -- Store the client ID and configuration for later reference
+    state.clients[name] = {
+      client_id = client_id,
+      config = lsp_config,
+      server_config = server_config
+    }
+    
+    -- Setup autocommand for automatic attachment to new buffers
+    M._setup_auto_attach(name, server_config, client_id)
   else
     log.error("Failed to start LSP client for %s", name)
-    log.error('LSP: Failed to start client for ' .. name)
     return
   end
 
-  -- Store client info
-  state.clients[name] = {
-    config = lsp_config,
-    server_config = server_config
-  }
-
-  -- Force start LSP for already opened Python buffers
+  -- Attach to existing loaded buffers with matching filetypes
   vim.schedule(function()
-    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-      if vim.api.nvim_buf_is_loaded(buf) then
-        local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
-        if vim.tbl_contains(server_config.languages or {}, ft) then
-          log.debug("Starting LSP for buffer %s (filetype: %s)", buf, ft)
-          vim.api.nvim_buf_call(buf, function()
-            vim.cmd('LspStart ' .. name)
-          end)
-        end
-      end
-    end
+    M._attach_to_existing_buffers(name, server_config, client_id)
   end)
 
-  print("SUCCESS: LSP client " .. name .. " setup complete")
-  log.info('LSP: Successfully set up ' .. name)
+  log.info('LSP: Successfully set up %s', name)
 end
 
 -- Prepare LSP configuration for a server
@@ -267,6 +255,84 @@ function M.get_state()
     container_id = state.container_id,
     config = M.config
   }
+end
+
+-- Setup autocommand for automatic attachment to new buffers
+function M._setup_auto_attach(server_name, server_config, client_id)
+  local supported_filetypes = server_config.filetypes or server_config.languages or {}
+  
+  if #supported_filetypes == 0 then
+    log.debug("No filetypes specified for %s, skipping auto-attach setup", server_name)
+    return
+  end
+  
+  -- Create autocmd group for this server
+  local group_name = "DevcontainerLSP_" .. server_name
+  vim.api.nvim_create_augroup(group_name, { clear = true })
+  
+  -- Setup autocommand for each supported filetype
+  for _, filetype in ipairs(supported_filetypes) do
+    vim.api.nvim_create_autocmd({"BufEnter", "BufNewFile"}, {
+      group = group_name,
+      pattern = "*",
+      callback = function(args)
+        local buf = args.buf
+        local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
+        
+        if ft == filetype then
+          -- Check if client is still running
+          local client = vim.lsp.get_client_by_id(client_id)
+          if client and client.is_stopped ~= true then
+            -- Check if this buffer is already attached
+            local attached_clients = vim.lsp.get_active_clients({ bufnr = buf })
+            local already_attached = false
+            for _, attached_client in ipairs(attached_clients) do
+              if attached_client.id == client_id then
+                already_attached = true
+                break
+              end
+            end
+            
+            if not already_attached then
+              vim.lsp.buf_attach_client(buf, client_id)
+              log.info("Auto-attached %s LSP to buffer %s (filetype: %s)", server_name, buf, ft)
+            end
+          else
+            log.debug("LSP client %s is no longer active, skipping auto-attach", server_name)
+          end
+        end
+      end,
+    })
+  end
+  
+  log.debug("Setup auto-attach for %s (filetypes: %s)", server_name, vim.inspect(supported_filetypes))
+end
+
+-- Attach LSP client to existing buffers with matching filetypes
+function M._attach_to_existing_buffers(server_name, server_config, client_id)
+  local supported_filetypes = server_config.filetypes or server_config.languages or {}
+  
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(buf) then
+      local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
+      if vim.tbl_contains(supported_filetypes, ft) then
+        -- Check if this buffer is already attached
+        local attached_clients = vim.lsp.get_active_clients({ bufnr = buf })
+        local already_attached = false
+        for _, attached_client in ipairs(attached_clients) do
+          if attached_client.id == client_id then
+            already_attached = true
+            break
+          end
+        end
+        
+        if not already_attached then
+          vim.lsp.buf_attach_client(buf, client_id)
+          log.info("Attached %s LSP to existing buffer %s (filetype: %s)", server_name, buf, ft)
+        end
+      end
+    end
+  end
 end
 
 return M
