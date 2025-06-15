@@ -1,20 +1,20 @@
 -- lua/devcontainer/parser.lua
--- devcontainer.json の解析
+-- devcontainer.json parsing
 
 local M = {}
 local fs = require('devcontainer.utils.fs')
 local log = require('devcontainer.utils.log')
 
--- JSON文字列のコメントを除去
+-- Remove comments from JSON string
 local function remove_json_comments(content)
-  -- 行コメント // を除去
+  -- Remove line comments //
   content = content:gsub('//[^\n]*', '')
-  -- ブロックコメント /* */ を除去
+  -- Remove block comments /* */
   content = content:gsub('/%*.-*/', '')
   return content
 end
 
--- JSON解析
+-- JSON parsing
 local function parse_json(content)
   content = remove_json_comments(content)
 
@@ -26,7 +26,7 @@ local function parse_json(content)
   return result
 end
 
--- 変数展開
+-- Variable expansion
 local function expand_variables(str, context)
   if type(str) ~= 'string' then
     return str
@@ -34,18 +34,18 @@ local function expand_variables(str, context)
 
   context = context or {}
 
-  -- ${localWorkspaceFolder} の展開
+  -- Expand ${localWorkspaceFolder}
   str = str:gsub('${localWorkspaceFolder}', context.workspace_folder or vim.fn.getcwd())
 
-  -- ${containerWorkspaceFolder} の展開
+  -- Expand ${containerWorkspaceFolder}
   str = str:gsub('${containerWorkspaceFolder}', context.container_workspace or '/workspace')
 
-  -- ${localEnv:変数名} の展開
+  -- Expand ${localEnv:variable_name}
   str = str:gsub('${localEnv:([^}]+)}', function(var_name)
     return os.getenv(var_name) or ''
   end)
 
-  -- ${containerEnv:変数名} の展開（プレースホルダーとして保持）
+  -- Expand ${containerEnv:variable_name} (keep as placeholder)
   str = str:gsub('${containerEnv:([^}]+)}', function(var_name)
     return '${containerEnv:' .. var_name .. '}'
   end)
@@ -53,7 +53,7 @@ local function expand_variables(str, context)
   return str
 end
 
--- 設定のすべての文字列フィールドで変数展開
+-- Variable expansion for all string fields in configuration
 local function expand_config_variables(config, context)
   if type(config) ~= 'table' then
     return config
@@ -74,19 +74,19 @@ local function expand_config_variables(config, context)
   return result
 end
 
--- devcontainer.jsonファイルの検索
+-- Search for devcontainer.json file
 function M.find_devcontainer_json(start_path)
   start_path = start_path or vim.fn.getcwd()
 
   log.debug("Searching for devcontainer.json from: %s", start_path)
 
-  -- .devcontainer/devcontainer.json を検索
+  -- Search for .devcontainer/devcontainer.json
   local devcontainer_path = fs.find_file_upward(start_path, '.devcontainer/devcontainer.json')
   if devcontainer_path then
     return devcontainer_path
   end
 
-  -- devcontainer.json を検索
+  -- Search for devcontainer.json
   devcontainer_path = fs.find_file_upward(start_path, 'devcontainer.json')
   if devcontainer_path then
     return devcontainer_path
@@ -95,7 +95,7 @@ function M.find_devcontainer_json(start_path)
   return nil
 end
 
--- Dockerfileパスの解決
+-- Resolve Dockerfile path
 local function resolve_dockerfile_path(config, base_path)
   if not config.dockerFile then
     return nil
@@ -109,7 +109,7 @@ local function resolve_dockerfile_path(config, base_path)
   return fs.resolve_path(dockerfile_path)
 end
 
--- docker-compose.ymlパスの解決
+-- Resolve docker-compose.yml path
 local function resolve_compose_file_path(config, base_path)
   if not config.dockerComposeFile then
     return nil
@@ -123,7 +123,7 @@ local function resolve_compose_file_path(config, base_path)
   return fs.resolve_path(compose_path)
 end
 
--- ポート設定の正規化
+-- Normalize port settings
 local function normalize_ports(ports)
   if not ports then
     return {}
@@ -168,7 +168,7 @@ local function normalize_ports(ports)
   return normalized
 end
 
--- マウント設定の正規化
+-- Normalize mount settings
 local function normalize_mounts(mounts, context)
   if not mounts then
     return {}
@@ -178,7 +178,7 @@ local function normalize_mounts(mounts, context)
 
   for _, mount in ipairs(mounts) do
     if type(mount) == 'string' then
-      -- "source=...,target=...,type=..." 形式の文字列を解析
+      -- Parse "source=...,target=...,type=..." format string
       local mount_config = {}
       for pair in mount:gmatch('[^,]+') do
         local key, value = pair:match('([^=]+)=(.+)')
@@ -210,7 +210,7 @@ local function normalize_mounts(mounts, context)
   return normalized
 end
 
--- devcontainer.jsonを解析
+-- Parse devcontainer.json
 function M.parse(file_path, context)
   context = context or {}
 
@@ -220,56 +220,56 @@ function M.parse(file_path, context)
 
   log.debug("Parsing devcontainer.json: %s", file_path)
 
-  -- ファイル読み取り
+  -- Read file
   local content, err = fs.read_file(file_path)
   if not content then
     return nil, "Failed to read file: " .. err
   end
 
-  -- JSON解析
+  -- Parse JSON
   local config, parse_err = parse_json(content)
   if not config then
     return nil, parse_err
   end
   
-  -- デバッグ: 解析直後のpostCreateCommand
+  -- Debug: postCreateCommand after parsing
   log.debug("Raw config postCreateCommand: %s", tostring(config.postCreateCommand))
 
-  -- ベースパスを設定
+  -- Set base path
   local base_path = fs.dirname(file_path)
-  -- workspace_folderは.devcontainerの親ディレクトリ（プロジェクトルート）に設定
+  -- Set workspace_folder to parent directory of .devcontainer (project root)
   context.workspace_folder = context.workspace_folder or fs.dirname(base_path)
   context.devcontainer_folder = base_path
 
-  -- 変数展開のコンテキストを設定
+  -- Set context for variable expansion
   context.container_workspace = config.workspaceFolder or '/workspace'
 
-  -- 設定を展開
+  -- Expand configuration
   config = expand_config_variables(config, context)
 
-  -- パスの解決
+  -- Resolve paths
   config.resolved_dockerfile = resolve_dockerfile_path(config, base_path)
   config.resolved_compose_file = resolve_compose_file_path(config, base_path)
 
-  -- ポート設定の正規化
+  -- Normalize port settings
   config.normalized_ports = normalize_ports(config.forwardPorts)
 
-  -- マウント設定の正規化
+  -- Normalize mount settings
   config.normalized_mounts = normalize_mounts(config.mounts, context)
 
-  -- デフォルト値の設定
+  -- Set default values
   config.name = config.name or "devcontainer"
   config.workspaceFolder = config.workspaceFolder or "/workspace"
   config.remoteUser = config.remoteUser or "root"
 
-  -- デバッグ: 最終的なpostCreateCommand
+  -- Debug: final postCreateCommand
   log.debug("Final config postCreateCommand: %s", tostring(config.postCreateCommand))
   
   log.info("Successfully parsed devcontainer.json: %s", config.name)
   return config
 end
 
--- devcontainer.jsonの存在確認と解析
+-- Check existence and parse devcontainer.json
 function M.find_and_parse(start_path, context)
   local devcontainer_path = M.find_devcontainer_json(start_path)
   if not devcontainer_path then
@@ -279,21 +279,21 @@ function M.find_and_parse(start_path, context)
   return M.parse(devcontainer_path, context)
 end
 
--- 設定の検証
+-- Validate configuration
 function M.validate(config)
   local errors = {}
 
-  -- 必須フィールドの確認
+  -- Check required fields
   if not config.name then
     table.insert(errors, "Missing required field: name")
   end
 
-  -- Dockerfileまたはイメージの指定確認
+  -- Check Dockerfile or image specification
   if not config.dockerFile and not config.image and not config.dockerComposeFile then
     table.insert(errors, "Must specify one of: dockerFile, image, or dockerComposeFile")
   end
 
-  -- ポート設定の検証
+  -- Validate port settings
   if config.normalized_ports then
     for _, port in ipairs(config.normalized_ports) do
       if not port.container_port or port.container_port <= 0 or port.container_port > 65535 then
@@ -305,7 +305,7 @@ function M.validate(config)
     end
   end
 
-  -- マウント設定の検証
+  -- Validate mount settings
   if config.normalized_mounts then
     for _, mount in ipairs(config.normalized_mounts) do
       if not mount.source or mount.source == "" then
@@ -320,11 +320,11 @@ function M.validate(config)
   return errors
 end
 
--- プラグイン用の設定に正規化
+-- Normalize configuration for plugin use
 function M.normalize_for_plugin(config)
   local normalized = {}
 
-  -- 基本設定
+  -- Basic settings
   normalized.name = config.name or "devcontainer"
   normalized.image = config.image
   normalized.dockerfile = config.resolved_dockerfile
@@ -333,49 +333,49 @@ function M.normalize_for_plugin(config)
   normalized.workspace_folder = config.workspaceFolder or "/workspace"
   normalized.remote_user = config.remoteUser
 
-  -- 環境変数
+  -- Environment variables
   normalized.environment = config.remoteEnv or {}
 
-  -- ポート設定
+  -- Port settings
   normalized.ports = config.normalized_ports or {}
 
-  -- マウント設定
+  -- Mount settings
   normalized.mounts = config.normalized_mounts or {}
 
-  -- フィーチャー設定
+  -- Feature settings
   normalized.features = config.features or {}
 
-  -- カスタマイゼーション
+  -- Customizations
   normalized.customizations = config.customizations or {}
 
-  -- ライフサイクルコマンド
+  -- Lifecycle commands
   normalized.post_create_command = config.postCreateCommand
   normalized.post_start_command = config.postStartCommand
   normalized.post_attach_command = config.postAttachCommand
 
-  -- セキュリティ設定
+  -- Security settings
   normalized.privileged = config.privileged or false
   normalized.cap_add = config.capAdd or {}
   normalized.security_opt = config.securityOpt or {}
   normalized.init = config.init
 
-  -- その他のDocker設定
+  -- Other Docker settings
   normalized.run_args = config.runArgs or {}
   normalized.override_command = config.overrideCommand
   normalized.shutdown_action = config.shutdownAction
 
-  -- 強制リビルドフラグ
+  -- Force rebuild flag
   normalized.force_rebuild = false
 
-  -- ポート属性
+  -- Port attributes
   normalized.port_attributes = config.portsAttributes or {}
 
   return normalized
 end
 
--- プラグイン設定とのマージ
+-- Merge with plugin configuration
 function M.merge_with_plugin_config(devcontainer_config, plugin_config)
-  -- プラグイン設定で上書き可能な項目
+  -- Items that can be overridden by plugin configuration
   if plugin_config.container_runtime then
     devcontainer_config.container_runtime = plugin_config.container_runtime
   end
@@ -384,7 +384,7 @@ function M.merge_with_plugin_config(devcontainer_config, plugin_config)
     devcontainer_config.log_level = plugin_config.log_level
   end
 
-  -- プラグイン固有の設定をマージ
+  -- Merge plugin-specific settings
   devcontainer_config.plugin_config = plugin_config
 
   return devcontainer_config

@@ -1,21 +1,21 @@
 -- lua/devcontainer/utils/fs.lua
--- ファイルシステムユーティリティ
+-- File system utilities
 
 local M = {}
 
--- パスの正規化
+-- Path normalization
 function M.normalize_path(path)
   if not path then
     return nil
   end
 
-  -- Windows パスセパレータを Unix 形式に変換
+  -- Convert Windows path separators to Unix format
   path = path:gsub("\\", "/")
 
-  -- 先頭の ./ を削除
+  -- Remove leading ./
   path = path:gsub("^%./", "")
 
-  -- 末尾のスラッシュを削除（ルートディレクトリ以外）
+  -- Remove trailing slash (except for root directory)
   if path ~= "/" then
     path = path:gsub("/$", "")
   end
@@ -23,7 +23,7 @@ function M.normalize_path(path)
   return path
 end
 
--- パスの結合
+-- Path joining
 function M.join_path(...)
   local parts = {}
   for _, part in ipairs({...}) do
@@ -34,7 +34,7 @@ function M.join_path(...)
   return table.concat(parts, "/")
 end
 
--- 絶対パスかどうかを判定
+-- Check if path is absolute
 function M.is_absolute_path(path)
   if not path then
     return false
@@ -42,7 +42,7 @@ function M.is_absolute_path(path)
   return path:match("^/") ~= nil or path:match("^%a:") ~= nil
 end
 
--- 相対パスを絶対パスに変換
+-- Convert relative path to absolute path
 function M.resolve_path(path, base_path)
   if M.is_absolute_path(path) then
     return M.normalize_path(path)
@@ -52,7 +52,7 @@ function M.resolve_path(path, base_path)
   return M.normalize_path(M.join_path(base_path, path))
 end
 
--- ファイルの存在確認（同期）
+-- File existence check (sync)
 function M.exists(path)
   if not path then
     return false
@@ -60,7 +60,7 @@ function M.exists(path)
   return vim.fn.filereadable(path) == 1 or vim.fn.isdirectory(path) == 1
 end
 
--- ファイルかどうかを判定
+-- Check if it's a file
 function M.is_file(path)
   if not path then
     return false
@@ -68,7 +68,7 @@ function M.is_file(path)
   return vim.fn.filereadable(path) == 1
 end
 
--- ディレクトリかどうかを判定
+-- Check if it's a directory
 function M.is_directory(path)
   if not path then
     return false
@@ -76,7 +76,7 @@ function M.is_directory(path)
   return vim.fn.isdirectory(path) == 1
 end
 
--- ファイル読み取り（同期）
+-- File reading (sync)
 function M.read_file(path)
   if not M.is_file(path) then
     return nil, "File does not exist: " .. path
@@ -92,9 +92,9 @@ function M.read_file(path)
   return content
 end
 
--- ファイル書き込み（同期）
+-- File writing (sync)
 function M.write_file(path, content)
-  -- ディレクトリが存在しない場合は作成
+  -- Create directory if it doesn't exist
   local dir = vim.fn.fnamemodify(path, ":h")
   if not M.is_directory(dir) then
     vim.fn.mkdir(dir, "p")
@@ -110,7 +110,7 @@ function M.write_file(path, content)
   return true
 end
 
--- 上位ディレクトリを検索してファイルを見つける
+-- Search upward directories to find file
 function M.find_file_upward(start_path, filename)
   local current_path = M.resolve_path(start_path)
 
@@ -130,7 +130,7 @@ function M.find_file_upward(start_path, filename)
   return nil
 end
 
--- ディレクトリ内のファイルをリスト
+-- List files in directory
 function M.list_directory(path, pattern)
   if not M.is_directory(path) then
     return {}
@@ -158,7 +158,7 @@ function M.list_directory(path, pattern)
   return files
 end
 
--- 再帰的にディレクトリ内のファイルを検索
+-- Recursively search files in directory
 function M.find_files(path, pattern, max_depth)
   max_depth = max_depth or 10
   local results = {}
@@ -185,7 +185,7 @@ function M.find_files(path, pattern, max_depth)
   return results
 end
 
--- ファイルサイズを取得
+-- Get file size
 function M.get_file_size(path)
   if not M.is_file(path) then
     return nil
@@ -195,7 +195,7 @@ function M.get_file_size(path)
   return stat and stat.size or nil
 end
 
--- ファイルの更新時刻を取得
+-- Get file modification time
 function M.get_mtime(path)
   if not M.exists(path) then
     return nil
@@ -205,7 +205,7 @@ function M.get_mtime(path)
   return stat and stat.mtime.sec or nil
 end
 
--- パスからファイル名を取得
+-- Get filename from path
 function M.basename(path)
   if not path then
     return nil
@@ -213,7 +213,7 @@ function M.basename(path)
   return vim.fn.fnamemodify(path, ":t")
 end
 
--- パスからディレクトリ名を取得
+-- Get directory name from path
 function M.dirname(path)
   if not path then
     return nil
@@ -221,7 +221,7 @@ function M.dirname(path)
   return vim.fn.fnamemodify(path, ":h")
 end
 
--- ファイル拡張子を取得
+-- Get file extension
 function M.extension(path)
   if not path then
     return nil
@@ -229,7 +229,7 @@ function M.extension(path)
   return vim.fn.fnamemodify(path, ":e")
 end
 
--- ファイル名（拡張子なし）を取得
+-- Get filename without extension
 function M.stem(path)
   if not path then
     return nil
@@ -237,23 +237,23 @@ function M.stem(path)
   return vim.fn.fnamemodify(path, ":t:r")
 end
 
--- 相対パスを計算
+-- Calculate relative path
 function M.relative_path(path, base)
   base = base or vim.fn.getcwd()
   path = M.resolve_path(path)
   base = M.resolve_path(base)
 
-  -- 同じパスの場合
+  -- Same path case
   if path == base then
     return "."
   end
 
-  -- 単純なケース: baseがpathの親ディレクトリ
+  -- Simple case: base is parent directory of path
   if path:sub(1, #base + 1) == base .. "/" then
     return path:sub(#base + 2)
   end
 
-  -- より複雑なケース: 共通の祖先を見つける
+  -- More complex case: find common ancestor
   local path_parts = vim.split(path, "/")
   local base_parts = vim.split(base, "/")
 
@@ -268,12 +268,12 @@ function M.relative_path(path, base)
 
   local relative_parts = {}
 
-  -- baseから共通祖先まで戻る
+  -- Go back from base to common ancestor
   for i = common_length + 1, #base_parts do
     table.insert(relative_parts, "..")
   end
 
-  -- 共通祖先からpathまで進む
+  -- Go forward from common ancestor to path
   for i = common_length + 1, #path_parts do
     table.insert(relative_parts, path_parts[i])
   end
@@ -285,12 +285,12 @@ function M.relative_path(path, base)
   return table.concat(relative_parts, "/")
 end
 
--- テンポラリディレクトリを取得
+-- Get temporary directory
 function M.get_temp_dir()
   return vim.fn.tempname():match("(.*)/[^/]*$") or "/tmp"
 end
 
--- テンポラリファイルパスを生成
+-- Generate temporary file path
 function M.temp_file(prefix, suffix)
   prefix = prefix or "devcontainer"
   suffix = suffix or ""

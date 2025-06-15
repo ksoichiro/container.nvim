@@ -1,56 +1,56 @@
-# devcontainer.nvim プラグイン設計ドキュメント
+# devcontainer.nvim Plugin Design Document
 
-VSCodeのようにdevcontainerを利用できるNeovimプラグインの包括的な設計ドキュメントです。
+A comprehensive design document for a Neovim plugin that enables devcontainer usage similar to VSCode.
 
-## 概要
+## Overview
 
-devcontainer.nvimは、VSCodeのDev Containers拡張機能と同様の開発体験をNeovimで提供するプラグインです。Dockerコンテナ内での開発環境を自動的にセットアップし、LSP、ターミナル、ファイルシステムの統合を実現します。
+devcontainer.nvim is a plugin that provides a development experience similar to VSCode's Dev Containers extension for Neovim. It automatically sets up development environments within Docker containers and achieves integration with LSP, terminal, and filesystem.
 
-## アーキテクチャ
+## Architecture
 
-### プロジェクト構造
+### Project Structure
 
 ```
 devcontainer.nvim/
 ├── lua/
 │   └── devcontainer/
-│       ├── init.lua              -- メインエントリーポイント
-│       ├── config.lua            -- 設定管理
-│       ├── parser.lua            -- devcontainer.json パーサー
+│       ├── init.lua              -- Main entry point
+│       ├── config.lua            -- Configuration management
+│       ├── parser.lua            -- devcontainer.json parser
 │       ├── docker/
-│       │   ├── init.lua          -- Docker操作の抽象化
-│       │   ├── compose.lua       -- Docker Compose サポート
-│       │   └── image.lua         -- イメージビルド/管理
+│       │   ├── init.lua          -- Docker operations abstraction
+│       │   ├── compose.lua       -- Docker Compose support
+│       │   └── image.lua         -- Image build/management
 │       ├── container/
-│       │   ├── manager.lua       -- コンテナライフサイクル管理
-│       │   ├── exec.lua          -- コンテナ内でのコマンド実行
-│       │   └── filesystem.lua    -- ファイルシステム操作
+│       │   ├── manager.lua       -- Container lifecycle management
+│       │   ├── exec.lua          -- Command execution within containers
+│       │   └── filesystem.lua    -- Filesystem operations
 │       ├── lsp/
-│       │   ├── init.lua          -- LSP統合
-│       │   └── forwarding.lua    -- LSPサーバーのポートフォワーディング
+│       │   ├── init.lua          -- LSP integration
+│       │   └── forwarding.lua    -- LSP server port forwarding
 │       ├── terminal/
-│       │   ├── init.lua          -- ターミナル統合
-│       │   └── session.lua       -- セッション管理
+│       │   ├── init.lua          -- Terminal integration
+│       │   └── session.lua       -- Session management
 │       ├── ui/
-│       │   ├── picker.lua        -- telescope/fzf統合
-│       │   ├── status.lua        -- ステータス表示
-│       │   └── notifications.lua -- 通知システム
+│       │   ├── picker.lua        -- telescope/fzf integration
+│       │   ├── status.lua        -- Status display
+│       │   └── notifications.lua -- Notification system
 │       └── utils/
-│           ├── fs.lua            -- ファイルシステムユーティリティ
-│           ├── log.lua           -- ログシステム
-│           └── async.lua         -- 非同期処理
+│           ├── fs.lua            -- Filesystem utilities
+│           ├── log.lua           -- Logging system
+│           └── async.lua         -- Asynchronous processing
 ├── plugin/
-│   └── devcontainer.lua          -- プラグイン初期化
+│   └── devcontainer.lua          -- Plugin initialization
 ├── doc/
-│   └── devcontainer.txt          -- ドキュメント
+│   └── devcontainer.txt          -- Documentation
 └── README.md
 ```
 
-## 核となる機能
+## Core Features
 
-### 1. devcontainer.json 解析と設定管理
+### 1. devcontainer.json Parsing and Configuration Management
 
-#### config.lua の設計
+#### config.lua Design
 ```lua
 local M = {}
 
@@ -68,329 +68,329 @@ M.defaults = {
 }
 
 function M.parse_devcontainer_json(path)
-  -- devcontainer.json を解析
-  -- VSCode の仕様に準拠した設定を読み込み
-  -- 返り値: 解析された設定テーブル
+  -- Parse devcontainer.json
+  -- Load settings compliant with VSCode specifications
+  -- Return: parsed configuration table
 end
 
 function M.merge_config(user_config, devcontainer_config)
-  -- ユーザー設定とdevcontainer設定をマージ
-  -- 優先順位: devcontainer.json > ユーザー設定 > デフォルト設定
+  -- Merge user settings with devcontainer settings
+  -- Priority: devcontainer.json > user settings > default settings
 end
 
 function M.validate_config(config)
-  -- 設定の妥当性をチェック
-  -- 必須フィールドの存在確認
-  -- パスの有効性確認
+  -- Check configuration validity
+  -- Verify existence of required fields
+  -- Validate path validity
 end
 ```
 
-#### parser.lua の設計
+#### parser.lua Design
 ```lua
 local M = {}
 
 function M.find_devcontainer_json(start_path)
-  -- 指定されたパスから上位ディレクトリを検索
-  -- .devcontainer/devcontainer.json を探す
+  -- Search parent directories from specified path
+  -- Look for .devcontainer/devcontainer.json
 end
 
 function M.parse_json_with_comments(file_path)
-  -- JSONCファイルの解析（コメント付きJSON）
-  -- VSCodeと同様の仕様をサポート
+  -- Parse JSONC files (JSON with comments)
+  -- Support same specifications as VSCode
 end
 
 function M.resolve_dockerfile_path(config, base_path)
-  -- Dockerfileの相対パスを絶対パスに解決
+  -- Resolve relative Dockerfile paths to absolute paths
 end
 
 function M.expand_variables(config, context)
-  -- ${localWorkspaceFolder} などの変数を展開
+  -- Expand variables like ${localWorkspaceFolder}
 end
 ```
 
-### 2. Docker統合レイヤー
+### 2. Docker Integration Layer
 
-#### docker/init.lua の設計
+#### docker/init.lua Design
 ```lua
 local M = {}
 
 function M.check_docker_availability()
-  -- Dockerの利用可能性をチェック
-  -- dockerコマンドの存在確認
-  -- Dockerデーモンの動作確認
+  -- Check Docker availability
+  -- Verify docker command exists
+  -- Confirm Docker daemon is running
 end
 
 function M.build_image(config, on_progress, on_complete)
-  -- Dockerイメージのビルド
-  -- プログレス表示とエラーハンドリング
-  -- 非同期実行
+  -- Build Docker image
+  -- Progress display and error handling
+  -- Asynchronous execution
 end
 
 function M.create_container(config)
-  -- コンテナの作成
-  -- ボリュームマウント、ポートフォワーディングの設定
-  -- 環境変数の設定
+  -- Create container
+  -- Configure volume mounts and port forwarding
+  -- Set environment variables
 end
 
 function M.start_container(container_id)
-  -- コンテナの開始
-  -- ヘルスチェック
+  -- Start container
+  -- Health check
 end
 
 function M.exec_command(container_id, command, opts)
-  -- コンテナ内でのコマンド実行
-  -- 非同期実行とストリーミング出力
-  -- 終了コードの取得
+  -- Execute command within container
+  -- Asynchronous execution with streaming output
+  -- Get exit code
 end
 
 function M.get_container_status(container_id)
-  -- コンテナの状態を取得
-  -- running, stopped, paused など
+  -- Get container status
+  -- running, stopped, paused, etc.
 end
 ```
 
-#### docker/image.lua の設計
+#### docker/image.lua Design
 ```lua
 local M = {}
 
 function M.build_from_dockerfile(dockerfile_path, context_path, tag, opts)
-  -- Dockerfileからイメージをビルド
-  -- ビルドコンテキストの設定
-  -- キャッシュ戦略
+  -- Build image from Dockerfile
+  -- Configure build context
+  -- Cache strategy
 end
 
 function M.pull_base_image(image_name, on_progress)
-  -- ベースイメージのプル
-  -- プログレス表示
+  -- Pull base image
+  -- Progress display
 end
 
 function M.list_images(filter)
-  -- ローカルイメージの一覧取得
-  -- フィルタリング機能
+  -- Get local image list
+  -- Filtering functionality
 end
 
 function M.remove_image(image_id, force)
-  -- イメージの削除
-  -- 依存関係のチェック
+  -- Remove image
+  -- Check dependencies
 end
 ```
 
-### 3. コンテナ管理
+### 3. Container Management
 
-#### container/manager.lua の設計
+#### container/manager.lua Design
 ```lua
 local M = {}
 
 function M.create_devcontainer(config)
-  -- devcontainerの作成
-  -- 設定に基づいたコンテナ設定
-  -- ネットワーク設定
+  -- Create devcontainer
+  -- Container configuration based on settings
+  -- Network configuration
 end
 
 function M.start_devcontainer(container_id, post_start_command)
-  -- devcontainerの開始
-  -- post-start コマンドの実行
+  -- Start devcontainer
+  -- Execute post-start command
 end
 
 function M.stop_devcontainer(container_id, timeout)
-  -- devcontainerの停止
-  -- グレースフルシャットダウン
+  -- Stop devcontainer
+  -- Graceful shutdown
 end
 
 function M.remove_devcontainer(container_id, remove_volumes)
-  -- devcontainerの削除
-  -- ボリュームの削除オプション
+  -- Remove devcontainer
+  -- Volume removal option
 end
 
 function M.get_container_info(container_id)
-  -- コンテナ情報の取得
-  -- IPアドレス、ポート、マウント情報など
+  -- Get container information
+  -- IP address, ports, mount information, etc.
 end
 ```
 
-#### container/exec.lua の設計
+#### container/exec.lua Design
 ```lua
 local M = {}
 
 function M.exec_interactive(container_id, command, opts)
-  -- インタラクティブなコマンド実行
-  -- PTYの割り当て
-  -- 入出力のストリーミング
+  -- Interactive command execution
+  -- PTY allocation
+  -- Input/output streaming
 end
 
 function M.exec_background(container_id, command, opts)
-  -- バックグラウンドでのコマンド実行
-  -- ログの取得
+  -- Background command execution
+  -- Log retrieval
 end
 
 function M.copy_to_container(container_id, local_path, container_path)
-  -- ローカルからコンテナへのファイルコピー
+  -- Copy files from local to container
 end
 
 function M.copy_from_container(container_id, container_path, local_path)
-  -- コンテナからローカルへのファイルコピー
+  -- Copy files from container to local
 end
 ```
 
-### 4. LSP統合
+### 4. LSP Integration
 
-#### lsp/init.lua の設計
+#### lsp/init.lua Design
 ```lua
 local M = {}
 
 function M.setup_lsp_in_container(config, container_id)
-  -- コンテナ内のLSPサーバーを検出・設定
-  -- 言語別の設定
-  -- ポートベースまたはstdio通信の選択
+  -- Detect and configure LSP servers in container
+  -- Language-specific configuration
+  -- Choose port-based or stdio communication
 end
 
 function M.create_lsp_client(server_config, container_id)
-  -- コンテナ内のLSPサーバーとの通信クライアント作成
-  -- nvim-lspconfigとの統合
+  -- Create communication client with LSP server in container
+  -- Integration with nvim-lspconfig
 end
 
 function M.detect_language_servers(container_id, workspace_path)
-  -- コンテナ内で利用可能なLSPサーバーの検出
-  -- 自動設定
+  -- Detect available LSP servers in container
+  -- Auto-configuration
 end
 
 function M.forward_lsp_requests(client, request, params)
-  -- LSPリクエストのコンテナへの転送
-  -- パスの変換処理
+  -- Forward LSP requests to container
+  -- Path transformation processing
 end
 ```
 
-#### lsp/forwarding.lua の設計
+#### lsp/forwarding.lua Design
 ```lua
 local M = {}
 
 function M.setup_port_forwarding(container_id, ports)
-  -- LSPサーバーのポートフォワーディング設定
-  -- 動的ポート割り当て
+  -- Configure LSP server port forwarding
+  -- Dynamic port allocation
 end
 
 function M.create_stdio_bridge(container_id, command)
-  -- stdio経由でのLSP通信ブリッジ
-  -- プロセス管理
+  -- LSP communication bridge via stdio
+  -- Process management
 end
 
 function M.transform_file_uris(uri, workspace_mapping)
-  -- ファイルURIの変換
-  -- ローカルパスとコンテナパスのマッピング
+  -- Transform file URIs
+  -- Mapping between local paths and container paths
 end
 ```
 
-### 5. ターミナル統合
+### 5. Terminal Integration
 
-#### terminal/init.lua の設計
+#### terminal/init.lua Design
 ```lua
 local M = {}
 
 function M.open_container_terminal(container_id, opts)
-  -- コンテナ内のターミナルを開く
-  -- Neovimターミナルとの統合
+  -- Open terminal in container
+  -- Integration with Neovim terminal
 end
 
 function M.create_terminal_session(container_id, shell_command)
-  -- ターミナルセッションの作成
-  -- セッション管理
+  -- Create terminal session
+  -- Session management
 end
 
 function M.attach_to_session(session_id)
-  -- 既存セッションへのアタッチ
+  -- Attach to existing session
 end
 
 function M.list_sessions(container_id)
-  -- アクティブなセッションの一覧
+  -- List active sessions
 end
 ```
 
-### 6. ユーザーインターフェース
+### 6. User Interface
 
-#### コマンド設計
+#### Command Design
 ```vim
-" 基本操作
-:DevcontainerOpen [path]         " devcontainerを開く
-:DevcontainerBuild               " イメージをビルド
-:DevcontainerRebuild             " イメージを再ビルド
-:DevcontainerStart               " コンテナを開始
-:DevcontainerStop                " コンテナを停止
-:DevcontainerRestart             " コンテナを再起動
-:DevcontainerAttach              " コンテナにアタッチ
+" Basic operations
+:DevcontainerOpen [path]         " Open devcontainer
+:DevcontainerBuild               " Build image
+:DevcontainerRebuild             " Rebuild image
+:DevcontainerStart               " Start container
+:DevcontainerStop                " Stop container
+:DevcontainerRestart             " Restart container
+:DevcontainerAttach              " Attach to container
 
-" コマンド実行
-:DevcontainerExec <command>      " コンテナ内でコマンド実行
-:DevcontainerShell [shell]       " コンテナ内のシェルを開く
+" Command execution
+:DevcontainerExec <command>      " Execute command in container
+:DevcontainerShell [shell]       " Open shell in container
 
-" 情報表示
-:DevcontainerStatus              " コンテナ状態を表示
-:DevcontainerLogs                " コンテナログを表示
-:DevcontainerConfig              " 設定を表示/編集
+" Information display
+:DevcontainerStatus              " Display container status
+:DevcontainerLogs                " Display container logs
+:DevcontainerConfig              " Display/edit configuration
 
-" ポート管理
-:DevcontainerForwardPort <port>  " ポートフォワーディング
-:DevcontainerPorts               " フォワード済みポート一覧
+" Port management
+:DevcontainerForwardPort <port>  " Port forwarding
+:DevcontainerPorts               " List forwarded ports
 
-" 高度な操作
-:DevcontainerReset               " 環境をリセット
-:DevcontainerClone <url>         " リポジトリをクローンして開く
+" Advanced operations
+:DevcontainerReset               " Reset environment
+:DevcontainerClone <url>         " Clone repository and open
 ```
 
-#### ui/picker.lua の設計（Telescope統合）
+#### ui/picker.lua Design (Telescope Integration)
 ```lua
 local M = {}
 
 function M.pick_devcontainer()
-  -- 利用可能なdevcontainerを選択
-  -- プレビュー機能付き
+  -- Select available devcontainer
+  -- With preview functionality
 end
 
 function M.pick_container_command()
-  -- 実行可能なコマンドを選択
-  -- 履歴機能
+  -- Select executable command
+  -- History functionality
 end
 
 function M.pick_forwarded_ports()
-  -- フォワード済みポートを管理
-  -- ポートの追加/削除
+  -- Manage forwarded ports
+  -- Add/remove ports
 end
 
 function M.pick_container_files()
-  -- コンテナ内ファイルのピッカー
-  -- ファイルブラウザ機能
+  -- Container file picker
+  -- File browser functionality
 end
 ```
 
-#### ui/status.lua の設計
+#### ui/status.lua Design
 ```lua
 local M = {}
 
 function M.show_container_status()
-  -- ステータスラインでのコンテナ状態表示
-  -- アイコンと色による視覚的表示
+  -- Display container status in statusline
+  -- Visual display with icons and colors
 end
 
 function M.show_build_progress(progress_info)
-  -- ビルド進行状況の表示
-  -- プログレスバー
+  -- Display build progress
+  -- Progress bar
 end
 
 function M.show_port_status(ports)
-  -- ポートフォワーディング状態の表示
+  -- Display port forwarding status
 end
 ```
 
-### 7. 設定システム
+### 7. Configuration System
 
-#### プラグイン設定例
+#### Plugin Configuration Example
 ```lua
 require('devcontainer').setup({
-  -- 基本設定
+  -- Basic settings
   auto_start = false,
   log_level = 'info',
   container_runtime = 'docker', -- 'docker' or 'podman'
   
-  -- UI設定
+  -- UI settings
   ui = {
     use_telescope = true,
     show_notifications = true,
@@ -403,19 +403,19 @@ require('devcontainer').setup({
     },
   },
   
-  -- LSP設定
+  -- LSP settings
   lsp = {
     auto_setup = true,
     timeout = 5000,
     servers = {
-      -- 言語別のLSP設定
+      -- Language-specific LSP settings
       lua = { cmd = "lua-language-server" },
       python = { cmd = "pylsp" },
       javascript = { cmd = "typescript-language-server" },
     },
   },
   
-  -- ターミナル設定
+  -- Terminal settings
   terminal = {
     shell = '/bin/bash',
     height = 15,
@@ -423,21 +423,21 @@ require('devcontainer').setup({
     close_on_exit = false,
   },
   
-  -- ポートフォワーディング
+  -- Port forwarding
   port_forwarding = {
     auto_forward = true,
     notification = true,
     common_ports = {3000, 8080, 5000, 3001},
   },
   
-  -- ワークスペース設定
+  -- Workspace settings
   workspace = {
     auto_mount = true,
     mount_point = '/workspace',
     sync_settings = true,
   },
   
-  -- Docker設定
+  -- Docker settings
   docker = {
     build_args = {},
     network_mode = 'bridge',
@@ -445,7 +445,7 @@ require('devcontainer').setup({
     init = true,
   },
   
-  -- 開発設定
+  -- Development settings
   dev = {
     reload_on_change = true,
     debug_mode = false,
@@ -453,7 +453,7 @@ require('devcontainer').setup({
 })
 ```
 
-#### devcontainer.json サポート
+#### devcontainer.json Support
 ```json
 {
   "name": "My Development Environment",
@@ -505,212 +505,212 @@ require('devcontainer').setup({
 }
 ```
 
-## 実装フェーズ
+## Implementation Phases
 
-### フェーズ1: 基盤実装（4-6週間）
-1. **コア機能**
-   - devcontainer.json パーサー
-   - Docker基本操作（build, run, exec）
-   - 設定システム
-   - ログシステム
+### Phase 1: Foundation Implementation (4-6 weeks)
+1. **Core Features**
+   - devcontainer.json parser
+   - Basic Docker operations (build, run, exec)
+   - Configuration system
+   - Logging system
 
-2. **基本UI**
-   - コマンドインターフェース
-   - ステータス表示
-   - エラーハンドリング
+2. **Basic UI**
+   - Command interface
+   - Status display
+   - Error handling
 
-3. **テスト環境**
-   - 単体テスト
-   - 統合テスト
-   - サンプルプロジェクト
+3. **Test Environment**
+   - Unit tests
+   - Integration tests
+   - Sample projects
 
-### フェーズ2: 統合機能（6-8週間）
-1. **LSP統合**
-   - コンテナ内LSPサーバーの検出
-   - nvim-lspconfigとの統合
-   - ファイルパスの変換
+### Phase 2: Integration Features (6-8 weeks)
+1. **LSP Integration**
+   - Detection of LSP servers in containers
+   - Integration with nvim-lspconfig
+   - File path transformation
 
-2. **ターミナル統合**
-   - コンテナ内ターミナル
-   - セッション管理
-   - コマンド履歴
+2. **Terminal Integration**
+   - Container terminal
+   - Session management
+   - Command history
 
-3. **ポートフォワーディング**
-   - 自動ポート検出
-   - 動的フォワーディング
-   - ポート管理UI
+3. **Port Forwarding**
+   - Automatic port detection
+   - Dynamic forwarding
+   - Port management UI
 
-### フェーズ3: 高度な機能（4-6週間）
-1. **Docker Compose サポート**
-   - マルチコンテナ環境
-   - サービス間通信
-   - 依存関係管理
+### Phase 3: Advanced Features (4-6 weeks)
+1. **Docker Compose Support**
+   - Multi-container environments
+   - Inter-service communication
+   - Dependency management
 
-2. **Telescope統合**
-   - ファイルピッカー
-   - コマンドピッカー
-   - コンテナピッカー
+2. **Telescope Integration**
+   - File picker
+   - Command picker
+   - Container picker
 
-3. **拡張機能**
-   - プラグインエコシステム
-   - カスタムアクション
-   - フック機能
+3. **Extensions**
+   - Plugin ecosystem
+   - Custom actions
+   - Hook functionality
 
-### フェーズ4: 最適化・拡張（2-4週間）
-1. **パフォーマンス最適化**
-   - 非同期処理の最適化
-   - メモリ使用量削減
-   - キャッシュ機能
+### Phase 4: Optimization & Enhancement (2-4 weeks)
+1. **Performance Optimization**
+   - Asynchronous processing optimization
+   - Memory usage reduction
+   - Caching functionality
 
-2. **エラーハンドリング強化**
-   - 詳細なエラーメッセージ
-   - 復旧機能
-   - デバッグ支援
+2. **Enhanced Error Handling**
+   - Detailed error messages
+   - Recovery functionality
+   - Debug support
 
-3. **ドキュメント整備**
-   - ユーザーガイド
+3. **Documentation**
+   - User guide
    - API documentation
-   - チュートリアル
+   - Tutorials
 
-## 技術的考慮事項
+## Technical Considerations
 
-### 非同期処理
-- `vim.loop` (libuv) を使用したノンブロッキング操作
-- Docker APIの非同期呼び出し
-- プログレス表示とキャンセル機能
-- エラー時の適切な cleanup
+### Asynchronous Processing
+- Non-blocking operations using `vim.loop` (libuv)
+- Asynchronous Docker API calls
+- Progress display and cancellation functionality
+- Proper cleanup on errors
 
-### エラーハンドリング
-- Docker未インストール時の適切なエラーメッセージ
-- ネットワークエラーやタイムアウトの処理
-- 部分的失敗時の復旧機能
-- ユーザーフレンドリーなエラー表示
+### Error Handling
+- Appropriate error messages when Docker is not installed
+- Network error and timeout handling
+- Recovery functionality for partial failures
+- User-friendly error display
 
-### セキュリティ
-- Docker socket へのアクセス権限チェック
-- コンテナ内でのファイルアクセス制限
-- 機密情報の適切な処理
-- 権限昇格の防止
+### Security
+- Access permission checks to Docker socket
+- File access restrictions within containers
+- Proper handling of sensitive information
+- Prevention of privilege escalation
 
-### パフォーマンス
-- イメージビルドの並列化
-- LSP通信の最適化
-- ファイルシステム操作の効率化
-- メモリ使用量の監視
+### Performance
+- Parallelization of image builds
+- LSP communication optimization
+- Efficient filesystem operations
+- Memory usage monitoring
 
-### 互換性
-- 複数のDockerバージョンサポート
-- Podmanとの互換性
-- 異なるOS（Linux, macOS, Windows）での動作
-- VSCode devcontainerとの互換性
+### Compatibility
+- Support for multiple Docker versions
+- Compatibility with Podman
+- Operation on different OS (Linux, macOS, Windows)
+- Compatibility with VSCode devcontainer
 
-## 依存関係
+## Dependencies
 
-### 必須依存関係
+### Required Dependencies
 - Neovim 0.8+
-- Docker または Podman
-- plenary.nvim (非同期処理)
+- Docker or Podman
+- plenary.nvim (asynchronous processing)
 
-### オプション依存関係
-- telescope.nvim (UI拡張)
-- nvim-lspconfig (LSP統合)
-- nvim-treesitter (シンタックスハイライト)
-- which-key.nvim (キーバインド表示)
+### Optional Dependencies
+- telescope.nvim (UI extensions)
+- nvim-lspconfig (LSP integration)
+- nvim-treesitter (syntax highlighting)
+- which-key.nvim (keybinding display)
 
-## テスト戦略
+## Testing Strategy
 
-### 単体テスト
-- 各モジュールの個別テスト
-- モックを使用したDocker操作テスト
-- 設定解析のテスト
+### Unit Tests
+- Individual testing of each module
+- Docker operation tests using mocks
+- Configuration parsing tests
 
-### 統合テスト
-- 実際のDockerコンテナを使用したテスト
-- LSP統合のテスト
-- エンドツーエンドのワークフローテスト
+### Integration Tests
+- Tests using actual Docker containers
+- LSP integration tests
+- End-to-end workflow tests
 
-### パフォーマンステスト
-- 大きなプロジェクトでの動作確認
-- メモリ使用量の測定
-- 応答時間の測定
+### Performance Tests
+- Operation verification with large projects
+- Memory usage measurement
+- Response time measurement
 
-## リリース計画
+## Release Plan
 
 ### v0.1.0 (MVP)
-- 基本的なdevcontainer操作
-- Docker統合
-- 基本コマンド
+- Basic devcontainer operations
+- Docker integration
+- Basic commands
 
-### v0.2.0 (LSP統合)
-- LSPサーバー統合
-- ターミナル統合
-- ポートフォワーディング
+### v0.2.0 (LSP Integration)
+- LSP server integration
+- Terminal integration
+- Port forwarding
 
-### v0.3.0 (UI強化)
-- Telescope統合
-- ステータス表示強化
-- 設定UI
+### v0.3.0 (UI Enhancement)
+- Telescope integration
+- Enhanced status display
+- Configuration UI
 
-### v1.0.0 (安定版)
-- 全機能実装
-- 包括的テスト
-- 完全なドキュメント
+### v1.0.0 (Stable Release)
+- Complete feature implementation
+- Comprehensive testing
+- Complete documentation
 
-この設計により、VSCodeのdevcontainer機能と同等またはそれ以上の開発体験をNeovimで実現できます。段階的な実装により、基本機能から高度な機能まで順次追加していくことが可能です。
+This design enables a development experience equivalent to or better than VSCode's devcontainer functionality in Neovim. Through incremental implementation, it's possible to sequentially add features from basic functionality to advanced features.
 
-## プラグイン統合アーキテクチャ
+## Plugin Integration Architecture
 
-### アーキテクチャの選択
+### Architecture Choice
 
-devcontainer.nvimにおけるプラグイン統合の深い実装を実現するため、複数のアプローチを検討した結果、**ハイブリッドアプローチ**を採用します。
+To achieve deep plugin integration implementation in devcontainer.nvim, after considering multiple approaches, we adopt a **hybrid approach**.
 
-#### 検討したアプローチ
+#### Approaches Considered
 
-1. **VSCode型アプローチ（コンテナ内サーバー）**
-   - コンテナ内にNeovimサーバーを配置
-   - ホストのNeovimはクライアントとして動作
-   - 利点：完全な分離、VSCodeとの完全な互換性
-   - 欠点：実装の複雑性、パフォーマンスオーバーヘッド
+1. **VSCode-type Approach (Container-internal Server)**
+   - Deploy Neovim server inside container
+   - Host Neovim operates as client
+   - Advantages: Complete isolation, full VSCode compatibility
+   - Disadvantages: Implementation complexity, performance overhead
 
-2. **コマンドフォワーディング（現在の拡張）**
-   - ホスト側にNeovimを保持
-   - 特定のコマンドをコンテナに転送
-   - 利点：シンプルな実装、既存プラグインとの互換性
-   - 欠点：統合の制限、プラグインごとの対応が必要
+2. **Command Forwarding (Current Extension)**
+   - Keep Neovim on host side
+   - Forward specific commands to container
+   - Advantages: Simple implementation, compatibility with existing plugins
+   - Disadvantages: Integration limitations, requires per-plugin adaptation
 
-3. **リモートプラグインアーキテクチャ**
-   - Neovimのリモートプラグイン機能を活用
-   - コンテナ内でプラグインをリモートプラグインとして実行
-   - 利点：既存のNeovimアーキテクチャを活用
-   - 欠点：すべてのプラグインがリモート実行に対応していない
+3. **Remote Plugin Architecture**
+   - Utilize Neovim's remote plugin functionality
+   - Run plugins as remote plugins inside container
+   - Advantages: Leverage existing Neovim architecture
+   - Disadvantages: Not all plugins support remote execution
 
-4. **ハイブリッドアプローチ（採用）**
-   - コマンドフォワーディングを基盤とする
-   - 複雑なプラグインにはリモートプラグインアーキテクチャを使用
-   - プラグインごとに最適な統合方法を選択
-   - 利点：柔軟性、段階的な実装、良好なパフォーマンス
-   - 欠点：中程度の実装複雑性
+4. **Hybrid Approach (Adopted)**
+   - Use command forwarding as foundation
+   - Use remote plugin architecture for complex plugins
+   - Choose optimal integration method per plugin
+   - Advantages: Flexibility, incremental implementation, good performance
+   - Disadvantages: Moderate implementation complexity
 
-### ハイブリッドアーキテクチャの設計
+### Hybrid Architecture Design
 
-#### 1. プラグイン統合フレームワーク
+#### 1. Plugin Integration Framework
 
 ```lua
 -- lua/devcontainer/plugin_integration/init.lua
 local M = {}
 
--- プラグイン統合レジストリ
+-- Plugin integration registry
 local integrations = {}
 
--- 統合方法の定義
+-- Definition of integration methods
 M.integration_types = {
-  COMMAND_FORWARD = "command_forward",    -- コマンドをコンテナに転送
-  REMOTE_PLUGIN = "remote_plugin",        -- リモートプラグインとして実行
-  HYBRID = "hybrid",                      -- 両方の組み合わせ
-  NATIVE = "native"                       -- ホスト側で実行（統合不要）
+  COMMAND_FORWARD = "command_forward",    -- Forward commands to container
+  REMOTE_PLUGIN = "remote_plugin",        -- Execute as remote plugin
+  HYBRID = "hybrid",                      -- Combination of both
+  NATIVE = "native"                       -- Execute on host side (no integration needed)
 }
 
--- プラグイン統合の登録
+-- Register plugin integration
 function M.register_integration(plugin_name, config)
   integrations[plugin_name] = {
     type = config.type or M.integration_types.COMMAND_FORWARD,
@@ -721,10 +721,10 @@ function M.register_integration(plugin_name, config)
   }
 end
 
--- 統合の自動検出
+-- Auto-detect integrations
 function M.auto_detect_integrations()
-  -- インストール済みプラグインを検出
-  -- 既知のプラグインに対して自動統合を設定
+  -- Detect installed plugins
+  -- Set up automatic integration for known plugins
   local known_integrations = require('devcontainer.plugin_integration.registry')
   
   for plugin_name, integration_config in pairs(known_integrations) do
@@ -735,38 +735,38 @@ function M.auto_detect_integrations()
 end
 ```
 
-#### 2. コマンドフォワーディング拡張
+#### 2. Command Forwarding Extension
 
 ```lua
 -- lua/devcontainer/plugin_integration/command_forward.lua
 local M = {}
 
--- コマンドラッパーの作成
+-- Create command wrapper
 function M.create_wrapper(original_cmd, container_id)
   return function(...)
     local args = {...}
     local docker = require('devcontainer.docker')
     
-    -- コマンドをコンテナ内で実行するように変換
+    -- Transform command to execute within container
     local container_cmd = M.transform_command(original_cmd, args)
     
-    -- 実行と結果の取得
+    -- Execute and get results
     local result = docker.exec_command(container_id, container_cmd)
     
-    -- 結果をNeovimの形式に変換
+    -- Transform results to Neovim format
     return M.transform_result(result)
   end
 end
 
--- 汎用的なコマンド変換
+-- Generic command transformation
 function M.wrap_plugin_commands(plugin_name, command_patterns)
   local original_commands = {}
   
   for _, pattern in ipairs(command_patterns) do
-    -- 元のコマンドを保存
+    -- Save original command
     original_commands[pattern] = vim.api.nvim_get_commands({})[pattern]
     
-    -- ラッパーで置き換え
+    -- Replace with wrapper
     vim.api.nvim_create_user_command(pattern, function(opts)
       M.execute_in_container(pattern, opts)
     end, { nargs = '*', complete = 'file' })
@@ -776,17 +776,17 @@ function M.wrap_plugin_commands(plugin_name, command_patterns)
 end
 ```
 
-#### 3. リモートプラグインホスト
+#### 3. Remote Plugin Host
 
 ```lua
 -- lua/devcontainer/plugin_integration/remote_host.lua
 local M = {}
 
--- コンテナ内でリモートプラグインホストを起動
+-- Start remote plugin host in container
 function M.start_remote_host(container_id)
   local docker = require('devcontainer.docker')
   
-  -- リモートプラグインホストのセットアップスクリプト
+  -- Remote plugin host setup script
   local setup_script = [[
     # Neovim remote plugin host setup
     pip install pynvim
@@ -799,15 +799,15 @@ function M.start_remote_host(container_id)
   
   docker.exec_command(container_id, setup_script, { detach = true })
   
-  -- RPCチャンネルの確立
+  -- Establish RPC channel
   local channel = M.establish_rpc_channel(container_id)
   
   return channel
 end
 
--- プラグインのリモート実行
+-- Remote execution of plugins
 function M.register_remote_plugin(plugin_path, channel)
-  -- リモートプラグインとして登録
+  -- Register as remote plugin
   vim.fn.remote#host#RegisterPlugin(
     'devcontainer_' .. plugin_path,
     channel
@@ -815,9 +815,9 @@ function M.register_remote_plugin(plugin_path, channel)
 end
 ```
 
-#### 4. 統合テンプレート
+#### 4. Integration Templates
 
-##### vim-test統合の例
+##### vim-test Integration Example
 
 ```lua
 -- lua/devcontainer/plugin_integration/plugins/vim_test.lua
@@ -831,7 +831,7 @@ M.config = {
   },
   
   setup = function(container_id)
-    -- vim-testのカスタムストラテジーを設定
+    -- Configure vim-test custom strategy
     vim.g['test#custom_strategies'] = {
       devcontainer = function(cmd)
         local docker = require('devcontainer.docker')
@@ -842,12 +842,12 @@ M.config = {
       end
     }
     
-    -- デフォルトストラテジーをdevcontainerに設定
+    -- Set default strategy to devcontainer
     vim.g['test#strategy'] = 'devcontainer'
   end,
   
   teardown = function()
-    -- クリーンアップ
+    -- Cleanup
     vim.g['test#strategy'] = nil
     vim.g['test#custom_strategies'] = nil
   end
@@ -856,28 +856,28 @@ M.config = {
 return M
 ```
 
-##### nvim-dap統合の例
+##### nvim-dap Integration Example
 
 ```lua
 -- lua/devcontainer/plugin_integration/plugins/nvim_dap.lua
 local M = {}
 
 M.config = {
-  type = "hybrid",  -- コマンドフォワーディングとポート転送の組み合わせ
+  type = "hybrid",  -- Combination of command forwarding and port forwarding
   
   setup = function(container_id)
     local dap = require('dap')
     local docker = require('devcontainer.docker')
     
-    -- デバッグアダプターの設定を変更
+    -- Modify debug adapter configuration
     for lang, configs in pairs(dap.configurations) do
       for i, config in ipairs(configs) do
-        -- デバッガーをコンテナ内で起動
+        -- Start debugger in container
         if config.type == "executable" then
           config.program = M.wrap_debugger_command(config.program, container_id)
         end
         
-        -- ポート転送の設定
+        -- Configure port forwarding
         if config.port then
           config.port = M.forward_debug_port(config.port, container_id)
         end
@@ -886,13 +886,13 @@ M.config = {
   end,
   
   handlers = {
-    -- デバッグセッション開始時の処理
+    -- Processing when debug session starts
     before_start = function(config, container_id)
-      -- 必要なポートをフォワード
+      -- Forward necessary ports
       M.setup_debug_ports(config, container_id)
     end,
     
-    -- パスマッピング
+    -- Path mapping
     resolve_path = function(path, container_id)
       return M.map_path_to_container(path, container_id)
     end
@@ -902,93 +902,93 @@ M.config = {
 return M
 ```
 
-### 実装ロードマップ
+### Implementation Roadmap
 
-#### フェーズ1：拡張コマンドフォワーディング（2-3週間）
+#### Phase 1: Extended Command Forwarding (2-3 weeks)
 
-1. **プラグイン統合フレームワークの基盤実装**
-   - 統合レジストリ
-   - 自動検出システム
-   - 基本的なコマンドラッパー
+1. **Plugin Integration Framework Foundation Implementation**
+   - Integration registry
+   - Auto-detection system
+   - Basic command wrapper
 
-2. **主要プラグインの統合テンプレート作成**
+2. **Integration Template Creation for Major Plugins**
    - vim-test / nvim-test
-   - vim-fugitive (Git操作)
-   - telescope.nvim (ファイル検索)
+   - vim-fugitive (Git operations)
+   - telescope.nvim (file search)
 
-3. **統合APIの公開**
-   - サードパーティプラグイン開発者向けAPI
-   - 統合ガイドラインドキュメント
+3. **Integration API Publication**
+   - API for third-party plugin developers
+   - Integration guideline documentation
 
-#### フェーズ2：リモートプラグインサポート（3-4週間）
+#### Phase 2: Remote Plugin Support (3-4 weeks)
 
-1. **リモートプラグインホストの実装**
-   - コンテナ内でのホスト起動
-   - RPCチャンネル管理
-   - エラーハンドリング
+1. **Remote Plugin Host Implementation**
+   - Host startup within container
+   - RPC channel management
+   - Error handling
 
-2. **複雑なプラグインの統合**
-   - nvim-dap (デバッガー)
-   - nvim-lspconfig (既存の改良)
-   - nvim-treesitter (構文解析)
+2. **Integration of Complex Plugins**
+   - nvim-dap (debugger)
+   - nvim-lspconfig (existing improvements)
+   - nvim-treesitter (syntax parsing)
 
-3. **パフォーマンス最適化**
-   - 通信の効率化
-   - キャッシング戦略
-   - 遅延読み込み
+3. **Performance Optimization**
+   - Communication efficiency
+   - Caching strategy
+   - Lazy loading
 
-#### フェーズ3：スマート統合システム（2-3週間）
+#### Phase 3: Smart Integration System (2-3 weeks)
 
-1. **統合方法の自動選択**
-   - プラグインの特性を分析
-   - 最適な統合方法を自動選択
-   - フォールバック機構
+1. **Automatic Selection of Integration Methods**
+   - Analyze plugin characteristics
+   - Automatically select optimal integration method
+   - Fallback mechanisms
 
-2. **統合のカスタマイズ**
-   - ユーザー定義の統合ルール
-   - プラグイン別の設定
-   - 統合の有効/無効切り替え
+2. **Integration Customization**
+   - User-defined integration rules
+   - Plugin-specific settings
+   - Enable/disable integration toggle
 
-3. **開発者ツール**
-   - 統合のデバッグツール
-   - パフォーマンスプロファイリング
-   - 統合テストフレームワーク
+3. **Developer Tools**
+   - Integration debugging tools
+   - Performance profiling
+   - Integration test framework
 
-### パフォーマンスとセキュリティの考慮
+### Performance and Security Considerations
 
-#### パフォーマンス最適化
+#### Performance Optimization
 
-1. **通信の最小化**
-   - バッチ処理
-   - 結果のキャッシング
-   - 非同期実行
+1. **Communication Minimization**
+   - Batch processing
+   - Result caching
+   - Asynchronous execution
 
-2. **リソース管理**
-   - 接続プーリング
-   - メモリ使用量の監視
-   - 不要なプロセスの自動終了
+2. **Resource Management**
+   - Connection pooling
+   - Memory usage monitoring
+   - Automatic termination of unnecessary processes
 
-#### セキュリティ
+#### Security
 
-1. **権限管理**
-   - コンテナ内実行の権限制限
-   - ファイルアクセスの制御
-   - ネットワークアクセスの監視
+1. **Permission Management**
+   - Permission restrictions for container execution
+   - File access control
+   - Network access monitoring
 
-2. **データ保護**
-   - 機密情報のフィルタリング
-   - 通信の暗号化（必要に応じて）
-   - ログのサニタイゼーション
+2. **Data Protection**
+   - Filtering of sensitive information
+   - Communication encryption (as needed)
+   - Log sanitization
 
-### まとめ
+### Summary
 
-このハイブリッドアーキテクチャにより、以下を実現します：
+This hybrid architecture achieves the following:
 
-1. **段階的な実装** - 既存の機能を壊すことなく、徐々に高度な統合を追加
-2. **柔軟性** - プラグインごとに最適な統合方法を選択
-3. **パフォーマンス** - 必要に応じて最適な通信方法を使用
-4. **互換性** - 既存のプラグインエコシステムとの高い互換性
-5. **拡張性** - 新しいプラグインや統合方法を容易に追加可能
+1. **Incremental Implementation** - Gradually add advanced integration without breaking existing functionality
+2. **Flexibility** - Choose optimal integration method for each plugin
+3. **Performance** - Use optimal communication methods as needed
+4. **Compatibility** - High compatibility with existing plugin ecosystem
+5. **Extensibility** - Easy addition of new plugins and integration methods
 
-この設計により、VSCodeのRemote Development拡張機能と同等の機能を、Neovimのエコシステムに適した形で実現できます。
+This design enables functionality equivalent to VSCode's Remote Development extension in a form suited to Neovim's ecosystem.
 

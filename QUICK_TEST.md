@@ -1,17 +1,17 @@
-# LSP統合機能 - クイックテスト手順
+# LSP Integration - Quick Test Procedure
 
-修正したLSP統合機能をテストするための手順です。
+This document outlines the procedure for testing the fixed LSP integration functionality.
 
-## 前提条件
-- Docker が動作している
-- Neovim (0.8+) がインストールされている
-- nvim-lspconfig プラグインがインストールされている
+## Prerequisites
+- Docker is running
+- Neovim (0.8+) is installed
+- nvim-lspconfig plugin is installed
 
-## ステップ1: プラグインの初期化テスト
+## Step 1: Plugin Initialization Test
 
-### Neovimでプラグインを読み込み
+### Load plugin in Neovim
 ```lua
--- Neovim内で実行
+-- Execute within Neovim
 require('devcontainer').setup({
   log_level = 'debug',
   lsp = {
@@ -21,12 +21,12 @@ require('devcontainer').setup({
 })
 ```
 
-### 初期化確認
+### Initialization Confirmation
 ```vim
 :DevcontainerDebug
 ```
 
-期待される出力:
+Expected output:
 ```
 === DevContainer Debug Info ===
 Initialized: true
@@ -34,13 +34,13 @@ Current container: none
 Current config: none
 ```
 
-## ステップ2: LSP状態の確認（コンテナなし）
+## Step 2: LSP Status Check (No Container)
 
 ```vim
 :DevcontainerLspStatus
 ```
 
-期待される出力:
+Expected output:
 ```
 === DevContainer LSP Status ===
 Container ID: none
@@ -49,100 +49,100 @@ No servers detected (container may not be running)
 No active LSP clients
 ```
 
-## ステップ3: Python例でのテスト
+## Step 3: Testing with Python Example
 
-### Python例ディレクトリに移動
+### Navigate to Python example directory
 ```bash
 cd examples/python-example
 nvim main.py
 ```
 
-### devcontainerを開始
+### Start devcontainer
 ```vim
 :DevcontainerOpen
 :DevcontainerStart
 ```
 
-### LSP状態を再確認
+### Re-check LSP status
 ```vim
 :DevcontainerLspStatus
 ```
 
-期待される動作:
-- Container IDが表示される
-- Python関連のLSPサーバーが検出される
-- 自動セットアップが実行される
+Expected behavior:
+- Container ID is displayed
+- Python-related LSP servers are detected
+- Auto setup is executed
 
-## ステップ4: LSP機能のテスト
+## Step 4: LSP Functionality Test
 
-### コード補完テスト
-1. `main.py`を開く
-2. 新しい行で`calc.`と入力
-3. `<C-x><C-o>`で補完候補を確認
+### Code Completion Test
+1. Open `main.py`
+2. Type `calc.` on a new line
+3. Check completion candidates with `<C-x><C-o>`
 
-### 定義ジャンプテスト
-1. `hello_world("test")`の`hello_world`にカーソルを置く
-2. `gd`で定義にジャンプできるか確認
+### Definition Jump Test
+1. Place cursor on `hello_world` in `hello_world("test")`
+2. Verify you can jump to definition with `gd`
 
-### ホバー情報テスト
-1. 関数名にカーソルを置く
-2. `K`でドキュメントが表示されるか確認
+### Hover Information Test
+1. Place cursor on a function name
+2. Verify documentation is displayed with `K`
 
-## トラブルシューティング
+## Troubleshooting
 
-### エラー1: "LSP not initialized"
-**解決方法:**
+### Error 1: "LSP not initialized"
+**Solution:**
 ```vim
 :lua require('devcontainer').setup({log_level = 'debug'})
 :DevcontainerLspStatus
 ```
 
-### エラー2: "No active container"
-**解決方法:**
+### Error 2: "No active container"
+**Solution:**
 ```vim
 :DevcontainerStart
 :DevcontainerLspSetup
 ```
 
-### エラー3: LSPサーバーが検出されない
-**解決方法:**
+### Error 3: LSP server not detected
+**Solution:**
 ```vim
 :DevcontainerExec which pylsp
 :DevcontainerExec python -m pip install python-lsp-server
 :DevcontainerLspSetup
 ```
 
-### エラー4: パス変換の問題
-**解決方法:**
+### Error 4: Path conversion issues
+**Solution:**
 ```vim
 :lua print(vim.inspect(require('devcontainer.lsp.path').get_mappings()))
 ```
 
-## デバッグ用コマンド
+## Debug Commands
 
-### 詳細ログの確認
+### Check detailed logs
 ```vim
 :messages
 :DevcontainerLogs
 ```
 
-### 手動でのLSP再起動
+### Manual LSP restart
 ```vim
 :DevcontainerLspSetup
 :LspRestart
 ```
 
-### Docker情報の確認
+### Check Docker information
 ```vim
 :DevcontainerExec ps aux
 :DevcontainerStatus
 ```
 
-## 期待される最終状態
+## Expected Final State
 
-すべてが正常に動作している場合:
+When everything is working correctly:
 
-1. `:DevcontainerLspStatus`で以下が表示される:
+1. `:DevcontainerLspStatus` displays the following:
    ```
    === DevContainer LSP Status ===
    Container ID: <container_id>
@@ -153,13 +153,13 @@ nvim main.py
      pylsp
    ```
 
-2. `:LspInfo`でpylspクライアントが表示される
+2. `:LspInfo` shows the pylsp client
 
-3. Python ファイルでLSP機能（補完、診断、定義ジャンプ）が動作する
+3. LSP features (completion, diagnostics, definition jump) work in Python files
 
-## 最小限のテスト
+## Minimal Test
 
-時間がない場合の最小限テスト:
+Minimal test when time is limited:
 
 ```vim
 :lua require('devcontainer').setup()
@@ -170,4 +170,4 @@ nvim main.py
 :edit main.py
 ```
 
-main.pyで`K`（ホバー）が動作すれば基本的な統合は成功しています。
+If `K` (hover) works in main.py, the basic integration is successful.

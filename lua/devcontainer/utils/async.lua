@@ -1,12 +1,12 @@
 -- lua/devcontainer/utils/async.lua
--- 非同期処理ユーティリティ
+-- Asynchronous processing utilities
 
 local M = {}
 
--- vim.loopのエイリアス
+-- vim.loop alias
 local uv = vim.loop
 
--- プロセス実行の結果
+-- Process execution result
 local function create_result(code, stdout, stderr)
   return {
     code = code,
@@ -16,7 +16,7 @@ local function create_result(code, stdout, stderr)
   }
 end
 
--- 非同期でコマンドを実行
+-- Execute command asynchronously
 function M.run_command(cmd, args, opts, callback)
   opts = opts or {}
   args = args or {}
@@ -24,14 +24,14 @@ function M.run_command(cmd, args, opts, callback)
   local stdout_chunks = {}
   local stderr_chunks = {}
 
-  -- stdoutハンドル
+  -- stdout handle
   local stdout = uv.new_pipe(false)
-  -- stderrハンドル
+  -- stderr handle
   local stderr = uv.new_pipe(false)
 
   local handle
   local function on_exit(code, signal)
-    -- パイプとハンドルをクリーンアップ
+    -- Clean up pipes and handles
     if stdout and not stdout:is_closing() then
       stdout:close()
     end
@@ -46,7 +46,7 @@ function M.run_command(cmd, args, opts, callback)
     local stderr_str = table.concat(stderr_chunks)
     local result = create_result(code, stdout_str, stderr_str)
 
-    -- コールバックを必ず呼び出す
+    -- Always call callback
     if callback then
       vim.schedule(function()
         callback(result)
@@ -54,10 +54,10 @@ function M.run_command(cmd, args, opts, callback)
     end
   end
 
-  -- stdoutデータ読み取り
+  -- Read stdout data
   local function on_stdout_read(err, data)
     if err then
-      -- エラー時も処理を継続
+      -- Continue processing even on error
       return
     end
     if data then
@@ -70,10 +70,10 @@ function M.run_command(cmd, args, opts, callback)
     end
   end
 
-  -- stderrデータ読み取り
+  -- Read stderr data
   local function on_stderr_read(err, data)
     if err then
-      -- エラー時も処理を継続
+      -- Continue processing even on error
       return
     end
     if data then
@@ -86,7 +86,7 @@ function M.run_command(cmd, args, opts, callback)
     end
   end
 
-  -- プロセス開始
+  -- Start process
   handle = uv.spawn(cmd, {
     args = args,
     cwd = opts.cwd,
@@ -95,7 +95,7 @@ function M.run_command(cmd, args, opts, callback)
   }, on_exit)
 
   if not handle then
-    -- スポーンに失敗した場合
+    -- If spawn failed
     if stdout then stdout:close() end
     if stderr then stderr:close() end
 
@@ -107,15 +107,15 @@ function M.run_command(cmd, args, opts, callback)
     return nil
   end
 
-  -- stdout読み取り開始
+  -- Start reading stdout
   stdout:read_start(on_stdout_read)
-  -- stderr読み取り開始
+  -- Start reading stderr
   stderr:read_start(on_stderr_read)
 
   return handle
 end
 
--- 同期的にコマンドを実行（内部では非同期）
+-- Execute command synchronously (internally async)
 function M.run_command_sync(cmd, args, opts)
   local co = coroutine.running()
   if not co then
@@ -132,7 +132,7 @@ function M.run_command_sync(cmd, args, opts)
   return result
 end
 
--- ファイルの非同期読み取り
+-- Asynchronous file reading
 function M.read_file(path, callback)
   uv.fs_open(path, "r", 438, function(err, fd)
     if err then
@@ -159,7 +159,7 @@ function M.read_file(path, callback)
   end)
 end
 
--- ファイルの非同期書き込み
+-- Asynchronous file writing
 function M.write_file(path, data, callback)
   uv.fs_open(path, "w", 438, function(err, fd)
     if err then
@@ -174,7 +174,7 @@ function M.write_file(path, data, callback)
   end)
 end
 
--- ディレクトリの存在確認
+-- Check directory existence
 function M.dir_exists(path, callback)
   uv.fs_stat(path, function(err, stat)
     if err then
@@ -185,7 +185,7 @@ function M.dir_exists(path, callback)
   end)
 end
 
--- ファイルの存在確認
+-- Check file existence
 function M.file_exists(path, callback)
   uv.fs_stat(path, function(err, stat)
     if err then
@@ -196,15 +196,15 @@ function M.file_exists(path, callback)
   end)
 end
 
--- ディレクトリ作成（再帰的）
+-- Create directory (recursive)
 function M.mkdir_p(path, callback)
   local function mkdir_recursive(dir, cb)
     uv.fs_mkdir(dir, 493, function(err) -- 755 in octal
       if err and err:match("EEXIST") then
-        -- ディレクトリが既に存在する場合
+        -- Directory already exists
         cb(nil)
       elseif err and err:match("ENOENT") then
-        -- 親ディレクトリが存在しない場合
+        -- Parent directory doesn't exist
         local parent = vim.fn.fnamemodify(dir, ":h")
         if parent ~= dir then
           mkdir_recursive(parent, function(parent_err)
@@ -226,7 +226,7 @@ function M.mkdir_p(path, callback)
   mkdir_recursive(path, callback)
 end
 
--- タイマー
+-- Timer
 function M.delay(ms, callback)
   local timer = uv.new_timer()
   timer:start(ms, 0, function()
@@ -236,7 +236,7 @@ function M.delay(ms, callback)
   return timer
 end
 
--- デバウンス
+-- Debounce
 function M.debounce(fn, delay)
   local timer = nil
   return function(...)

@@ -1,29 +1,29 @@
 -- lua/devcontainer/config.lua
--- 設定管理
+-- Configuration management
 
 local M = {}
 local log = require('devcontainer.utils.log')
 
--- デフォルト設定
+-- Default configuration
 M.defaults = {
-  -- 基本設定
+  -- Basic settings
   auto_start = false,
   log_level = 'info',
   container_runtime = 'docker', -- 'docker' or 'podman'
 
-  -- devcontainer設定
+  -- devcontainer settings
   devcontainer_path = '.devcontainer',
   dockerfile_path = '.devcontainer/Dockerfile',
   compose_file = '.devcontainer/docker-compose.yml',
 
-  -- ワークスペース設定
+  -- Workspace settings
   workspace = {
     auto_mount = true,
     mount_point = '/workspace',
     exclude_patterns = { '.git', 'node_modules', '.next', '__pycache__' },
   },
 
-  -- LSP設定
+  -- LSP settings
   lsp = {
     auto_setup = true,
     timeout = 5000,
@@ -32,7 +32,7 @@ M.defaults = {
     on_attach = nil, -- Custom on_attach function
   },
 
-  -- ターミナル設定
+  -- Terminal settings
   terminal = {
     shell = '/bin/bash',
     height = 15,
@@ -40,7 +40,7 @@ M.defaults = {
     close_on_exit = false,
   },
 
-  -- UI設定
+  -- UI settings
   ui = {
     use_telescope = true,
     show_notifications = true,
@@ -54,7 +54,7 @@ M.defaults = {
     },
   },
 
-  -- ポートフォワーディング
+  -- Port forwarding
   port_forwarding = {
     auto_forward = true,
     notification = true,
@@ -62,7 +62,7 @@ M.defaults = {
     common_ports = {3000, 8080, 5000, 3001},
   },
 
-  -- Docker設定
+  -- Docker settings
   docker = {
     build_args = {},
     network_mode = 'bridge',
@@ -71,17 +71,17 @@ M.defaults = {
     remove_orphans = true,
   },
 
-  -- 開発設定
+  -- Development settings
   dev = {
     reload_on_change = true,
     debug_mode = false,
   },
 }
 
--- 現在の設定
+-- Current configuration
 local current_config = {}
 
--- 設定の深いコピー
+-- Deep copy of configuration
 local function deep_copy(t)
   if type(t) ~= 'table' then
     return t
@@ -94,7 +94,7 @@ local function deep_copy(t)
   return copy
 end
 
--- 設定のマージ
+-- Merge configurations
 local function merge_config(target, source)
   for key, value in pairs(source) do
     if type(value) == 'table' and type(target[key]) == 'table' then
@@ -105,34 +105,34 @@ local function merge_config(target, source)
   end
 end
 
--- 設定の検証
+-- Validate configuration
 local function validate_config(config)
   local errors = {}
 
-  -- ログレベルの検証
+  -- Validate log level
   local valid_log_levels = { 'debug', 'info', 'warn', 'error' }
   if not vim.tbl_contains(valid_log_levels, config.log_level:lower()) then
     table.insert(errors, "Invalid log_level: " .. config.log_level)
   end
 
-  -- コンテナランタイムの検証
+  -- Validate container runtime
   local valid_runtimes = { 'docker', 'podman' }
   if not vim.tbl_contains(valid_runtimes, config.container_runtime) then
     table.insert(errors, "Invalid container_runtime: " .. config.container_runtime)
   end
 
-  -- ターミナル方向の検証
+  -- Validate terminal direction
   local valid_directions = { 'horizontal', 'vertical', 'float' }
   if not vim.tbl_contains(valid_directions, config.terminal.direction) then
     table.insert(errors, "Invalid terminal direction: " .. config.terminal.direction)
   end
 
-  -- ポート範囲の検証
+  -- Validate port range
   if config.lsp.port_range[1] >= config.lsp.port_range[2] then
     table.insert(errors, "Invalid LSP port_range: start port must be less than end port")
   end
 
-  -- パスの検証
+  -- Validate paths
   if config.workspace.mount_point == "" then
     table.insert(errors, "workspace.mount_point cannot be empty")
   end
@@ -140,17 +140,17 @@ local function validate_config(config)
   return errors
 end
 
--- 設定のセットアップ
+-- Configuration setup
 function M.setup(user_config)
   user_config = user_config or {}
 
-  -- デフォルト設定をコピー
+  -- Copy default configuration
   current_config = deep_copy(M.defaults)
 
-  -- ユーザー設定をマージ
+  -- Merge user configuration
   merge_config(current_config, user_config)
 
-  -- 設定を検証
+  -- Validate configuration
   local errors = validate_config(current_config)
   if #errors > 0 then
     for _, error in ipairs(errors) do
@@ -159,19 +159,19 @@ function M.setup(user_config)
     return false, errors
   end
 
-  -- ログレベルを設定
+  -- Set log level
   log.set_level(current_config.log_level)
 
   log.debug("Configuration loaded successfully")
   return true, current_config
 end
 
--- 現在の設定を取得
+-- Get current configuration
 function M.get()
   return current_config
 end
 
--- 特定の設定項目を取得
+-- Get specific configuration item
 function M.get_value(path)
   local keys = vim.split(path, ".", { plain = true })
   local value = current_config
@@ -187,12 +187,12 @@ function M.get_value(path)
   return value
 end
 
--- 設定項目を更新
+-- Update configuration item
 function M.set_value(path, new_value)
   local keys = vim.split(path, ".", { plain = true })
   local target = current_config
 
-  -- 最後のキー以外まで辿る
+  -- Navigate to all keys except the last one
   for i = 1, #keys - 1 do
     local key = keys[i]
     if type(target[key]) ~= 'table' then
@@ -201,13 +201,13 @@ function M.set_value(path, new_value)
     target = target[key]
   end
 
-  -- 最後のキーで値を設定
+  -- Set value with the last key
   target[keys[#keys]] = new_value
 
   log.debug("Configuration updated: %s = %s", path, vim.inspect(new_value))
 end
 
--- 設定をファイルに保存
+-- Save configuration to file
 function M.save_to_file(filepath)
   local fs = require('devcontainer.utils.fs')
 
@@ -227,7 +227,7 @@ function M.save_to_file(filepath)
   return true
 end
 
--- 設定をファイルから読み込み
+-- Load configuration from file
 function M.load_from_file(filepath)
   local fs = require('devcontainer.utils.fs')
 
@@ -257,14 +257,14 @@ function M.load_from_file(filepath)
   return M.setup(config)
 end
 
--- デフォルト設定にリセット
+-- Reset to default configuration
 function M.reset()
   current_config = deep_copy(M.defaults)
   log.info("Configuration reset to defaults")
   return current_config
 end
 
--- 設定の差分を表示
+-- Display configuration differences
 function M.diff_from_defaults()
   local function table_diff(default, current, prefix)
     local diffs = {}
@@ -311,7 +311,7 @@ function M.diff_from_defaults()
   return table_diff(M.defaults, current_config)
 end
 
--- 設定の詳細を表示
+-- Display configuration details
 function M.show_config()
   local diffs = M.diff_from_defaults()
 
@@ -341,7 +341,7 @@ function M.show_config()
   print()
 end
 
--- 設定のスキーマを取得（補完用）
+-- Get configuration schema (for completion)
 function M.get_schema()
   local function extract_schema(config, prefix)
     local schema = {}

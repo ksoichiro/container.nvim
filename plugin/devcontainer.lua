@@ -1,15 +1,15 @@
 -- plugin/devcontainer.lua
--- devcontainer.nvim プラグイン初期化
+-- devcontainer.nvim plugin initialization
 
--- 既に読み込まれている場合はスキップ
+-- Skip if already loaded
 if vim.g.devcontainer_nvim_loaded then
   return
 end
 vim.g.devcontainer_nvim_loaded = 1
 
--- コマンドの定義
+-- Command definitions
 local function create_commands()
-  -- 基本操作コマンド
+  -- Basic operation commands
   vim.api.nvim_create_user_command('DevcontainerOpen', function(args)
     require('devcontainer').open(args.args ~= '' and args.args or nil)
   end, {
@@ -45,7 +45,7 @@ local function create_commands()
     desc = 'Restart devcontainer',
   })
 
-  -- 実行・アクセスコマンド
+  -- Execution and access commands
   vim.api.nvim_create_user_command('DevcontainerExec', function(args)
     require('devcontainer').exec(args.args)
   end, {
@@ -61,7 +61,7 @@ local function create_commands()
     desc = 'Open shell in devcontainer',
   })
 
-  -- 情報表示コマンド
+  -- Information display commands
   vim.api.nvim_create_user_command('DevcontainerStatus', function()
     require('devcontainer').status()
   end, {
@@ -79,7 +79,7 @@ local function create_commands()
     desc = 'Show devcontainer logs',
   })
 
-  -- 設定・管理コマンド
+  -- Configuration and management commands
   vim.api.nvim_create_user_command('DevcontainerConfig', function()
     require('devcontainer.config').show_config()
   end, {
@@ -98,7 +98,7 @@ local function create_commands()
     desc = 'Show debug information',
   })
 
-  -- LSP関連コマンド
+  -- LSP related commands
   vim.api.nvim_create_user_command('DevcontainerLspStatus', function()
     require('devcontainer').lsp_status()
   end, {
@@ -111,7 +111,7 @@ local function create_commands()
     desc = 'Setup LSP servers in devcontainer',
   })
 
-  -- デバッグコマンド
+  -- Debug commands
   vim.api.nvim_create_user_command('DevcontainerTestDocker', function()
     require('devcontainer').test_docker()
   end, {
@@ -142,7 +142,7 @@ local function create_commands()
     desc = 'Start existing container (non-blocking, for testing)',
   })
 
-  -- デバッグコマンド
+  -- Debug commands
   vim.api.nvim_create_user_command('DevcontainerCheckStatus', function()
     require('devcontainer').check_container_status()
   end, {
@@ -174,10 +174,10 @@ local function create_commands()
   })
 end
 
--- オートコマンドグループの作成
+-- Create autocommand group
 local augroup = vim.api.nvim_create_augroup('DevcontainerNvim', { clear = true })
 
--- devcontainer.json ファイルの変更を監視
+-- Monitor changes to devcontainer.json file
 vim.api.nvim_create_autocmd({'BufWritePost'}, {
   group = augroup,
   pattern = {'devcontainer.json', '.devcontainer/devcontainer.json'},
@@ -188,13 +188,13 @@ vim.api.nvim_create_autocmd({'BufWritePost'}, {
   end,
 })
 
--- プロジェクトディレクトリを開いた時の自動検出（オプション）
+-- Auto-detection when opening project directory (optional)
 vim.api.nvim_create_autocmd({'VimEnter', 'DirChanged'}, {
   group = augroup,
   callback = function()
     local config = require('devcontainer.config').get()
     if config and config.auto_start then
-      -- devcontainer.json の存在確認
+      -- Check for devcontainer.json existence
       local parser = require('devcontainer.parser')
       local devcontainer_path = parser.find_devcontainer_json()
       if devcontainer_path then
@@ -206,9 +206,9 @@ vim.api.nvim_create_autocmd({'VimEnter', 'DirChanged'}, {
   end,
 })
 
--- コマンドを作成
+-- Create commands
 create_commands()
 
--- グローバル関数の設定（Lua APIアクセス用）
+-- Set global function (for Lua API access)
 _G.devcontainer = require('devcontainer')
 

@@ -1,26 +1,26 @@
-# devcontainer.nvim インストールガイド
+# devcontainer.nvim Installation Guide
 
-## Lazy.nvimでの組み込み方法
+## Integration with Lazy.nvim
 
-### 1. ローカル開発版を使用する場合
+### 1. Using Local Development Version
 
-現在のディレクトリがdevcontainer.nvimプラグインのソースなので、ローカルパスを指定してインストールできます。
+Since the current directory is the devcontainer.nvim plugin source, you can install it by specifying the local path.
 
 ```lua
--- ~/.config/nvim/lua/plugins/devcontainer.lua または適切な設定ファイル
+-- ~/.config/nvim/lua/plugins/devcontainer.lua or appropriate config file
 return {
   {
-    -- ローカルパスを指定（このプロジェクトのパスに変更してください）
+    -- Specify local path (change to this project's path)
     dir = "/path/to/devcontainer.nvim",
     name = "devcontainer.nvim",
     config = function()
       require('devcontainer').setup({
-        -- 基本設定
+        -- Basic configuration
         log_level = 'info',
         container_runtime = 'docker', -- 'docker' or 'podman'
         auto_start = false,
         
-        -- UI設定
+        -- UI configuration
         ui = {
           show_notifications = true,
           icons = {
@@ -31,7 +31,7 @@ return {
           },
         },
         
-        -- ターミナル設定
+        -- Terminal configuration
         terminal = {
           shell = '/bin/bash',
           height = 15,
@@ -43,7 +43,7 @@ return {
 }
 ```
 
-### 2. GitHubリポジトリから使用する場合
+### 2. Using from GitHub Repository
 
 ```lua
 return {
@@ -60,31 +60,31 @@ return {
 }
 ```
 
-### 3. 開発用の設定例（推奨）
+### 3. Development Configuration Example (Recommended)
 
 ```lua
 -- ~/.config/nvim/lua/plugins/devcontainer.lua
 return {
   {
-    -- 開発中はローカルパスを使用
-    dir = vim.fn.expand("~/path/to/devcontainer.nvim"), -- 実際のパスに変更
+    -- Use local path during development
+    dir = vim.fn.expand("~/path/to/devcontainer.nvim"), -- Change to actual path
     name = "devcontainer.nvim",
     
-    -- 開発モードでは遅延読み込みを無効にする
+    -- Disable lazy loading in development mode
     lazy = false,
     
     config = function()
       require('devcontainer').setup({
-        -- 開発用設定
-        log_level = 'debug', -- デバッグ情報を表示
+        -- Development configuration
+        log_level = 'debug', -- Display debug information
         
-        -- Docker設定
+        -- Docker configuration
         container_runtime = 'docker',
         
-        -- 自動開始を無効（手動でテストしたい場合）
+        -- Disable auto-start (for manual testing)
         auto_start = false,
         
-        -- UI設定
+        -- UI configuration
         ui = {
           show_notifications = true,
           status_line = true,
@@ -97,7 +97,7 @@ return {
           },
         },
         
-        -- ターミナル設定
+        -- Terminal configuration
         terminal = {
           shell = '/bin/bash',
           height = 15,
@@ -105,7 +105,7 @@ return {
           close_on_exit = false,
         },
         
-        -- 開発設定
+        -- Development settings
         dev = {
           reload_on_change = true,
           debug_mode = true,
@@ -113,7 +113,7 @@ return {
       })
     end,
     
-    -- キーマッピングの設定例
+    -- Key mapping examples
     keys = {
       { "<leader>co", "<cmd>DevcontainerOpen<cr>", desc = "Open devcontainer" },
       { "<leader>cb", "<cmd>DevcontainerBuild<cr>", desc = "Build devcontainer" },
@@ -128,130 +128,129 @@ return {
 }
 ```
 
-## 設定手順
+## Setup Procedure
 
-### 1. プラグインファイルの作成
+### 1. Create Plugin File
 
 ```bash
-# Neovim設定ディレクトリに移動
+# Navigate to Neovim config directory
 cd ~/.config/nvim
 
-# プラグイン設定ファイルを作成
+# Create plugin config file
 mkdir -p lua/plugins
 touch lua/plugins/devcontainer.lua
 ```
 
-### 2. 設定の記述
+### 2. Write Configuration
 
-上記の設定例を `lua/plugins/devcontainer.lua` に記述します。
+Write one of the configuration examples above to `lua/plugins/devcontainer.lua`.
 
-### 3. パスの調整
+### 3. Adjust Path
 
-`dir` パラメータを実際のdevcontainer.nvimプロジェクトのパスに変更してください：
+Change the `dir` parameter to the actual path of the devcontainer.nvim project:
 
 ```lua
 dir = "/Users/yourname/path/to/devcontainer.nvim",
 ```
 
-### 4. Neovimの再起動
+### 4. Restart Neovim
 
-設定を保存してNeovimを再起動すると、プラグインが読み込まれます。
+After saving the configuration, restart Neovim to load the plugin.
 
-## 動作確認
+## Operation Verification
 
-### 1. プラグインの読み込み確認
+### 1. Check Plugin Loading
 
 ```vim
 :DevcontainerDebug
 ```
 
-プラグインの状態とデバッグ情報が表示されます。
+This displays the plugin status and debug information.
 
-### 2. 設定確認
+### 2. Check Configuration
 
 ```vim
 :DevcontainerConfig
 ```
 
-現在の設定が表示されます。
+This displays the current configuration.
 
-### 3. Docker確認
+### 3. Check Docker
 
 ```vim
 :DevcontainerOpen
 ```
 
-Dockerの可用性がチェックされます。
+This checks Docker availability.
 
-## トラブルシューティング
+## Troubleshooting
 
-### プラグインが読み込まれない場合
+### When Plugin Doesn't Load
 
-1. パスが正しいか確認
+1. Verify the path is correct
 ```lua
 :lua print(vim.fn.expand("~/path/to/devcontainer.nvim"))
 ```
 
-2. Lazy.nvimのログを確認
+2. Check Lazy.nvim logs
 ```vim
 :Lazy log
 ```
 
-3. エラーメッセージを確認
+3. Check error messages
 ```vim
 :messages
 ```
 
-### Docker関連のエラー
+### Docker-related Errors
 
-1. Dockerが起動しているか確認
+1. Check if Docker is running
 ```bash
 docker --version
 docker info
 ```
 
-2. 権限の確認
+2. Check permissions
 ```bash
-# Dockerグループに追加されているか確認
+# Check if added to Docker group
 groups $USER
 ```
 
-## 開発用の便利設定
+## Useful Development Settings
 
-### ホットリロード設定
+### Hot Reload Configuration
 
 ```lua
--- 開発中にプラグインを再読み込みする関数
+-- Function to reload the plugin during development
 vim.api.nvim_create_user_command('DevcontainerReload', function()
-  -- モジュールキャッシュをクリア
+  -- Clear module cache
   for module_name, _ in pairs(package.loaded) do
     if module_name:match("^devcontainer") then
       package.loaded[module_name] = nil
     end
   end
   
-  -- プラグインを再読み込み
+  -- Reload plugin
   require('devcontainer').setup()
   print("devcontainer.nvim reloaded!")
 end, {})
 ```
 
-### ログファイル設定
+### Log File Configuration
 
 ```lua
 config = function()
   require('devcontainer').setup({
     log_level = 'debug',
-    -- ログファイルを設定
+    -- Set log file
     log_file = vim.fn.stdpath('data') .. '/devcontainer.log',
   })
   
-  -- ログファイルを開くコマンド
+  -- Command to open log file
   vim.api.nvim_create_user_command('DevcontainerLogFile', function()
     vim.cmd('edit ' .. vim.fn.stdpath('data') .. '/devcontainer.log')
   end, {})
 end,
 ```
 
-これでdevcontainer.nvimプラグインをLazy.nvimで組み込んでテストすることができます！
-
+Now you can integrate and test the devcontainer.nvim plugin with Lazy.nvim!

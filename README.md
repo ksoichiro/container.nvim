@@ -1,23 +1,23 @@
 # devcontainer.nvim
 
-VSCodeのDev Containers拡張機能と同様の開発体験をNeovimで提供するプラグインです。
+A Neovim plugin that provides VSCode Dev Containers-like development experience.
 
-## 特徴
+## Features
 
-- **devcontainer.json サポート**: VSCodeと完全互換の設定ファイル
-- **自動イメージビルド**: Dockerイメージの自動ビルドと管理
-- **シームレスな統合**: Neovimターミナルとの完全統合
-- **LSP統合**: コンテナ内LSPサーバーの自動検出・設定（将来実装予定）
-- **ポートフォワーディング**: 自動ポート転送とポート管理
-- **非同期操作**: すべてのDocker操作を非同期で実行
+- **devcontainer.json Support**: Fully compatible with VSCode configuration files
+- **Automatic Image Building**: Automatic Docker image building and management
+- **Seamless Integration**: Complete integration with Neovim terminal
+- **LSP Integration**: Automatic detection and configuration of LSP servers in containers
+- **Port Forwarding**: Automatic port forwarding and port management
+- **Asynchronous Operations**: All Docker operations executed asynchronously
 
-## 必要要件
+## Requirements
 
 - Neovim 0.8+
-- Docker または Podman
+- Docker or Podman
 - Git
 
-## インストール
+## Installation
 
 ### lazy.nvim
 
@@ -25,11 +25,11 @@ VSCodeのDev Containers拡張機能と同様の開発体験をNeovimで提供す
 {
   'ksoichiro/devcontainer.nvim',
   dependencies = {
-    'nvim-lua/plenary.nvim', -- 非同期処理用（将来の機能拡張のため）
+    'nvim-lua/plenary.nvim', -- For async operations (future feature expansion)
   },
   config = function()
     require('devcontainer').setup({
-      -- 設定オプション
+      -- Configuration options
       log_level = 'info',
       container_runtime = 'docker', -- 'docker' or 'podman'
       auto_start = false,
@@ -52,11 +52,11 @@ use {
 }
 ```
 
-## 基本的な使用方法
+## Basic Usage
 
-### 1. devcontainer.json の作成
+### 1. Create devcontainer.json
 
-プロジェクトルートに `.devcontainer/devcontainer.json` ファイルを作成します：
+Create a `.devcontainer/devcontainer.json` file in your project root:
 
 ```json
 {
@@ -73,28 +73,28 @@ use {
 }
 ```
 
-### 2. Dockerfileの作成
+### 2. Create Dockerfile
 
 `.devcontainer/Dockerfile`:
 
 ```dockerfile
 FROM node:18
 
-# 必要なツールをインストール
+# Install necessary tools
 RUN apt-get update && apt-get install -y \
     git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 作業ディレクトリを設定
+# Set working directory
 WORKDIR /workspace
 
-# ユーザーを作成
+# Create user
 RUN useradd -m -s /bin/bash node
 USER node
 ```
 
-### 3. devcontainerの起動
+### 3. Start devcontainer
 
 ```vim
 :DevcontainerOpen
@@ -102,52 +102,52 @@ USER node
 :DevcontainerStart
 ```
 
-## コマンド
+## Commands
 
-### 基本操作
+### Basic Operations
 
-| コマンド | 説明 |
-|---------|------|
-| `:DevcontainerOpen [path]` | devcontainerを開く |
-| `:DevcontainerBuild` | イメージをビルド |
-| `:DevcontainerStart` | コンテナを開始 |
-| `:DevcontainerStop` | コンテナを停止 |
-| `:DevcontainerRestart` | コンテナを再起動 |
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerOpen [path]` | Open devcontainer |
+| `:DevcontainerBuild` | Build image |
+| `:DevcontainerStart` | Start container |
+| `:DevcontainerStop` | Stop container |
+| `:DevcontainerRestart` | Restart container |
 
-### 実行・アクセス
+### Execution & Access
 
-| コマンド | 説明 |
-|---------|------|
-| `:DevcontainerExec <command>` | コンテナ内でコマンド実行 |
-| `:DevcontainerShell [shell]` | コンテナ内のシェルを開く |
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerExec <command>` | Execute command in container |
+| `:DevcontainerShell [shell]` | Open shell in container |
 
-### 情報表示
+### Information Display
 
-| コマンド | 説明 |
-|---------|------|
-| `:DevcontainerStatus` | コンテナ状態を表示 |
-| `:DevcontainerLogs` | コンテナログを表示 |
-| `:DevcontainerConfig` | 設定を表示 |
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerStatus` | Show container status |
+| `:DevcontainerLogs` | Show container logs |
+| `:DevcontainerConfig` | Show configuration |
 
-### 管理
+### Management
 
-| コマンド | 説明 |
-|---------|------|
-| `:DevcontainerReset` | プラグイン状態をリセット |
-| `:DevcontainerDebug` | デバッグ情報を表示 |
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerReset` | Reset plugin state |
+| `:DevcontainerDebug` | Show debug information |
 
-## 設定
+## Configuration
 
-### デフォルト設定
+### Default Configuration
 
 ```lua
 require('devcontainer').setup({
-  -- 基本設定
+  -- Basic settings
   auto_start = false,
   log_level = 'info',
   container_runtime = 'docker', -- 'docker' or 'podman'
   
-  -- UI設定
+  -- UI settings
   ui = {
     use_telescope = true,
     show_notifications = true,
@@ -161,7 +161,7 @@ require('devcontainer').setup({
     },
   },
   
-  -- ターミナル設定
+  -- Terminal settings
   terminal = {
     shell = '/bin/bash',
     height = 15,
@@ -169,14 +169,14 @@ require('devcontainer').setup({
     close_on_exit = false,
   },
   
-  -- ポートフォワーディング
+  -- Port forwarding
   port_forwarding = {
     auto_forward = true,
     notification = true,
     common_ports = {3000, 8080, 5000, 3001},
   },
   
-  -- ワークスペース設定
+  -- Workspace settings
   workspace = {
     auto_mount = true,
     mount_point = '/workspace',
@@ -187,28 +187,28 @@ require('devcontainer').setup({
 
 ## Lua API
 
-プログラムからプラグインを操作する場合：
+For programmatic access to the plugin:
 
 ```lua
--- 基本操作
+-- Basic operations
 require('devcontainer').open()
 require('devcontainer').build()
 require('devcontainer').start()
 require('devcontainer').stop()
 
--- コマンド実行
+-- Command execution
 require('devcontainer').exec('npm test')
 require('devcontainer').shell('/bin/zsh')
 
--- 情報取得
+-- Information retrieval
 local status = require('devcontainer').status()
 local config = require('devcontainer').get_config()
 local container_id = require('devcontainer').get_container_id()
 ```
 
-## devcontainer.json 設定例
+## devcontainer.json Examples
 
-### Node.js プロジェクト
+### Node.js Project
 
 ```json
 {
@@ -254,7 +254,7 @@ local container_id = require('devcontainer').get_container_id()
 }
 ```
 
-### Python プロジェクト
+### Python Project
 
 ```json
 {
@@ -282,7 +282,7 @@ local container_id = require('devcontainer').get_container_id()
 }
 ```
 
-### Docker Compose 使用例
+### Docker Compose Example
 
 ```json
 {
@@ -295,79 +295,78 @@ local container_id = require('devcontainer').get_container_id()
 }
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### Dockerが利用できない
+### Docker not available
 
 ```bash
-# Dockerの状態確認
+# Check Docker status
 docker --version
 docker info
 
-# Dockerデーモンの起動
+# Start Docker daemon
 sudo systemctl start docker
 ```
 
-### コンテナが起動しない
+### Container won't start
 
 ```vim
 :DevcontainerLogs
 :DevcontainerDebug
 ```
 
-### 設定ファイルのエラー
+### Configuration file errors
 
 ```vim
 :DevcontainerConfig
 ```
 
-で設定を確認し、devcontainer.jsonの構文をチェックしてください。
+Use this command to check configuration and verify devcontainer.json syntax.
 
-### パフォーマンスの問題
+### Performance issues
 
-- ビルドキャッシュを使用する
-- `.dockerignore` ファイルで不要なファイルを除外
-- ボリュームマウントの一貫性設定を調整
+- Use build cache
+- Exclude unnecessary files with `.dockerignore`
+- Adjust volume mount consistency settings
 
-## 開発計画
+## Development Roadmap
 
-### v0.1.0 (現在)
-- ✅ 基本的なdevcontainer操作
-- ✅ Docker統合
-- ✅ 基本コマンド
+### v0.1.0 (Current)
+- ✅ Basic devcontainer operations
+- ✅ Docker integration
+- ✅ Basic commands
 
-### v0.2.0 (計画中)
-- 🔄 LSPサーバー統合
-- 🔄 ターミナル統合改善
-- 🔄 ポートフォワーディング
+### v0.2.0 (In Progress)
+- 🔄 LSP server integration
+- 🔄 Improved terminal integration
+- 🔄 Port forwarding
 
-### v0.3.0 (計画中)
-- 📋 Telescope統合
-- 📋 ステータス表示強化
-- 📋 設定UI
+### v0.3.0 (Planned)
+- 📋 Telescope integration
+- 📋 Enhanced status display
+- 📋 Configuration UI
 
-### v1.0.0 (目標)
-- 📋 全機能実装
-- 📋 包括的テスト
-- 📋 完全ドキュメント
+### v1.0.0 (Goal)
+- 📋 Complete feature implementation
+- 📋 Comprehensive testing
+- 📋 Complete documentation
 
-## コントリビューション
+## Contributing
 
-プルリクエストや Issue の報告を歓迎します！
+Pull requests and issue reports are welcome!
 
-1. このリポジトリをフォーク
-2. フィーチャーブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Create a pull request
 
-## ライセンス
+## License
 
-MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
+MIT License - See [LICENSE](LICENSE) file for details.
 
-## 関連プロジェクト
+## Related Projects
 
 - [VS Code Dev Containers](https://code.visualstudio.com/docs/remote/containers)
 - [devcontainer/cli](https://github.com/devcontainers/cli)
 - [devcontainer/spec](https://github.com/devcontainers/spec)
-

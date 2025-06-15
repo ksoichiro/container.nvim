@@ -1,5 +1,5 @@
 -- lua/devcontainer/utils/log.lua
--- ログシステム
+-- Logging system
 
 local M = {}
 
@@ -17,14 +17,14 @@ local log_level_names = {
   [4] = "ERROR",
 }
 
--- デフォルト設定
+-- Default configuration
 M.config = {
   level = log_levels.INFO,
-  file = nil, -- nil の場合はファイルログを無効
+  file = nil, -- Disable file logging if nil
   console = true,
 }
 
--- ログレベルの設定
+-- Set log level
 function M.set_level(level)
   if type(level) == "string" then
     M.config.level = log_levels[level:upper()] or log_levels.INFO
@@ -33,12 +33,12 @@ function M.set_level(level)
   end
 end
 
--- ログファイルの設定
+-- Set log file
 function M.set_file(filepath)
   M.config.file = filepath
 end
 
--- 内部ログ関数
+-- Internal log function
 local function log(level, msg, ...)
   if level < M.config.level then
     return
@@ -49,7 +49,7 @@ local function log(level, msg, ...)
   local formatted_msg = string.format(msg, ...)
   local log_line = string.format("[%s] [%s] %s", timestamp, level_name, formatted_msg)
 
-  -- コンソール出力
+  -- Console output
   if M.config.console then
     if level >= log_levels.ERROR then
       vim.notify(formatted_msg, vim.log.levels.ERROR, { title = "devcontainer.nvim" })
@@ -62,7 +62,7 @@ local function log(level, msg, ...)
     end
   end
 
-  -- ファイル出力
+  -- File output
   if M.config.file then
     local file = io.open(M.config.file, "a")
     if file then
@@ -72,7 +72,7 @@ local function log(level, msg, ...)
   end
 end
 
--- パブリック関数
+-- Public functions
 function M.debug(msg, ...)
   log(log_levels.DEBUG, msg, ...)
 end

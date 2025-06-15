@@ -1,71 +1,71 @@
 # devcontainer.nvim LSP Integration Testing Guide
 
-このガイドでは、v0.2.0で実装されたLSP統合機能をテストする方法を説明します。
+This guide explains how to test the LSP integration functionality implemented in v0.2.0.
 
-## 前提条件
+## Prerequisites
 
-### 必要なツール
-- Docker または Podman
+### Required Tools
+- Docker or Podman
 - Neovim (0.8+)
-- nvim-lspconfig プラグイン
-- Lazy.nvim または他のプラグインマネージャー
+- nvim-lspconfig plugin
+- Lazy.nvim or other plugin manager
 
-### プラグインのセットアップ
+### Plugin Setup
 ```lua
--- Lazy.nvim の場合
+-- For Lazy.nvim
 {
-  dir = "/path/to/devcontainer.nvim", -- ローカルパス
+  dir = "/path/to/devcontainer.nvim", -- Local path
   dependencies = {
     "neovim/nvim-lspconfig",
   },
   config = function()
     require('devcontainer').setup({
-      log_level = 'debug', -- デバッグ用
+      log_level = 'debug', -- For debugging
       lsp = {
         auto_setup = true,
-        timeout = 10000, -- テスト用に長めに設定
+        timeout = 10000, -- Set longer for testing
       }
     })
   end,
 }
 ```
 
-## テスト手順
+## Test Procedure
 
-### 1. 基本的な動作確認
+### 1. Basic Operation Verification
 
-#### ステップ1: プラグインの初期化確認
+#### Step 1: Plugin Initialization Verification
 ```vim
 :DevcontainerDebug
 ```
-- プラグインが正しく初期化されているか確認
-- 設定が正しく読み込まれているか確認
+- Verify plugin is properly initialized
+- Verify configuration is loaded correctly
 
-#### ステップ2: Docker の確認
+#### Step 2: Docker Verification
 ```bash
 docker --version
 docker ps
 ```
 
-### 2. Python LSP テスト
+### 2. Python LSP Test
 
-#### ステップ1: Python 例に移動
+#### Step 1: Navigate to Python Example
 ```bash
 cd examples/python-example
 nvim main.py
 ```
 
-#### ステップ2: devcontainer を開始
+#### Step 2: Start devcontainer
 ```vim
 :DevcontainerOpen
 :DevcontainerStart
 ```
 
-#### ステップ3: LSP 状態確認
+#### Step 3: LSP Status Check
 ```vim
 :DevcontainerLspStatus
 ```
-期待される出力:
+Expected output:
 ```
 === DevContainer LSP Status ===
 Container ID: <container_id>
@@ -76,50 +76,50 @@ Active clients:
   pylsp
 ```
 
-#### ステップ4: LSP 機能のテスト
+#### Step 4: LSP Functionality Test
 
-1. **コード補完テスト**
-   - `main.py` を開く
-   - 新しい行で `calc.` と入力
-   - `<C-x><C-o>` または補完プラグインで補完候補が表示されるか確認
+1. **Code Completion Test**
+   - Open `main.py`
+   - Type `calc.` on a new line
+   - Verify completion candidates are displayed with `<C-x><C-o>` or completion plugin
 
-2. **定義ジャンプテスト**
-   - `hello_world("test")` の `hello_world` にカーソルを置く
-   - `gd` または `:lua vim.lsp.buf.definition()` で定義にジャンプできるか確認
+2. **Definition Jump Test**
+   - Place cursor on `hello_world` in `hello_world("test")`
+   - Verify you can jump to definition with `gd` or `:lua vim.lsp.buf.definition()`
 
-3. **診断テスト**
-   - 意図的に構文エラーを作成（例: `print("test"`）
-   - 診断メッセージが表示されるか確認
+3. **Diagnostics Test**
+   - Intentionally create a syntax error (e.g., `print("test"`)
+   - Verify diagnostic messages are displayed
 
-4. **ホバー情報テスト**
-   - 関数名にカーソルを置く
-   - `K` または `:lua vim.lsp.buf.hover()` でドキュメントが表示されるか確認
+4. **Hover Information Test**
+   - Place cursor on a function name
+   - Verify documentation is displayed with `K` or `:lua vim.lsp.buf.hover()`
 
-### 3. Node.js LSP テスト
+### 3. Node.js LSP Test
 
-#### ステップ1: Node.js 例に移動
+#### Step 1: Navigate to Node.js Example
 ```bash
 cd examples/node-example
 nvim index.js
 ```
 
-#### ステップ2: devcontainer を開始
+#### Step 2: Start devcontainer
 ```vim
 :DevcontainerOpen
 :DevcontainerStart
 ```
 
-#### ステップ3: 同様のLSPテストを実行
-- コード補完
-- 定義ジャンプ
-- 診断
-- ホバー情報
+#### Step 3: Run similar LSP tests
+- Code completion
+- Definition jump
+- Diagnostics
+- Hover information
 
-### 4. 手動テストスクリプト
+### 4. Manual Test Script
 
-以下のスクリプトで自動テストができます：
+You can run automated tests with the following script:
 
-#### テスト用 Lua スクリプト
+#### Test Lua Script
 ```lua
 -- test_lsp.lua
 local function test_lsp_integration()
@@ -162,81 +162,81 @@ end
 test_lsp_integration()
 ```
 
-#### 実行方法
+#### Execution Method
 ```vim
 :luafile test_lsp.lua
 ```
 
-### 5. トラブルシューティング
+### 5. Troubleshooting
 
-#### 一般的な問題と解決方法
+#### Common Issues and Solutions
 
-1. **LSP サーバーが検出されない**
+1. **LSP server not detected**
    ```vim
    :DevcontainerExec which pylsp
    :DevcontainerExec python -m pylsp --help
    ```
 
-2. **通信エラー**
+2. **Communication errors**
    ```vim
    :DevcontainerLogs
    :messages
    ```
 
-3. **パス変換の問題**
+3. **Path conversion issues**
    ```vim
    :lua print(require('devcontainer.lsp.path').get_mappings())
    ```
 
-4. **手動での LSP セットアップ**
+4. **Manual LSP setup**
    ```vim
    :DevcontainerLspSetup
    ```
 
-#### ログの確認
+#### Check logs
 ```vim
 :DevcontainerLogs
 :lua require('devcontainer.utils.log').show_logs()
 ```
 
-### 6. デバッグ用コマンド
+### 6. Debug Commands
 
 ```vim
-" 詳細なデバッグ情報
+" Detailed debug information
 :DevcontainerDebug
 
-" LSP固有の状態
+" LSP-specific status
 :DevcontainerLspStatus
 
-" コンテナ内でのコマンド実行
+" Execute commands in container
 :DevcontainerExec ps aux | grep lsp
 
-" 手動でのLSP再起動
+" Manual LSP restart
 :LspRestart
 
-" LSP情報の表示
+" Display LSP information
 :LspInfo
 ```
 
-### 7. 期待される動作
+### 7. Expected Behavior
 
-正常に動作している場合:
-- `:DevcontainerStart` 実行後、自動的にLSPサーバーが検出・起動
-- 通常のNeovim LSP機能がすべて動作
-- ファイルパスがローカル⇔コンテナ間で正しく変換される
-- 診断、補完、定義ジャンプなどがすべて機能
+When working correctly:
+- LSP servers are automatically detected and started after `:DevcontainerStart`
+- All standard Neovim LSP functionality works
+- File paths are correctly converted between local ⇔ container
+- Diagnostics, completion, definition jump, etc. all function
 
-### 8. パフォーマンステスト
+### 8. Performance Testing
 
-大きなプロジェクトでのテスト:
+Testing with large projects:
 ```bash
-# 大きなPythonプロジェクトをクローン
+# Clone a large Python project
 git clone https://github.com/psf/requests.git
 cd requests
-# .devcontainer/devcontainer.json を作成
+# Create .devcontainer/devcontainer.json
 nvim
 :DevcontainerStart
-# LSP の応答速度をテスト
+# Test LSP response speed
 ```
 
-このテストガイドに従って、LSP統合機能の動作を確認してください。問題が発生した場合は、ログを確認し、必要に応じて設定を調整してください。
+Follow this testing guide to verify the LSP integration functionality. If issues occur, check the logs and adjust configuration as needed.

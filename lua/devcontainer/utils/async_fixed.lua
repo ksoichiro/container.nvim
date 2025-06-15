@@ -1,10 +1,10 @@
 -- lua/devcontainer/utils/async_fixed.lua
--- 修正された非同期処理ユーティリティ
+-- Fixed asynchronous processing utilities
 
 local M = {}
 local uv = vim.loop
 
--- プロセス実行の結果
+-- Process execution result
 local function create_result(code, stdout, stderr)
   return {
     code = code,
@@ -14,7 +14,7 @@ local function create_result(code, stdout, stderr)
   }
 end
 
--- 非同期でコマンドを実行
+-- Execute command asynchronously
 function M.run_command(cmd, args, opts, callback)
   opts = opts or {}
   args = args or {}
@@ -22,14 +22,14 @@ function M.run_command(cmd, args, opts, callback)
   local stdout_chunks = {}
   local stderr_chunks = {}
 
-  -- stdoutハンドル
+  -- stdout handle
   local stdout = uv.new_pipe(false)
-  -- stderrハンドル
+  -- stderr handle
   local stderr = uv.new_pipe(false)
 
   local handle
   local function on_exit(code, signal)
-    -- パイプとハンドルをクリーンアップ
+    -- Clean up pipes and handles
     if stdout and not stdout:is_closing() then
       stdout:close()
     end
@@ -44,7 +44,7 @@ function M.run_command(cmd, args, opts, callback)
     local stderr_str = table.concat(stderr_chunks)
     local result = create_result(code, stdout_str, stderr_str)
 
-    -- コールバックを必ず呼び出す
+    -- Always call callback
     if callback then
       vim.schedule(function()
         callback(result)
@@ -52,10 +52,10 @@ function M.run_command(cmd, args, opts, callback)
     end
   end
 
-  -- stdoutデータ読み取り
+  -- Read stdout data
   local function on_stdout_read(err, data)
     if err then
-      -- エラー時も処理を継続
+      -- Continue processing even on error
       return
     end
     if data then
@@ -68,10 +68,10 @@ function M.run_command(cmd, args, opts, callback)
     end
   end
 
-  -- stderrデータ読み取り
+  -- Read stderr data
   local function on_stderr_read(err, data)
     if err then
-      -- エラー時も処理を継続
+      -- Continue processing even on error
       return
     end
     if data then
@@ -84,7 +84,7 @@ function M.run_command(cmd, args, opts, callback)
     end
   end
 
-  -- プロセス開始
+  -- Start process
   handle = uv.spawn(cmd, {
     args = args,
     cwd = opts.cwd,
@@ -93,7 +93,7 @@ function M.run_command(cmd, args, opts, callback)
   }, on_exit)
 
   if not handle then
-    -- スポーンに失敗した場合
+    -- If spawn failed
     if stdout then stdout:close() end
     if stderr then stderr:close() end
 
@@ -105,15 +105,15 @@ function M.run_command(cmd, args, opts, callback)
     return nil
   end
 
-  -- stdout読み取り開始
+  -- Start reading stdout
   stdout:read_start(on_stdout_read)
-  -- stderr読み取り開始
+  -- Start reading stderr
   stderr:read_start(on_stderr_read)
 
   return handle
 end
 
--- 同期的にコマンドを実行（内部では非同期）
+-- Execute command synchronously (internally async)
 function M.run_command_sync(cmd, args, opts)
   local co = coroutine.running()
   if not co then
@@ -130,7 +130,7 @@ function M.run_command_sync(cmd, args, opts)
   return result
 end
 
--- タイマー
+-- Timer
 function M.delay(ms, callback)
   local timer = uv.new_timer()
   timer:start(ms, 0, function()

@@ -1,159 +1,159 @@
-# devcontainer.nvim TODO & 改善点
+# devcontainer.nvim TODO & Improvements
 
-このファイルは、v0.2.0 LSP統合完了後の今後の改善点と計画を記録します。
+This file records future improvements and plans after the completion of v0.2.0 LSP integration.
 
-## 現在の状況 (v0.2.0完了)
+## Current Status (v0.2.0 Complete)
 
-✅ **完了済み**
-- 基本的なdevcontainer操作 (v0.1.0)
-- LSP統合機能 (v0.2.0)
-  - Docker内LSPサーバーの自動検出
-  - 非同期Docker操作
-  - パス変換機能
-  - 再接続機能
+✅ **Completed**
+- Basic devcontainer operations (v0.1.0)
+- LSP integration features (v0.2.0)
+  - Automatic LSP server detection in Docker
+  - Asynchronous Docker operations
+  - Path conversion functionality
+  - Reconnection capability
 
-## 緊急修正が必要な問題
+## Critical Issues Requiring Immediate Fixes
 
-### 🔴 高優先度
+### 🔴 High Priority
 
-1. **LSP Info でのクライアント表示問題**
-   - 現状: `:LspInfo` でdevcontainer内pylspクライアントが表示されない
-   - 影響: デバッグ時の状態確認が困難（ただし機能は正常動作）
-   - 優先度: 中（実用上の問題は少ない）
-   - 修正案: lspconfig との統合改善
+1. **LSP Info Client Display Issue**
+   - Current: devcontainer pylsp client not shown in `:LspInfo`
+   - Impact: Difficult to verify status during debugging (though functionality works normally)
+   - Priority: Medium (minimal practical impact)
+   - Fix: Improve integration with lspconfig
 
-### ✅ 修正完了
+### ✅ Fixes Completed
 
-3. **エラーログのクリーンアップ** ✅
-   - 修正済み: すべてのDEBUGプリントをlog.debug()に変更
+3. **Error Log Cleanup** ✅
+   - Fixed: Changed all DEBUG prints to log.debug()
 
-4. **Docker関数の重複修正** ✅
-   - 修正済み: M.M.run_docker_command → M.run_docker_command
+4. **Docker Function Duplication Fix** ✅
+   - Fixed: M.M.run_docker_command → M.run_docker_command
 
-5. **起動時の不要なメッセージ表示** ✅
-   - 修正済み: 初期化メッセージをdebugレベルに変更
+5. **Unnecessary Startup Messages** ✅
+   - Fixed: Changed initialization messages to debug level
 
-6. **LSP自動アタッチ機能** ✅
-   - 実装済み: autocommandによる新規バッファへの自動アタッチ
+6. **LSP Auto-attach Feature** ✅
+   - Implemented: Auto-attach to new buffers via autocommand
 
-7. **postCreateCommand サポート** ✅
-   - 実装済み: コンテナ作成後に postCreateCommand を自動実行
-   - パーサーの正規化によるフィールド名変換(postCreateCommand → post_create_command)に対応
+7. **postCreateCommand Support** ✅
+   - Implemented: Automatic execution of postCreateCommand after container creation
+   - Supports field name conversion by parser normalization (postCreateCommand → post_create_command)
 
-8. **Go環境でのLSP検出問題** ✅
-   - 修正済み: LSP検出およびLSP実行時のPATHにGoバイナリパス(/usr/local/go/bin, /go/bin)を追加
-   - 暫定対応: 環境固有設定のdevcontainer.json対応が実装されるまでの一時的な修正
+8. **Go Environment LSP Detection Issue** ✅
+   - Fixed: Added Go binary paths (/usr/local/go/bin, /go/bin) to PATH for LSP detection and execution
+   - Temporary fix: Until environment-specific devcontainer.json support is implemented
 
-### 🟡 中優先度
+### 🟡 Medium Priority
 
-7. **パフォーマンス最適化**
-   - LSPサーバー検出の並列化
-   - Docker操作のキャッシュ機能
-   - 不要なDocker呼び出しの削減
+7. **Performance Optimization**
+   - Parallel LSP server detection
+   - Docker operation caching
+   - Reduction of unnecessary Docker calls
 
-8. **エラーハンドリング強化**
-   - Docker未起動時の適切なエラーメッセージ
-   - LSPサーバー起動失敗時の復旧機能
-   - ネットワークタイムアウトの処理
+8. **Enhanced Error Handling**
+   - Proper error messages when Docker is not running
+   - Recovery functionality for LSP server startup failures
+   - Network timeout handling
 
-## 次のマイルストーン計画
+## Next Milestone Planning
 
-### v0.2.1 (バグ修正リリース) ✅ 完了
-- [x] 高優先度問題の修正
-  - [x] postCreateCommand サポート実装
-  - [x] LSP自動アタッチ機能
-  - [x] Go環境でのLSP検出問題修正
-- [ ] テストスイートの改善（次回へ延期）
-- [ ] ドキュメントの更新（次回へ延期）
+### v0.2.1 (Bug Fix Release) ✅ Complete
+- [x] High priority issue fixes
+  - [x] postCreateCommand support implementation
+  - [x] LSP auto-attach feature
+  - [x] Go environment LSP detection issue fix
+- [ ] Test suite improvements (deferred to next release)
+- [ ] Documentation updates (deferred to next release)
 
-### v0.3.0 (ターミナル統合) - 4-6週間
+### v0.3.0 (Terminal Integration) - 4-6 weeks
 
-#### 新機能
-- [ ] **改良されたターミナル統合**
-  - [ ] コンテナ内ターミナルの改善
-  - [ ] セッション管理機能
-  - [ ] ターミナル履歴の永続化
+#### New Features
+- [ ] **Enhanced Terminal Integration**
+  - [ ] Improved in-container terminal
+  - [ ] Session management functionality
+  - [ ] Terminal history persistence
 
-- [ ] **ポートフォワーディング機能**
-  - [ ] 自動ポート検出
-  - [ ] 動的フォワーディング
-  - [ ] ポート管理UI
+- [ ] **Port Forwarding Features**
+  - [ ] Automatic port detection
+  - [ ] Dynamic forwarding
+  - [ ] Port management UI
 
-- [ ] **Telescope統合**
-  - [ ] devcontainerピッカー
-  - [ ] コマンド履歴ピッカー
-  - [ ] ポート管理ピッカー
+- [ ] **Telescope Integration**
+  - [ ] devcontainer picker
+  - [ ] Command history picker
+  - [ ] Port management picker
 
-- [ ] **外部プラグイン統合**
-  - [ ] nvim-test統合（テストコマンドのコンテナ内実行）
-  - [ ] nvim-dap統合（デバッガーのコンテナ内実行）
-  - [ ] 一般的なコマンド実行プラグインとの統合
+- [ ] **External Plugin Integration**
+  - [ ] nvim-test integration (container-based test command execution)
+  - [ ] nvim-dap integration (container-based debugger execution)
+  - [ ] General command execution plugin integration
 
-#### 技術的改善
-- [ ] **設定システムの拡張**
-  - [ ] ユーザー設定のバリデーション
-  - [ ] 設定の動的変更
-  - [ ] プロファイル機能
+#### Technical Improvements
+- [ ] **Configuration System Extension**
+  - [ ] User configuration validation
+  - [ ] Dynamic configuration changes
+  - [ ] Profile functionality
 
-- [ ] **環境固有設定のdevcontainer.json対応**
-  - [ ] 実行時環境変数の設定可能化（PATH、GOPATH等）
-  - [ ] postCreateCommand実行時の環境変数カスタマイズ
-  - [ ] 言語固有の設定をdevcontainer.jsonで指定
-  - [ ] プラグインからハードコードされた環境設定を除去
+- [ ] **Environment-specific devcontainer.json Support**
+  - [ ] Configurable runtime environment variables (PATH, GOPATH, etc.)
+  - [ ] Environment variable customization for postCreateCommand execution
+  - [ ] Language-specific settings in devcontainer.json
+  - [ ] Remove hardcoded environment settings from plugin
 
-- [ ] **UI/UX の向上**
-  - [ ] ステータスライン表示
-  - [ ] 通知システム
-  - [ ] プログレス表示の改善
+- [ ] **UI/UX Improvements**
+  - [ ] Status line display
+  - [ ] Notification system
+  - [ ] Enhanced progress display
 
-### v0.4.0 (マルチコンテナ対応) - 6-8週間
+### v0.4.0 (Multi-container Support) - 6-8 weeks
 
-- [ ] **Docker Compose サポート**
-  - [ ] docker-compose.yml の解析
-  - [ ] マルチコンテナ環境の管理
-  - [ ] サービス間通信
+- [ ] **Docker Compose Support**
+  - [ ] docker-compose.yml parsing
+  - [ ] Multi-container environment management
+  - [ ] Inter-service communication
 
-- [ ] **高度なネットワーク機能**
-  - [ ] カスタムネットワーク設定
-  - [ ] サービスディスカバリー
-  - [ ] 負荷分散
+- [ ] **Advanced Networking Features**
+  - [ ] Custom network configuration
+  - [ ] Service discovery
+  - [ ] Load balancing
 
-### v1.0.0 (安定版リリース) - 3-4ヶ月後
+### v1.0.0 (Stable Release) - 3-4 months
 
-- [ ] **完全なVSCode互換性**
-- [ ] **包括的なテストスイート**
-- [ ] **完全なドキュメント**
-- [ ] **パフォーマンス最適化**
+- [ ] **Full VSCode Compatibility**
+- [ ] **Comprehensive Test Suite**
+- [ ] **Complete Documentation**
+- [ ] **Performance Optimization**
 
-## 外部プラグイン統合の詳細設計
+## External Plugin Integration Detailed Design
 
-### nvim-test統合
-現在、`klen/nvim-test`や`vim-test/vim-test`などのテストプラグインはローカル環境でコマンドを実行しますが、devcontainer環境では以下の統合が必要：
+### nvim-test Integration
+Currently, test plugins like `klen/nvim-test` and `vim-test/vim-test` execute commands in the local environment, but devcontainer environments require the following integration:
 
-**実装アプローチ:**
-- テストプラグインのコマンド実行をフック/オーバーライド
-- コンテナが起動している場合は自動的にコンテナ内で実行
-- 例: `:TestNearest` → `docker exec container_id go test -run TestFunction`
+**Implementation Approach:**
+- Hook/override test plugin command execution
+- Automatically execute within container when container is running
+- Example: `:TestNearest` → `docker exec container_id go test -run TestFunction`
 
-**対象プラグイン:**
+**Target Plugins:**
 - `klen/nvim-test` 
 - `vim-test/vim-test`
 - `nvim-neotest/neotest`
 
-### nvim-dap統合
-デバッガーもコンテナ内で実行する必要があり、以下が必要：
+### nvim-dap Integration
+Debuggers also need to run within containers, requiring:
 
-**実装要件:**
-- DAP アダプターの設定をコンテナ内実行用に自動変更
-- デバッグポートのフォワーディング
-- コンテナ内でのデバッガー起動
+**Implementation Requirements:**
+- Auto-modify DAP adapter configuration for container execution
+- Debug port forwarding
+- Debugger startup within container
 
-### 一般的なコマンド実行統合
-他のプラグインでも同様のパターンで統合可能：
+### General Command Execution Integration
+Other plugins can be integrated using similar patterns:
 
-**設計パターン:**
+**Design Pattern:**
 ```lua
--- プラグイン統合のためのAPI
+-- API for plugin integration
 devcontainer.integrate_command_plugin({
   plugin_name = "nvim-test",
   command_patterns = {"Test*"},
@@ -163,16 +163,16 @@ devcontainer.integrate_command_plugin({
 })
 ```
 
-この機能により、開発者はdevcontainer内で完全な開発体験を得られます。
+This functionality provides developers with a complete development experience within devcontainers.
 
-## 環境固有設定の設計改善
+## Environment-specific Configuration Design Improvements
 
-### 問題の現状
-現在、postCreateCommand実行時の環境変数（PATH、GOPATH等）がプラグイン内にハードコードされており、言語ごとに個別対応が必要になっている。
+### Current Problem
+Currently, environment variables (PATH, GOPATH, etc.) for postCreateCommand execution are hardcoded in the plugin, requiring individual support for each language.
 
-### 提案する改善案
+### Proposed Improvements
 
-#### 1. devcontainer.jsonでの環境変数指定
+#### 1. Environment Variable Specification in devcontainer.json
 ```json
 {
   "name": "Go Project",
@@ -194,12 +194,12 @@ devcontainer.integrate_command_plugin({
 }
 ```
 
-#### 2. 言語固有のプリセット
+#### 2. Language-specific Presets
 ```json
 {
   "customizations": {
     "devcontainer.nvim": {
-      "languagePreset": "go",  // go, python, node, rust等
+      "languagePreset": "go",  // go, python, node, rust, etc.
       "additionalEnvironment": {
         "CUSTOM_VAR": "value"
       }
@@ -208,93 +208,93 @@ devcontainer.integrate_command_plugin({
 }
 ```
 
-#### 3. 実行コンテキスト別設定
-- `postCreateEnvironment`: postCreateCommand実行時の環境
-- `execEnvironment`: DevcontainerExec実行時の環境  
-- `lspEnvironment`: LSP関連コマンド実行時の環境
+#### 3. Execution Context-specific Settings
+- `postCreateEnvironment`: Environment for postCreateCommand execution
+- `execEnvironment`: Environment for DevcontainerExec execution  
+- `lspEnvironment`: Environment for LSP-related command execution
 
-### 実装の利点
-- プラグインから言語固有のハードコードを除去
-- ユーザーが環境を完全にコントロール可能
-- 新しい言語サポートが容易
-- devcontainer.jsonの標準的な拡張パターンに準拠
+### Implementation Benefits
+- Remove language-specific hardcoding from plugin
+- Allow users complete control over environment
+- Easy support for new languages
+- Comply with standard devcontainer.json extension patterns
 
-## 技術的負債と改善案
+## Technical Debt and Improvement Plans
 
-### アーキテクチャ改善
+### Architecture Improvements
 
-1. **モジュール間の依存関係整理**
-   - 現状: 循環依存が一部存在
-   - 改善: 依存関係グラフの最適化
+1. **Module Dependency Organization**
+   - Current: Some circular dependencies exist
+   - Improvement: Optimize dependency graph
 
-2. **エラーハンドリングの統一**
-   - 現状: モジュールごとに異なるエラー処理
-   - 改善: 共通エラーハンドリングライブラリ
+2. **Unified Error Handling**
+   - Current: Different error handling per module
+   - Improvement: Common error handling library
 
-3. **設定システムの改善**
-   - 現状: 設定の検証が不十分
-   - 改善: JSON Schema ベースの検証
+3. **Configuration System Improvements**
+   - Current: Insufficient configuration validation
+   - Improvement: JSON Schema-based validation
 
-### パフォーマンス改善
+### Performance Improvements
 
-1. **Docker操作の最適化**
-   - 不要なDocker呼び出しの削減
-   - 結果のキャッシュ
-   - 並列処理の活用
+1. **Docker Operation Optimization**
+   - Reduce unnecessary Docker calls
+   - Result caching
+   - Leverage parallel processing
 
-2. **LSP通信の最適化**
-   - 接続プールの実装
-   - リクエストのバッチ処理
-   - 応答時間の改善
+2. **LSP Communication Optimization**
+   - Connection pool implementation
+   - Request batching
+   - Response time improvements
 
-### 開発体験の改善
+### Development Experience Improvements
 
-1. **デバッグツールの充実**
-   - より詳細なログ出力
-   - デバッグモードの実装
-   - プロファイリング機能
+1. **Enhanced Debug Tools**
+   - More detailed log output
+   - Debug mode implementation
+   - Profiling functionality
 
-2. **テスト環境の整備**
-   - CI/CDパイプライン
-   - 自動テスト
-   - パフォーマンステスト
+2. **Test Environment Setup**
+   - CI/CD pipeline
+   - Automated testing
+   - Performance testing
 
-## ユーザーフィードバック対応
+## User Feedback Response
 
-### よく報告される問題
+### Commonly Reported Issues
 
-1. **Docker for Mac でのパフォーマンス問題**
-   - ファイルマウントの最適化
-   - キャッシュ戦略の改善
+1. **Docker for Mac Performance Issues**
+   - File mount optimization
+   - Cache strategy improvements
 
-2. **Windows 環境での問題**
-   - パス区切り文字の処理
-   - ファイル権限の問題
+2. **Windows Environment Issues**
+   - Path separator handling
+   - File permission issues
 
-3. **大きなプロジェクトでの動作**
-   - メモリ使用量の最適化
-   - 起動時間の改善
+3. **Large Project Performance**
+   - Memory usage optimization
+   - Startup time improvements
 
-## 開発プロセスの改善
+## Development Process Improvements
 
-### 品質管理
-- [ ] 自動テストの充実
-- [ ] コードレビューガイドラインの策定
-- [ ] パフォーマンス回帰テスト
+### Quality Management
+- [ ] Enhanced automated testing
+- [ ] Code review guideline establishment
+- [ ] Performance regression testing
 
-### ドキュメント
-- [ ] API ドキュメントの自動生成
-- [ ] チュートリアルの充実
-- [ ] トラブルシューティングガイド
+### Documentation
+- [ ] Automated API documentation generation
+- [ ] Enhanced tutorials
+- [ ] Troubleshooting guide
 
-### コミュニティ
-- [ ] コントリビューションガイドライン
-- [ ] イシューテンプレート
-- [ ] ディスカッションフォーラム
+### Community
+- [ ] Contribution guidelines
+- [ ] Issue templates
+- [ ] Discussion forum
 
 ---
 
-**最終更新**: 2025-06-15  
-**次回レビュー予定**: v0.3.0計画時
+**Last Updated**: 2025-06-15  
+**Next Review Scheduled**: During v0.3.0 planning
 
-このTODOリストは、プロジェクトの進行に合わせて定期的に更新されます。
+This TODO list is regularly updated as the project progresses.

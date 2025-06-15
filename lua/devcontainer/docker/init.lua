@@ -1,10 +1,10 @@
 -- lua/devcontainer/docker/init.lua
--- Docker操作の抽象化（修正版）
+-- Docker operations abstraction (fixed version)
 
 local M = {}
 local log = require('devcontainer.utils.log')
 
--- Docker コマンドの可用性チェック（同期版）
+-- Docker command availability check (sync version)
 function M.check_docker_availability()
   log.debug("Checking Docker availability (sync)")
 
@@ -16,7 +16,7 @@ function M.check_docker_availability()
     return false, "Docker command not found"
   end
 
-  -- Dockerデーモンの動作確認
+  -- Check Docker daemon operation
   result = vim.fn.system("docker info 2>/dev/null")
   exit_code = vim.v.shell_error
 
@@ -29,11 +29,11 @@ function M.check_docker_availability()
   return true
 end
 
--- Docker コマンドの可用性チェック（非同期版）
+-- Docker command availability check (async version)
 function M.check_docker_availability_async(callback)
   log.debug("Checking Docker availability (async)")
 
-  -- Dockerバージョンチェック
+  -- Docker version check
   vim.fn.jobstart({'docker', '--version'}, {
     on_exit = function(_, exit_code, _)
       if exit_code ~= 0 then
@@ -42,7 +42,7 @@ function M.check_docker_availability_async(callback)
         return
       end
 
-      -- Dockerデーモンチェック
+      -- Docker daemon check
       vim.fn.jobstart({'docker', 'info'}, {
         on_exit = function(_, daemon_exit_code, _)
           if daemon_exit_code ~= 0 then
@@ -62,12 +62,12 @@ function M.check_docker_availability_async(callback)
   })
 end
 
--- 同期的にコマンドを実行
--- 同期的なDocker コマンド実行（互換性のため保持）
+-- Execute command synchronously
+-- Synchronous Docker command execution (kept for compatibility)
 function M.run_docker_command(args, opts)
   opts = opts or {}
 
-  -- 引数を適切にシェルエスケープ
+  -- Properly escape arguments for shell
   local escaped_args = {}
   for _, arg in ipairs(args) do
     table.insert(escaped_args, vim.fn.shellescape(arg))
@@ -91,7 +91,7 @@ function M.run_docker_command(args, opts)
   }
 end
 
--- 非同期的なDocker コマンド実行
+-- Asynchronous Docker command execution
 function M.run_docker_command_async(args, opts, callback)
   opts = opts or {}
 
@@ -149,7 +149,7 @@ function M.run_docker_command_async(args, opts, callback)
   return vim.fn.jobstart(cmd_args, job_opts)
 end
 
--- Dockerイメージの存在確認
+-- Check Docker image existence
 function M.check_image_exists(image_name)
   log.debug("Checking if image exists: %s", image_name)
 
@@ -164,7 +164,7 @@ function M.check_image_exists(image_name)
   end
 end
 
--- Dockerイメージの存在確認（非同期版）
+-- Check Docker image existence (async version)
 function M.check_image_exists_async(image_name, callback)
   log.debug("Checking if image exists (async): %s", image_name)
 
@@ -179,11 +179,11 @@ function M.check_image_exists_async(image_name, callback)
   end)
 end
 
--- Dockerイメージのプル（修正版 - 詳細デバッグ付き）
+-- Docker image pull (fixed version - with detailed debugging)
 function M.pull_image_async(image_name, on_progress, on_complete)
   log.info("Pulling Docker image (async): %s", image_name)
 
-  -- 開始直後のデバッグ情報
+  -- Debug information immediately after start
   if on_progress then
     on_progress("Starting image pull...")
     on_progress("   Command: docker pull " .. image_name)
@@ -321,13 +321,13 @@ function M.pull_image_async(image_name, on_progress, on_complete)
     on_progress("   Waiting for Docker output...")
   end
 
-  -- 進捗チェックを追加
+  -- Add progress check
   local progress_check_count = 0
   local function check_progress()
     progress_check_count = progress_check_count + 1
     local elapsed = (vim.loop.hrtime() - start_time) / 1e9
 
-    -- ジョブがまだ実行中かチェック
+    -- Check if job is still running
     local job_status = vim.fn.jobwait({job_id}, 0)[1]
 
     if job_status == -1 then -- Still running
@@ -342,7 +342,7 @@ function M.pull_image_async(image_name, on_progress, on_complete)
         end
       end
 
-      -- 10分でタイムアウト
+      -- Timeout after 10 minutes
       if elapsed < 600 then
         vim.defer_fn(check_progress, 10000) -- Check every 10 seconds
       else
@@ -362,17 +362,17 @@ function M.pull_image_async(image_name, on_progress, on_complete)
     end
   end
 
-  -- 最初の進捗チェックを5秒後に開始
+  -- Start first progress check after 5 seconds
   vim.defer_fn(check_progress, 5000)
 
   return job_id
 end
 
--- Dockerイメージのプル（旧版、互換性のため保持）
+-- Docker image pull (old version, kept for compatibility)
 function M.pull_image(image_name, on_progress, on_complete)
   log.info("Pulling Docker image: %s", image_name)
 
-  -- 非同期処理をシミュレート
+  -- Simulate asynchronous processing
   vim.defer_fn(function()
     local result = M.run_docker_command({"pull", image_name})
 
@@ -390,19 +390,19 @@ function M.pull_image(image_name, on_progress, on_complete)
   end, 100)
 end
 
--- Dockerイメージのビルド
+-- Docker image build
 function M.build_image(config, on_progress, on_complete)
   log.info("Building Docker image: %s", config.name)
 
   vim.defer_fn(function()
     local args = {"build"}
 
-    -- タグの設定
+    -- Set tag
     local tag = config.name:lower():gsub("[^a-z0-9_.-]", "-")
     table.insert(args, "-t")
     table.insert(args, tag)
 
-    -- ビルド引数
+    -- Build arguments
     if config.build_args then
       for key, value in pairs(config.build_args) do
         table.insert(args, "--build-arg")
@@ -410,13 +410,13 @@ function M.build_image(config, on_progress, on_complete)
       end
     end
 
-    -- Dockerfileの指定
+    -- Specify Dockerfile
     if config.dockerfile then
       table.insert(args, "-f")
       table.insert(args, config.dockerfile)
     end
 
-    -- ビルドコンテキスト
+    -- Build context
     local context = config.context or "."
     table.insert(args, context)
 
@@ -437,16 +437,16 @@ function M.build_image(config, on_progress, on_complete)
   end, 100)
 end
 
--- イメージの準備（ビルドまたはプル）
+-- Prepare image (build or pull)
 function M.prepare_image(config, on_progress, on_complete)
-  -- Dockerfileが指定されている場合はビルド
+  -- Build if Dockerfile is specified
   if config.dockerfile then
     return M.build_image(config, on_progress, on_complete)
   end
 
-  -- imageが指定されている場合
+  -- If image is specified
   if config.image then
-    -- ローカルにイメージが存在するかチェック
+    -- Check if image exists locally
     local exists = M.check_image_exists(config.image)
 
     if exists then
@@ -459,7 +459,7 @@ function M.prepare_image(config, on_progress, on_complete)
       end
       return
     else
-      -- イメージが存在しない場合はプル
+      -- Pull if image doesn't exist
       return M.pull_image(config.image, on_progress, function(success, result)
         if success then
           config.prepared_image = config.image
@@ -471,7 +471,7 @@ function M.prepare_image(config, on_progress, on_complete)
     end
   end
 
-  -- DockerfileもImageも指定されていない場合
+  -- If neither Dockerfile nor Image is specified
   local error_msg = "No dockerfile or image specified"
   log.error(error_msg)
   if on_complete then
@@ -481,8 +481,8 @@ function M.prepare_image(config, on_progress, on_complete)
   end
 end
 
--- コンテナの作成
--- コンテナ作成（非同期版）
+-- Container creation
+-- Container creation (async version)
 function M.create_container_async(config, callback)
   log.info("Creating Docker container (async): %s", config.name)
 
@@ -513,25 +513,25 @@ function M.create_container_async(config, callback)
   end)
 end
 
--- コンテナ作成引数の構築
+-- Build container creation arguments
 function M._build_create_args(config)
   local args = {"create"}
 
-  -- コンテナ名
+  -- Container name
   local container_name = config.name:lower():gsub("[^a-z0-9_.-]", "-") .. "_devcontainer"
   table.insert(args, "--name")
   table.insert(args, container_name)
 
-  -- インタラクティブモード
+  -- Interactive mode
   table.insert(args, "-it")
 
-  -- ワークディレクトリ
+  -- Work directory
   if config.workspace_folder then
     table.insert(args, "-w")
     table.insert(args, config.workspace_folder)
   end
 
-  -- 環境変数
+  -- Environment variables
   if config.environment then
     for key, value in pairs(config.environment) do
       table.insert(args, "-e")
@@ -539,7 +539,7 @@ function M._build_create_args(config)
     end
   end
 
-  -- ボリュームマウント
+  -- Volume mount
   if config.mounts then
     for _, mount in ipairs(config.mounts) do
       table.insert(args, "--mount")
@@ -555,7 +555,7 @@ function M._build_create_args(config)
     end
   end
 
-  -- ポートフォワーディング
+  -- Port forwarding
   if config.ports then
     for _, port in ipairs(config.ports) do
       table.insert(args, "-p")
@@ -563,55 +563,55 @@ function M._build_create_args(config)
     end
   end
 
-  -- 特権モード
+  -- Privileged mode
   if config.privileged then
     table.insert(args, "--privileged")
   end
 
-  -- init プロセス
+  -- init process
   if config.init then
     table.insert(args, "--init")
   end
 
-  -- ユーザー指定
+  -- User specification
   if config.remote_user then
     table.insert(args, "--user")
     table.insert(args, config.remote_user)
   end
 
-  -- ワークスペースマウント（デフォルト）
+  -- Workspace mount (default)
   local workspace_source = config.workspace_source or vim.fn.getcwd()
   local workspace_target = config.workspace_mount or "/workspace"
   table.insert(args, "-v")
   table.insert(args, workspace_source .. ":" .. workspace_target)
 
-  -- イメージ
+  -- Image
   table.insert(args, config.image)
 
   return args
 end
 
--- コンテナ作成（同期版、互換性のため保持）
+-- Container creation (sync version, kept for compatibility)
 function M.create_container(config)
   log.info("Creating Docker container: %s", config.name)
 
   local args = {"create"}
 
-  -- コンテナ名
+  -- Container name
   local container_name = config.name:lower():gsub("[^a-z0-9_.-]", "-") .. "_devcontainer"
   table.insert(args, "--name")
   table.insert(args, container_name)
 
-  -- インタラクティブモード
+  -- Interactive mode
   table.insert(args, "-it")
 
-  -- ワークディレクトリ
+  -- Work directory
   if config.workspace_folder then
     table.insert(args, "-w")
     table.insert(args, config.workspace_folder)
   end
 
-  -- 環境変数
+  -- Environment variables
   if config.environment then
     for key, value in pairs(config.environment) do
       table.insert(args, "-e")
@@ -619,7 +619,7 @@ function M.create_container(config)
     end
   end
 
-  -- ボリュームマウント
+  -- Volume mount
   if config.mounts then
     for _, mount in ipairs(config.mounts) do
       table.insert(args, "--mount")
@@ -635,7 +635,7 @@ function M.create_container(config)
     end
   end
 
-  -- ポートフォワーディング
+  -- Port forwarding
   if config.ports then
     for _, port in ipairs(config.ports) do
       table.insert(args, "-p")
@@ -643,23 +643,23 @@ function M.create_container(config)
     end
   end
 
-  -- 特権モード
+  -- Privileged mode
   if config.privileged then
     table.insert(args, "--privileged")
   end
 
-  -- init プロセス
+  -- init process
   if config.init then
     table.insert(args, "--init")
   end
 
-  -- ユーザー指定
+  -- User specification
   if config.remote_user then
     table.insert(args, "--user")
     table.insert(args, config.remote_user)
   end
 
-  -- 使用するイメージ（ビルドされたイメージまたは指定されたイメージ）
+  -- Image to use (built image or specified image)
   local image = config.built_image or config.prepared_image or config.image
   if not image then
     local error_msg = "No image available for container creation"
@@ -668,7 +668,7 @@ function M.create_container(config)
   end
   table.insert(args, image)
 
-  -- デフォルトコマンド（コンテナを起動状態に保つ）
+  -- Default command (keep container running)
   table.insert(args, "sleep")
   table.insert(args, "infinity")
 
@@ -686,28 +686,28 @@ function M.create_container(config)
     log.info("Successfully created container: %s (%s)", container_name, container_id)
     return container_id
   else
-    -- 詳細なエラー情報を構築
+    -- Build detailed error information
     local error_parts = {}
 
-    -- 基本エラー情報
+    -- Basic error information
     table.insert(error_parts, "Docker create command failed")
 
-    -- 終了コード
+    -- Exit code
     if result.code then
       table.insert(error_parts, string.format("Exit code: %d", result.code))
     end
 
-    -- stderr出力
+    -- stderr output
     if result.stderr and result.stderr ~= "" then
       table.insert(error_parts, string.format("Error output: %s", result.stderr:gsub("%s+$", "")))
     end
 
-    -- stdout出力（エラー情報が含まれている場合がある）
+    -- stdout output (may contain error information)
     if result.stdout and result.stdout ~= "" then
       table.insert(error_parts, string.format("Standard output: %s", result.stdout:gsub("%s+$", "")))
     end
 
-    -- 実行されたコマンド
+    -- Executed command
     table.insert(error_parts, string.format("Command: docker %s", table.concat(args, " ")))
 
     local error_msg = table.concat(error_parts, " | ")
@@ -716,7 +716,7 @@ function M.create_container(config)
   end
 end
 
--- コンテナの開始（非同期版）
+-- Container startup (async version)
 function M.start_container(container_id, on_ready)
   log.info("Starting container: %s", container_id)
 
@@ -726,7 +726,7 @@ function M.start_container(container_id, on_ready)
     if result.success then
       log.info("Successfully started container: %s", container_id)
 
-      -- コンテナの準備完了を待つ
+      -- Wait for container to be ready
       M.wait_for_container_ready(container_id, function(ready)
         if on_ready then
           vim.schedule(function()
@@ -746,11 +746,11 @@ function M.start_container(container_id, on_ready)
   end, 100)
 end
 
--- コンテナの開始（改良版 - 非ブロッキング）
+-- Container startup (improved version - non-blocking)
 function M.start_container_async(container_id, callback)
   log.info("Starting container asynchronously: %s", container_id)
 
-  -- コンテナを開始
+  -- Start container
   local result = M.run_docker_command({"start", container_id})
   if not result.success then
     local error_msg = result.stderr or "unknown error"
@@ -761,7 +761,7 @@ function M.start_container_async(container_id, callback)
 
   log.info("Container started, checking readiness...")
 
-  -- 非ブロッキングで準備完了を待つ
+  -- Wait for readiness non-blocking
   local attempts = 0
   local max_attempts = 30
 
@@ -770,7 +770,7 @@ function M.start_container_async(container_id, callback)
 
     local status = M.get_container_status(container_id)
     if status == "running" then
-      -- 簡単なコマンドで確認
+      -- Check with simple command
       local test_result = M.run_docker_command({"exec", container_id, "echo", "ready"})
       if test_result.success then
         log.info("Container is ready: %s", container_id)
@@ -780,7 +780,7 @@ function M.start_container_async(container_id, callback)
     end
 
     if attempts < max_attempts then
-      -- 1秒後に再試行（非ブロッキング）
+      -- Retry after 1 second (non-blocking)
       vim.defer_fn(check_ready, 1000)
     else
       log.warn("Container readiness check timed out: %s", container_id)
@@ -788,15 +788,15 @@ function M.start_container_async(container_id, callback)
     end
   end
 
-  -- 最初のチェックを開始
+  -- Start first check
   vim.defer_fn(check_ready, 500)
 end
 
--- シンプルなコンテナ起動テスト
+-- Simple container startup test
 function M.start_container_simple(container_id)
   log.info("Starting container (simple): %s", container_id)
 
-  -- コンテナを開始
+  -- Start container
   local result = M.run_docker_command({"start", container_id})
   if not result.success then
     local error_msg = result.stderr or "unknown error"
@@ -806,12 +806,12 @@ function M.start_container_simple(container_id)
 
   log.info("Container start command completed: %s", container_id)
 
-  -- 状態確認（1回のみ）
+  -- Status check (once only)
   local status = M.get_container_status(container_id)
   return status == "running", status
 end
 
--- コンテナの停止
+-- Container stop
 function M.stop_container(container_id, timeout)
   timeout = timeout or 30
   log.info("Stopping container: %s", container_id)
@@ -834,7 +834,7 @@ function M.stop_container(container_id, timeout)
   end, 100)
 end
 
--- コンテナの削除
+-- Container removal
 function M.remove_container(container_id, force)
   log.info("Removing container: %s", container_id)
 
@@ -855,33 +855,33 @@ function M.remove_container(container_id, force)
   end, 100)
 end
 
--- コンテナ内でのコマンド実行
+-- Execute command in container
 function M.exec_command(container_id, command, opts)
   opts = opts or {}
   log.debug("Executing command in container %s: %s", container_id, command)
 
   local args = {"exec"}
 
-  -- インタラクティブモード
+  -- Interactive mode
   if opts.interactive then
     table.insert(args, "-it")
   else
     table.insert(args, "-i")
   end
 
-  -- 作業ディレクトリ
+  -- Working directory
   if opts.workdir then
     table.insert(args, "-w")
     table.insert(args, opts.workdir)
   end
 
-  -- ユーザー指定
+  -- User specification
   if opts.user then
     table.insert(args, "--user")
     table.insert(args, opts.user)
   end
 
-  -- 環境変数
+  -- Environment variables
   if opts.env then
     for key, value in pairs(opts.env) do
       table.insert(args, "-e")
@@ -889,33 +889,33 @@ function M.exec_command(container_id, command, opts)
     end
   end
 
-  -- 環境変数をクリアしてコンテナのデフォルト環境を使用（ユーザーのローカルbinも含める）
+  -- Clear environment variables and use container's default environment (including user's local bin)
   table.insert(args, "-e")
   table.insert(args, "PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/bin:/usr/bin:/bin")
 
   table.insert(args, container_id)
 
-  -- コマンドを分割
+  -- Split command
   if type(command) == "string" then
-    -- シェルコマンドとして実行（適切にエスケープ）
+    -- Execute as shell command (properly escaped)
     table.insert(args, "bash")
     table.insert(args, "-c")
-    -- コマンド全体を単一の引数として渡す
+    -- Pass entire command as single argument
     table.insert(args, string.format("%s", command))
   elseif type(command) == "table" then
-    -- コマンド配列として実行
+    -- Execute as command array
     for _, cmd_part in ipairs(command) do
       table.insert(args, cmd_part)
     end
   end
 
-  -- デバッグ：実行予定のコマンドをログ出力
+  -- Debug: Log command to be executed
   log.debug("Docker exec command: docker %s", table.concat(args, " "))
 
   vim.defer_fn(function()
     local result = M.run_docker_command(args)
 
-    -- デバッグ：結果をログ出力
+    -- Debug: Log result
     log.debug("Docker exec result: success=%s, code=%s, stdout_len=%s, stderr_len=%s",
       tostring(result.success),
       tostring(result.code),
@@ -928,7 +928,7 @@ function M.exec_command(container_id, command, opts)
   end, 100)
 end
 
--- コンテナの状態取得
+-- Get container status
 function M.get_container_status(container_id)
   log.debug("Getting container status: %s", container_id)
 
@@ -941,7 +941,7 @@ function M.get_container_status(container_id)
   end
 end
 
--- コンテナの詳細情報取得
+-- Get container detailed information
 function M.get_container_info(container_id)
   log.debug("Getting container info: %s", container_id)
 
@@ -957,7 +957,7 @@ function M.get_container_info(container_id)
   return nil
 end
 
--- コンテナのリスト取得
+-- Get container list
 function M.list_containers(filter)
   log.debug("Listing containers with filter: %s", filter or "all")
 
@@ -989,7 +989,7 @@ function M.list_containers(filter)
   end
 end
 
--- コンテナの準備完了を待つ
+-- Wait for container to be ready
 function M.wait_for_container_ready(container_id, callback, max_attempts)
   max_attempts = max_attempts or 30
   local attempts = 0
@@ -997,17 +997,17 @@ function M.wait_for_container_ready(container_id, callback, max_attempts)
   local function check_ready()
     attempts = attempts + 1
 
-    -- コンテナの状態確認
+    -- Check container status
     local status = M.get_container_status(container_id)
     if status == "running" then
-      -- 簡単なコマンドを実行して確認
+      -- Check by executing simple command
       M.exec_command(container_id, "echo 'ready'", {
         on_complete = function(result)
           if result.success then
             log.debug("Container is ready: %s", container_id)
             callback(true)
           elseif attempts < max_attempts then
-            -- 1秒待って再試行
+            -- Wait 1 second and retry
             vim.defer_fn(check_ready, 1000)
           else
             log.warn("Container readiness check timed out: %s", container_id)
@@ -1016,7 +1016,7 @@ function M.wait_for_container_ready(container_id, callback, max_attempts)
         end
       })
     elseif attempts < max_attempts then
-      -- 1秒待って再試行
+      -- Wait 1 second and retry
       vim.defer_fn(check_ready, 1000)
     else
       log.warn("Container failed to start: %s", container_id)
@@ -1027,7 +1027,7 @@ function M.wait_for_container_ready(container_id, callback, max_attempts)
   check_ready()
 end
 
--- ログの取得
+-- Get logs
 function M.get_logs(container_id, opts)
   opts = opts or {}
   log.debug("Getting logs for container: %s", container_id)
