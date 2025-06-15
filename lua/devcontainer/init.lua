@@ -851,6 +851,15 @@ function M.lsp_setup()
     return false
   end
 
+  -- Check if container is actually running
+  docker = docker or require('devcontainer.docker.init')
+  local container_status = docker.get_container_status(state.current_container)
+
+  if container_status ~= "running" then
+    log.error("Container is not running (status: %s). Start container first.", container_status or "unknown")
+    return false
+  end
+
   -- Initialize LSP module
   lsp = lsp or require('devcontainer.lsp.init')
   lsp.setup(config.get_value('lsp') or {})
@@ -868,7 +877,13 @@ function M.lsp_setup()
     log.warn("Failed to load LSP path module")
   end
 
-  -- Setup LSP servers
+  -- Check current LSP state before setup
+  local current_state = lsp.get_state()
+  log.info("Current LSP state - Container: %s, Clients: %d",
+    current_state.container_id or "none",
+    #current_state.clients)
+
+  -- Setup LSP servers (now with duplicate detection)
   lsp.setup_lsp_in_container()
 
   log.info("LSP setup completed")
@@ -1118,7 +1133,21 @@ function M._try_reconnect_existing_container()
         if config and config.get_value('lsp.auto_setup') and container.status == "running" then
           print("  Setting up LSP...")
           vim.defer_fn(function()
-            M.lsp_setup()
+            -- Check if LSP is already configured for this container
+            if lsp then
+              local current_state = lsp.get_state()
+              if current_state.container_id == container.id then
+                print("  ✓ LSP already configured for this container")
+                return
+              end
+            end
+
+            local success = M.lsp_setup()
+            if success then
+              print("  ✓ LSP setup complete")
+            else
+              print("  ⚠ LSP setup failed")
+            end
           end, 2000)
         end
       else

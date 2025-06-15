@@ -91,6 +91,32 @@ function M.detect_language_servers()
   return detected_servers
 end
 
+-- Check if LSP client already exists for a server
+function M.client_exists(server_name)
+  -- Check active clients first
+  local active_clients = vim.lsp.get_active_clients({name = server_name})
+  if #active_clients > 0 then
+    log.debug('LSP: Found existing active client for %s', server_name)
+    return true, active_clients[1].id
+  end
+
+  -- Check our internal state
+  if state.clients[server_name] and state.clients[server_name].client_id then
+    -- Verify the client is still active
+    local client = vim.lsp.get_client_by_id(state.clients[server_name].client_id)
+    if client and not client.is_stopped then
+      log.debug('LSP: Found existing client in state for %s', server_name)
+      return true, client.id
+    else
+      -- Clean up stale state
+      state.clients[server_name] = nil
+      log.debug('LSP: Cleaned up stale client state for %s', server_name)
+    end
+  end
+
+  return false, nil
+end
+
 -- Setup LSP servers in the container
 function M.setup_lsp_in_container()
   if not M.config.auto_setup then
@@ -99,13 +125,34 @@ function M.setup_lsp_in_container()
   end
 
   local servers = M.detect_language_servers()
+  local setup_count = 0
+  local skipped_count = 0
 
   for name, server in pairs(servers) do
     if server.available then
-      log.info('LSP: Setting up ' .. name)
-      M.create_lsp_client(name, server)
+      -- Check if client already exists
+      local exists, client_id = M.client_exists(name)
+      if exists then
+        log.info('LSP: Skipping %s - client already exists (ID: %s)', name, client_id)
+        skipped_count = skipped_count + 1
+
+        -- Update our state if needed
+        if not state.clients[name] then
+          state.clients[name] = {
+            client_id = client_id,
+            config = nil, -- Will be filled if needed
+            server_config = server
+          }
+        end
+      else
+        log.info('LSP: Setting up %s', name)
+        M.create_lsp_client(name, server)
+        setup_count = setup_count + 1
+      end
     end
   end
+
+  log.info('LSP: Setup complete - %d new clients, %d existing clients', setup_count, skipped_count)
 end
 
 -- Create an LSP client for a server in the container

@@ -87,10 +87,12 @@ This file records future improvements and plans after the completion of v0.2.0 L
 ### v0.2.2 (Minor Improvements) - 1-2 weeks
 
 #### High Priority Issues
-- [ ] **LSP Priority for Running Containers**
+- [x] **LSP Priority for Running Containers** ✅
   - Issue: If devcontainer is already running, LSP should prioritize that instance
   - Current behavior: May create duplicate or conflicting LSP clients
   - Solution: Check for existing containers before LSP setup
+  - **FIXED**: Implemented client_exists() function and duplicate prevention logic
+  - **Solution**: LSP setup now checks for existing clients, verifies container status, and skips duplicate client creation
 
 - [x] **Container Termination Command** ✅
   - Issue: Missing command to terminate/kill containers (vs stop)
