@@ -104,6 +104,8 @@ USER node
 
 ## Commands
 
+For detailed command documentation, use `:help devcontainer-commands` in Neovim.
+
 ### Basic Operations
 
 | Command | Description |

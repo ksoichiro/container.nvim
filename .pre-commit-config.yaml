@@ -93,6 +93,30 @@ repos:
         files: (Makefile|\.lua)$
         pass_filenames: false
 
+      # Check help documentation sync
+      - id: check-help-doc
+        name: Verify help documentation exists
+        entry: bash
+        args:
+          - -c
+          - |
+            if [[ ! -f "doc/devcontainer.txt" ]]; then
+              echo "Error: doc/devcontainer.txt is missing"
+              exit 1
+            fi
+            # Check for basic structure
+            if ! grep -q "\*devcontainer-commands\*" doc/devcontainer.txt; then
+              echo "Error: Help file missing commands section"
+              exit 1
+            fi
+            if ! grep -q "\*devcontainer-configuration\*" doc/devcontainer.txt; then
+              echo "Error: Help file missing configuration section"
+              exit 1
+            fi
+        language: system
+        files: (plugin/.*\.lua|lua/devcontainer/init\.lua|doc/devcontainer\.txt)$
+        pass_filenames: false
+
 # Global configuration
 default_stages: [pre-commit]
 fail_fast: false

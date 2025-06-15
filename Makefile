@@ -1,6 +1,6 @@
 # Makefile for devcontainer.nvim
 
-.PHONY: help lint lint-fix test install-dev clean install-hooks
+.PHONY: help lint lint-fix test install-dev clean install-hooks help-tags
 
 # Default target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  test         Run test suite"
 	@echo "  install-dev  Install development dependencies"
 	@echo "  install-hooks Install pre-commit hooks"
+	@echo "  help-tags    Generate Neovim help tags"
 	@echo "  clean        Clean temporary files"
 
 # Install development dependencies
@@ -89,6 +90,17 @@ clean:
 	@echo "Cleaning temporary files..."
 	find . -name "*.tmp" -delete
 	find . -name "*.bak" -delete
+
+# Generate Neovim help tags
+help-tags:
+	@echo "Generating Neovim help tags..."
+	@if command -v nvim >/dev/null 2>&1; then \
+		nvim -u NONE -c "helptags doc" -c "quit" 2>/dev/null || true; \
+		echo "Help tags generated successfully!"; \
+	else \
+		echo "Warning: Neovim not found. Help tags not generated."; \
+		echo "Run ':helptags doc' inside Neovim to generate tags."; \
+	fi
 
 # Lint before commit (git hook helper)
 pre-commit: lint test

@@ -61,6 +61,7 @@ make install-dev
 4. **Documentation**: Keep comments clear and concise in English
 5. **Manual Checks**: Use `make lint` and `make test` for manual verification when needed
 6. **TODO Management**: Add future tasks and improvements to `TODO.md` file, NOT session memory
+7. **Help Documentation**: Update `doc/devcontainer.txt` when adding/modifying commands or features
 
 #### Available Make Targets
 - `make install-hooks` - Install pre-commit hooks (one-time setup)
@@ -68,6 +69,7 @@ make install-dev
 - `make test` - Run test suite
 - `make install-dev` - Install development dependencies (luacheck)
 - `make pre-commit` - Run both lint and test (manual verification)
+- `make help-tags` - Generate Neovim help tags
 - `make help` - Show all available targets
 
 #### Linting Configuration
@@ -75,6 +77,19 @@ make install-dev
 - Standards: lua54+luajit with Neovim globals
 - Max line length: 120 characters
 - Cyclomatic complexity limit: 15
+
+### Documentation Updates
+When modifying the plugin:
+1. **Commands**: Update both `README.md` and `doc/devcontainer.txt`
+2. **Configuration**: Update help documentation with new options
+3. **API Functions**: Document in the API section of help file
+4. **Examples**: Keep devcontainer.json examples up to date
+
+After documentation changes:
+```bash
+make help-tags  # Generate help tags
+# Or in Neovim: :helptags doc
+```
 
 ## High-Level Architecture
 

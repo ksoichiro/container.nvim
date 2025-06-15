@@ -1,0 +1,504 @@
+*devcontainer.txt*    DevContainer support for Neovim
+
+                    DEVCONTAINER.NVIM REFERENCE MANUAL
+
+==============================================================================
+CONTENTS                                                *devcontainer-contents*
+
+    1. Introduction ......................... |devcontainer-introduction|
+    2. Requirements ......................... |devcontainer-requirements|
+    3. Installation ......................... |devcontainer-installation|
+    4. Quick Start .......................... |devcontainer-quickstart|
+    5. Commands ............................. |devcontainer-commands|
+    6. Configuration ........................ |devcontainer-configuration|
+    7. API .................................. |devcontainer-api|
+    8. devcontainer.json .................... |devcontainer-json|
+    9. Troubleshooting ...................... |devcontainer-troubleshooting|
+    10. Contributing ........................ |devcontainer-contributing|
+
+==============================================================================
+1. INTRODUCTION                                     *devcontainer-introduction*
+
+devcontainer.nvim brings VSCode Dev Containers functionality to Neovim,
+allowing you to develop inside Docker containers with full LSP support and
+seamless integration.
+
+Key features:
+  • Full devcontainer.json compatibility
+  • Automatic LSP server detection and configuration
+  • Asynchronous Docker operations
+  • Port forwarding support
+  • Terminal integration
+  • Project-specific container isolation
+
+==============================================================================
+2. REQUIREMENTS                                     *devcontainer-requirements*
+
+  • Neovim 0.8.0 or higher
+  • Docker or Podman installed and running
+  • Git (for cloning repositories)
+  • Optional: nvim-lspconfig for LSP integration
+
+==============================================================================
+3. INSTALLATION                                     *devcontainer-installation*
+
+Using lazy.nvim: >lua
+
+    {
+      'ksoichiro/devcontainer.nvim',
+      dependencies = {
+        'nvim-lua/plenary.nvim',
+      },
+      config = function()
+        require('devcontainer').setup({
+          -- your configuration
+        })
+      end,
+    }
+<
+
+Using packer.nvim: >lua
+
+    use {
+      'ksoichiro/devcontainer.nvim',
+      requires = {
+        'nvim-lua/plenary.nvim',
+      },
+      config = function()
+        require('devcontainer').setup()
+      end,
+    }
+<
+
+==============================================================================
+4. QUICK START                                        *devcontainer-quickstart*
+
+1. Create a `.devcontainer/devcontainer.json` file in your project:
+>json
+    {
+      "name": "My Project",
+      "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+      "postCreateCommand": "echo 'Container ready!'"
+    }
+<
+
+2. Open the devcontainer:
+>vim
+    :DevcontainerOpen
+    :DevcontainerStart
+<
+
+3. Open a terminal in the container:
+>vim
+    :DevcontainerShell
+<
+
+==============================================================================
+5. COMMANDS                                            *devcontainer-commands*
+
+Basic Operations~
+                                                          *:DevcontainerOpen*
+:DevcontainerOpen [path]
+    Open and parse devcontainer configuration from the specified path or
+    current directory. This loads the devcontainer.json file but doesn't
+    start the container.
+
+                                                         *:DevcontainerBuild*
+:DevcontainerBuild
+    Build the Docker image specified in the devcontainer configuration.
+    Required if using a Dockerfile instead of a pre-built image.
+
+                                                         *:DevcontainerStart*
+:DevcontainerStart
+    Start the devcontainer. This will build the image if necessary, create
+    the container, and run any postCreateCommand.
+
+                                                          *:DevcontainerStop*
+:DevcontainerStop
+    Stop the running devcontainer.
+
+                                                       *:DevcontainerRestart*
+:DevcontainerRestart
+    Stop and restart the devcontainer.
+
+Execution & Access~
+                                                          *:DevcontainerExec*
+:DevcontainerExec {command}
+    Execute a command inside the running container.
+    Example: >vim
+        :DevcontainerExec npm install
+<
+
+                                                         *:DevcontainerShell*
+:DevcontainerShell [shell]
+    Open an interactive shell in the container. Default is /bin/bash.
+    Example: >vim
+        :DevcontainerShell /bin/zsh
+<
+
+Information Display~
+                                                        *:DevcontainerStatus*
+:DevcontainerStatus
+    Show the current status of the devcontainer, including container ID,
+    state, image, and port mappings.
+
+                                                          *:DevcontainerLogs*
+:DevcontainerLogs [follow]
+    Show container logs. Add 'follow' or 'f' to follow log output.
+    Example: >vim
+        :DevcontainerLogs follow
+<
+
+                                                        *:DevcontainerConfig*
+:DevcontainerConfig
+    Display the current plugin configuration.
+
+LSP Integration~
+                                                     *:DevcontainerLspStatus*
+:DevcontainerLspStatus
+    Show the status of LSP servers detected and running in the container.
+
+                                                      *:DevcontainerLspSetup*
+:DevcontainerLspSetup
+    Manually setup LSP servers in the container. Usually this happens
+    automatically.
+
+Management~
+                                                         *:DevcontainerReset*
+:DevcontainerReset
+    Reset the plugin state. Useful if the plugin gets into an inconsistent
+    state.
+
+                                                         *:DevcontainerDebug*
+:DevcontainerDebug
+    Show comprehensive debug information including Docker status, container
+    details, configuration, and LSP state.
+
+                                                     *:DevcontainerReconnect*
+:DevcontainerReconnect
+    Attempt to reconnect to an existing devcontainer. Useful after restarting
+    Neovim.
+
+==============================================================================
+6. CONFIGURATION                                   *devcontainer-configuration*
+
+Configure the plugin by passing options to the setup function:
+>lua
+    require('devcontainer').setup({
+      -- Options here
+    })
+<
+
+Options~
+
+auto_start                                      *devcontainer-config-auto_start*
+    Type: |boolean|
+    Default: `false`
+
+    Automatically start containers when opening projects with
+    devcontainer.json.
+
+log_level                                        *devcontainer-config-log_level*
+    Type: |string|
+    Default: `"info"`
+
+    Logging level. Options: "debug", "info", "warn", "error".
+
+container_runtime                        *devcontainer-config-container_runtime*
+    Type: |string|
+    Default: `"docker"`
+
+    Container runtime to use. Options: "docker", "podman".
+
+ui                                                      *devcontainer-config-ui*
+    Type: |table|
+    Default: See below
+
+    UI configuration options:
+>lua
+    ui = {
+      use_telescope = true,      -- Use telescope for pickers
+      show_notifications = true, -- Show notifications
+      status_line = true,       -- Show in statusline
+      icons = {
+        container = "🐳",
+        running = "✅",
+        stopped = "⏹️",
+        building = "🔨",
+        error = "❌",
+      },
+    }
+<
+
+terminal                                          *devcontainer-config-terminal*
+    Type: |table|
+    Default: See below
+
+    Terminal configuration:
+>lua
+    terminal = {
+      shell = '/bin/bash',
+      height = 15,
+      direction = 'horizontal', -- 'horizontal', 'vertical', 'float'
+      close_on_exit = false,
+    }
+<
+
+port_forwarding                            *devcontainer-config-port_forwarding*
+    Type: |table|
+    Default: See below
+
+    Port forwarding configuration:
+>lua
+    port_forwarding = {
+      auto_forward = true,
+      notification = true,
+      common_ports = {3000, 8080, 5000, 3001},
+    }
+<
+
+workspace                                        *devcontainer-config-workspace*
+    Type: |table|
+    Default: See below
+
+    Workspace configuration:
+>lua
+    workspace = {
+      auto_mount = true,
+      mount_point = '/workspace',
+      exclude_patterns = { '.git', 'node_modules', '.next' },
+    }
+<
+
+==============================================================================
+7. API                                                      *devcontainer-api*
+
+The plugin exposes a Lua API for programmatic access:
+
+Setup~
+                                                         *devcontainer.setup()*
+devcontainer.setup({config})
+    Initialize the plugin with the given configuration.
+
+Basic Operations~
+                                                          *devcontainer.open()*
+devcontainer.open([path])
+    Open devcontainer configuration from path.
+
+                                                         *devcontainer.build()*
+devcontainer.build()
+    Build the container image.
+
+                                                         *devcontainer.start()*
+devcontainer.start()
+    Start the container.
+
+                                                          *devcontainer.stop()*
+devcontainer.stop()
+    Stop the container.
+
+Command Execution~
+                                                          *devcontainer.exec()*
+devcontainer.exec(command, [opts])
+    Execute a command in the container.
+
+    Parameters:
+      • {command} (string) Command to execute
+      • {opts} (table, optional) Options table
+
+    Example: >lua
+        require('devcontainer').exec('npm test')
+<
+
+                                                         *devcontainer.shell()*
+devcontainer.shell([shell])
+    Open a shell in the container.
+
+Information~
+                                                        *devcontainer.status()*
+devcontainer.status()
+    Get container status information.
+
+                                                    *devcontainer.get_config()*
+devcontainer.get_config()
+    Get the current devcontainer configuration.
+
+                                              *devcontainer.get_container_id()*
+devcontainer.get_container_id()
+    Get the current container ID.
+
+==============================================================================
+8. DEVCONTAINER.JSON                                      *devcontainer-json*
+
+The plugin supports standard devcontainer.json format. Here are common fields:
+
+Basic Configuration~
+>json
+    {
+      "name": "My Development Container",
+      "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+      "workspaceFolder": "/workspace",
+      "postCreateCommand": "echo 'Setup complete!'"
+    }
+<
+
+Using Dockerfile~
+>json
+    {
+      "name": "Custom Container",
+      "dockerFile": "Dockerfile",
+      "context": "..",
+      "workspaceFolder": "/workspace"
+    }
+<
+
+With Features~
+>json
+    {
+      "name": "Node.js Project",
+      "image": "mcr.microsoft.com/devcontainers/javascript-node:18",
+      "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+      }
+    }
+<
+
+Port Forwarding~
+>json
+    {
+      "name": "Web App",
+      "image": "node:18",
+      "forwardPorts": [3000, 8080],
+      "portsAttributes": {
+        "3000": {
+          "label": "Application",
+          "onAutoForward": "notify"
+        }
+      }
+    }
+<
+
+Environment Variables~
+>json
+    {
+      "name": "Python App",
+      "image": "python:3.11",
+      "containerEnv": {
+        "FLASK_ENV": "development",
+        "DATABASE_URL": "postgresql://localhost/myapp"
+      }
+    }
+<
+
+Mounts~
+>json
+    {
+      "name": "Data Science",
+      "image": "jupyter/scipy-notebook",
+      "mounts": [
+        "source=${localWorkspaceFolder}/data,target=/data,type=bind",
+        "source=myvolume,target=/cache,type=volume"
+      ]
+    }
+<
+
+==============================================================================
+9. TROUBLESHOOTING                               *devcontainer-troubleshooting*
+
+Docker Issues~
+
+Docker not running:
+  1. Check Docker status: >bash
+        docker info
+<
+  2. Start Docker daemon: >bash
+        sudo systemctl start docker
+<
+
+Permission denied:
+  • Add user to docker group: >bash
+        sudo usermod -aG docker $USER
+<
+  • Log out and back in
+
+Container Issues~
+
+Container won't start:
+  1. Check logs: >vim
+        :DevcontainerLogs
+<
+  2. Debug information: >vim
+        :DevcontainerDebug
+<
+  3. Try rebuilding: >vim
+        :DevcontainerBuild
+<
+
+LSP not working:
+  1. Check LSP status: >vim
+        :DevcontainerLspStatus
+<
+  2. Manually setup LSP: >vim
+        :DevcontainerLspSetup
+<
+  3. Verify language server is installed in container
+
+Performance Issues~
+
+Slow file operations:
+  • Add to devcontainer.json: >json
+        "mounts": [
+          "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+        ]
+<
+
+Large Docker images:
+  • Use .dockerignore to exclude unnecessary files
+  • Use multi-stage builds in Dockerfile
+
+Common Error Messages~
+
+"No devcontainer.json found":
+  • Ensure .devcontainer/devcontainer.json exists
+  • Check file permissions
+
+"Container name conflicts":
+  • The plugin now uses project-path-based unique names
+  • Old containers may need manual removal
+
+"LSP client not found":
+  • Ensure nvim-lspconfig is installed
+  • Check that language server is in container PATH
+
+==============================================================================
+10. CONTRIBUTING                                   *devcontainer-contributing*
+
+Contributions are welcome! Visit the GitHub repository:
+https://github.com/ksoichiro/devcontainer.nvim
+
+Development Setup~
+
+1. Fork and clone the repository
+2. Install development dependencies: >bash
+        make install-dev
+        make install-hooks
+<
+3. Make changes and test
+4. Run quality checks: >bash
+        make lint
+        make test
+<
+5. Submit pull request
+
+Reporting Issues~
+
+Please include:
+  • Neovim version (:version)
+  • Docker version (docker --version)
+  • devcontainer.json content
+  • Debug output (:DevcontainerDebug)
+  • Error messages and logs
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

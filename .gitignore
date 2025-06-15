@@ -1,0 +1,24 @@
+# Neovim help tags (auto-generated)
+doc/tags
+
+# Lua language server
+.luarc.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Test artifacts
+*.log
+*.tmp
+
+# Dependencies
+node_modules/
+.luarocks/
