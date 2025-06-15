@@ -36,10 +36,55 @@ M.defaults = {
 
   -- Terminal settings
   terminal = {
-    shell = '/bin/bash',
-    height = 15,
-    direction = 'horizontal', -- 'horizontal', 'vertical', 'float'
-    close_on_exit = false,
+    -- Default shell and behavior
+    default_shell = '/bin/bash',
+    auto_insert = true, -- Automatically enter insert mode
+    close_on_exit = false, -- Keep buffer open when process exits
+
+    -- Session management
+    persistent_history = true, -- Save terminal history across sessions
+    max_history_lines = 10000, -- Maximum lines to keep in history
+    history_dir = vim.fn.stdpath('data') .. '/devcontainer/terminal_history',
+
+    -- Default positioning
+    default_position = 'split', -- 'split', 'vsplit', 'tab', 'float'
+
+    -- Size configuration
+    split_size = 0.3, -- Size ratio for splits (0.1 to 0.9)
+
+    -- Split configuration
+    split = {
+      height = 15, -- Lines for horizontal split
+      width = 80, -- Columns for vertical split
+    },
+
+    -- Float configuration
+    float = {
+      width = 0.8, -- Ratio of editor width
+      height = 0.6, -- Ratio of editor height
+      border = 'rounded', -- 'single', 'double', 'rounded', 'solid', 'shadow'
+      title = 'DevContainer Terminal',
+      title_pos = 'center', -- 'left', 'center', 'right'
+    },
+
+    -- Environment configuration
+    environment = {
+      'TERM=xterm-256color',
+      'COLORTERM=truecolor',
+    },
+
+    -- Keymaps for terminal mode
+    keymaps = {
+      -- Terminal mode keymaps
+      close = '<C-q>', -- Close terminal
+      escape = '<C-\\><C-n>', -- Exit terminal mode
+
+      -- Normal mode keymaps
+      new_session = '<leader>tn', -- Create new terminal session
+      list_sessions = '<leader>tl', -- List terminal sessions
+      next_session = '<leader>t]', -- Next terminal session
+      prev_session = '<leader>t[', -- Previous terminal session
+    },
   },
 
   -- UI settings
@@ -139,10 +184,16 @@ local function validate_config(config)
     table.insert(errors, 'auto_start_delay must be a non-negative number')
   end
 
-  -- Validate terminal direction
-  local valid_directions = { 'horizontal', 'vertical', 'float' }
-  if not vim.tbl_contains(valid_directions, config.terminal.direction) then
-    table.insert(errors, 'Invalid terminal direction: ' .. config.terminal.direction)
+  -- Validate terminal default_position
+  local valid_positions = { 'split', 'vsplit', 'tab', 'float' }
+  if not vim.tbl_contains(valid_positions, config.terminal.default_position) then
+    table.insert(errors, 'Invalid terminal default_position: ' .. config.terminal.default_position)
+  end
+
+  -- Validate terminal float border
+  local valid_borders = { 'single', 'double', 'rounded', 'solid', 'shadow' }
+  if config.terminal.float.border and not vim.tbl_contains(valid_borders, config.terminal.float.border) then
+    table.insert(errors, 'Invalid terminal float border: ' .. config.terminal.float.border)
   end
 
   -- Validate port range

@@ -28,6 +28,16 @@ function M.setup(user_config)
     return false
   end
 
+  -- Initialize terminal system
+  local terminal_ok, terminal_err = pcall(function()
+    local terminal = require('devcontainer.terminal')
+    terminal.setup(config.get())
+  end)
+
+  if not terminal_ok then
+    log.warn('Failed to initialize terminal system: %s', terminal_err)
+  end
+
   state.initialized = true
   log.debug('devcontainer.nvim initialized successfully')
 
@@ -547,7 +557,7 @@ function M.exec(command, opts)
   return docker.exec_command(state.current_container, command, opts)
 end
 
--- Open terminal
+-- Open terminal (legacy function - now uses enhanced terminal system)
 function M.shell(shell)
   log = log or require('devcontainer.utils.log')
 
@@ -556,15 +566,75 @@ function M.shell(shell)
     return false
   end
 
-  shell = shell or '/bin/bash'
+  -- Use enhanced terminal system
+  local terminal = require('devcontainer.terminal')
+  return terminal.terminal({
+    shell = shell,
+    position = 'split',
+    name = 'main',
+  })
+end
 
-  -- Open new terminal buffer
-  vim.cmd('split')
-  local term_opts = string.format('docker exec -it %s %s', state.current_container, shell)
-  vim.cmd('terminal ' .. term_opts)
-  vim.cmd('startinsert')
+-- Enhanced terminal functions
 
-  return true
+-- Create or switch to terminal session
+function M.terminal(opts)
+  local terminal = require('devcontainer.terminal')
+  return terminal.terminal(opts)
+end
+
+-- Create new terminal session
+function M.terminal_new(name)
+  local terminal = require('devcontainer.terminal')
+  return terminal.new_session(name)
+end
+
+-- List terminal sessions
+function M.terminal_list()
+  local terminal = require('devcontainer.terminal')
+  return terminal.list_sessions()
+end
+
+-- Close terminal session
+function M.terminal_close(name)
+  local terminal = require('devcontainer.terminal')
+  return terminal.close_session(name)
+end
+
+-- Close all terminal sessions
+function M.terminal_close_all()
+  local terminal = require('devcontainer.terminal')
+  return terminal.close_all_sessions()
+end
+
+-- Rename terminal session
+function M.terminal_rename(old_name, new_name)
+  local terminal = require('devcontainer.terminal')
+  return terminal.rename_session(old_name, new_name)
+end
+
+-- Switch to next terminal session
+function M.terminal_next()
+  local terminal = require('devcontainer.terminal')
+  return terminal.next_session()
+end
+
+-- Switch to previous terminal session
+function M.terminal_prev()
+  local terminal = require('devcontainer.terminal')
+  return terminal.prev_session()
+end
+
+-- Show terminal status
+function M.terminal_status()
+  local terminal = require('devcontainer.terminal')
+  return terminal.show_status()
+end
+
+-- Clean up terminal history
+function M.terminal_cleanup_history(days)
+  local terminal = require('devcontainer.terminal')
+  return terminal.cleanup_history(days)
 end
 
 -- Get container status

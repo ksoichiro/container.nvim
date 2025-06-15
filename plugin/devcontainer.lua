@@ -70,7 +70,132 @@ local function create_commands()
     require('devcontainer').shell(shell)
   end, {
     nargs = '?',
-    desc = 'Open shell in devcontainer',
+    desc = 'Open shell in devcontainer (legacy command)',
+  })
+
+  -- Enhanced terminal commands
+  vim.api.nvim_create_user_command('DevcontainerTerminal', function(args)
+    local opts = {}
+    local remaining_args = {}
+
+    -- Parse arguments
+    for _, arg in ipairs(vim.split(args.args, ' ')) do
+      if arg:match('^%-%-position=') then
+        opts.position = arg:gsub('^%-%-position=', '')
+      elseif arg:match('^%-%-name=') then
+        opts.name = arg:gsub('^%-%-name=', '')
+      elseif arg:match('^%-%-shell=') then
+        opts.shell = arg:gsub('^%-%-shell=', '')
+      elseif arg:match('^%-%-size=') then
+        local size = tonumber(arg:gsub('^%-%-size=', ''))
+        if size then
+          opts.width = size
+          opts.height = size
+        end
+      elseif arg == '--split' then
+        opts.position = 'split'
+      elseif arg == '--vsplit' then
+        opts.position = 'vsplit'
+      elseif arg == '--tab' then
+        opts.position = 'tab'
+      elseif arg == '--float' then
+        opts.position = 'float'
+      elseif arg ~= '' then
+        table.insert(remaining_args, arg)
+      end
+    end
+
+    -- First remaining arg is session name if provided
+    if #remaining_args > 0 then
+      opts.name = remaining_args[1]
+    end
+
+    require('devcontainer').terminal(opts)
+  end, {
+    nargs = '*',
+    desc = 'Open enhanced terminal in devcontainer',
+    complete = function(arg_lead, cmd_line, cursor_pos)
+      local completions = {
+        '--position=split',
+        '--position=vsplit',
+        '--position=tab',
+        '--position=float',
+        '--split',
+        '--vsplit',
+        '--tab',
+        '--float',
+        '--name=',
+        '--shell=',
+        '--size=',
+      }
+      return vim.tbl_filter(function(item)
+        return item:match('^' .. vim.pesc(arg_lead))
+      end, completions)
+    end,
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalNew', function(args)
+    local name = args.args ~= '' and args.args or nil
+    require('devcontainer').terminal_new(name)
+  end, {
+    nargs = '?',
+    desc = 'Create new terminal session',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalList', function()
+    require('devcontainer').terminal_list()
+  end, {
+    desc = 'List all terminal sessions',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalClose', function(args)
+    local name = args.args ~= '' and args.args or nil
+    require('devcontainer').terminal_close(name)
+  end, {
+    nargs = '?',
+    desc = 'Close terminal session',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalCloseAll', function()
+    require('devcontainer').terminal_close_all()
+  end, {
+    desc = 'Close all terminal sessions',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalRename', function(args)
+    local args_list = vim.split(args.args, ' ')
+    local old_name = args_list[1]
+    local new_name = args_list[2]
+    require('devcontainer').terminal_rename(old_name, new_name)
+  end, {
+    nargs = '*',
+    desc = 'Rename terminal session',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalNext', function()
+    require('devcontainer').terminal_next()
+  end, {
+    desc = 'Switch to next terminal session',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalPrev', function()
+    require('devcontainer').terminal_prev()
+  end, {
+    desc = 'Switch to previous terminal session',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalStatus', function()
+    require('devcontainer').terminal_status()
+  end, {
+    desc = 'Show terminal system status',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminalCleanup', function(args)
+    local days = tonumber(args.args) or 30
+    require('devcontainer').terminal_cleanup_history(days)
+  end, {
+    nargs = '?',
+    desc = 'Clean up old terminal history files',
   })
 
   -- Information display commands

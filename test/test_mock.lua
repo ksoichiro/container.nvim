@@ -54,6 +54,12 @@ _G.vim = {
     expand = function(path)
       return path:gsub('%%:p', '/test/file.lua')
     end,
+    stdpath = function(what)
+      if what == 'data' then
+        return '/test/data'
+      end
+      return '/test'
+    end,
   },
   startswith = function(str, prefix)
     return str:sub(1, #prefix) == prefix

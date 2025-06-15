@@ -92,6 +92,24 @@ function M.read_file(path)
   return content
 end
 
+-- Ensure directory exists (create if needed)
+function M.ensure_directory(path)
+  if not path then
+    return false, 'No path provided'
+  end
+
+  if M.is_directory(path) then
+    return true
+  end
+
+  local success = vim.fn.mkdir(path, 'p')
+  if success == 0 then
+    return false, 'Failed to create directory: ' .. path
+  end
+
+  return true
+end
+
 -- File writing (sync)
 function M.write_file(path, content)
   -- Create directory if it doesn't exist

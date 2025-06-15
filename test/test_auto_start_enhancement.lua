@@ -52,6 +52,12 @@ _G.vim = {
       print(string.format('[MOCK CONFIRM] %s', msg))
       return 1 -- Always choose first option for testing
     end,
+    stdpath = function(what)
+      if what == 'data' then
+        return '/test/data'
+      end
+      return '/test'
+    end,
   },
   defer_fn = function(fn, delay)
     print(string.format('[DEFER] Function deferred by %dms', delay))

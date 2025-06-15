@@ -55,6 +55,12 @@ _G.vim = {
     sha256 = function(str)
       return 'abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234'
     end,
+    stdpath = function(what)
+      if what == 'data' then
+        return '/test/data'
+      end
+      return '/test'
+    end,
     fnamemodify = function(path, mod)
       if mod == ':p' then
         return path
