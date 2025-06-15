@@ -320,7 +320,6 @@ end
 
 " Command execution
 :DevcontainerExec <command>      " Execute command in container
-:DevcontainerShell [shell]       " Open shell in container
 
 " Information display
 :DevcontainerStatus              " Display container status

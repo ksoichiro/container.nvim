@@ -65,14 +65,6 @@ local function create_commands()
     desc = 'Execute command in devcontainer',
   })
 
-  vim.api.nvim_create_user_command('DevcontainerShell', function(args)
-    local shell = args.args ~= '' and args.args or nil
-    require('devcontainer').shell(shell)
-  end, {
-    nargs = '?',
-    desc = 'Open shell in devcontainer (legacy command)',
-  })
-
   -- Enhanced terminal commands
   vim.api.nvim_create_user_command('DevcontainerTerminal', function(args)
     local opts = {}

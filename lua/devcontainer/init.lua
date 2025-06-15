@@ -557,24 +557,6 @@ function M.exec(command, opts)
   return docker.exec_command(state.current_container, command, opts)
 end
 
--- Open terminal (legacy function - now uses enhanced terminal system)
-function M.shell(shell)
-  log = log or require('devcontainer.utils.log')
-
-  if not state.current_container then
-    log.error('No active container')
-    return false
-  end
-
-  -- Use enhanced terminal system
-  local terminal = require('devcontainer.terminal')
-  return terminal.terminal({
-    shell = shell,
-    position = 'split',
-    name = 'main',
-  })
-end
-
 -- Enhanced terminal functions
 
 -- Create or switch to terminal session

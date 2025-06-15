@@ -119,7 +119,7 @@ return {
       { "<leader>cb", "<cmd>DevcontainerBuild<cr>", desc = "Build devcontainer" },
       { "<leader>cs", "<cmd>DevcontainerStart<cr>", desc = "Start devcontainer" },
       { "<leader>cx", "<cmd>DevcontainerStop<cr>", desc = "Stop devcontainer" },
-      { "<leader>ct", "<cmd>DevcontainerShell<cr>", desc = "Open shell" },
+      { "<leader>ct", "<cmd>DevcontainerTerminal<cr>", desc = "Open terminal" },
       { "<leader>cl", "<cmd>DevcontainerLogs<cr>", desc = "Show logs" },
       { "<leader>ci", "<cmd>DevcontainerStatus<cr>", desc = "Show status" },
       { "<leader>cr", "<cmd>DevcontainerReset<cr>", desc = "Reset state" },

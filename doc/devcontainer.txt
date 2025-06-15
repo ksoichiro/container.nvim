@@ -130,12 +130,6 @@ Execution & Access~
         :DevcontainerExec npm install
 <
 
-                                                         *:DevcontainerShell*
-:DevcontainerShell [shell]
-    Open an interactive shell in the container. Default is /bin/bash.
-    Example: >vim
-        :DevcontainerShell /bin/zsh
-<
 
 Information Display~
                                                         *:DevcontainerStatus*
@@ -668,9 +662,6 @@ devcontainer.exec(command, [opts])
         require('devcontainer').exec('npm test')
 <
 
-                                                         *devcontainer.shell()*
-devcontainer.shell([shell])
-    Open a shell in the container (legacy function).
 
 Enhanced Terminal~
                                                       *devcontainer.terminal()*

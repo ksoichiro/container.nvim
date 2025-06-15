@@ -121,7 +121,6 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | Command | Description |
 |---------|-------------|
 | `:DevcontainerExec <command>` | Execute command in container |
-| `:DevcontainerShell [shell]` | Open shell in container (legacy) |
 
 ### Enhanced Terminal Integration
 
@@ -293,7 +292,6 @@ require('devcontainer').stop()
 
 -- Command execution
 require('devcontainer').exec('npm test')
-require('devcontainer').shell('/bin/zsh')      -- Legacy shell function
 
 -- Enhanced terminal functions
 require('devcontainer').terminal({ name = 'dev', position = 'float' })
