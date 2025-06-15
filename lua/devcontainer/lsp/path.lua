@@ -13,8 +13,8 @@ function M.setup(workspace_folder, container_workspace, mounts)
   path_mappings.workspace_folder = vim.fn.fnamemodify(workspace_folder or vim.fn.getcwd(), ':p')
   path_mappings.container_workspace = container_workspace or '/workspace'
   path_mappings.mounts = mounts or {}
-  
-  log.debug('Path: Initialized mappings - Local: ' .. path_mappings.workspace_folder .. 
+
+  log.debug('Path: Initialized mappings - Local: ' .. path_mappings.workspace_folder ..
             ', Container: ' .. path_mappings.container_workspace)
 end
 
@@ -23,9 +23,9 @@ function M.to_container_path(local_path)
   if not local_path then
     return nil
   end
-  
+
   local abs_path = vim.fn.fnamemodify(local_path, ':p')
-  
+
   -- Check if path is within workspace
   if vim.startswith(abs_path, path_mappings.workspace_folder) then
     local relative = string.sub(abs_path, #path_mappings.workspace_folder + 1)
@@ -34,7 +34,7 @@ function M.to_container_path(local_path)
     log.debug('Path: Local to container - ' .. abs_path .. ' -> ' .. container_path)
     return container_path
   end
-  
+
   -- Check custom mount points
   for local_mount, container_mount in pairs(path_mappings.mounts) do
     if vim.startswith(abs_path, local_mount) then
@@ -45,7 +45,7 @@ function M.to_container_path(local_path)
       return container_path
     end
   end
-  
+
   -- Path is outside workspace, return as-is
   log.debug('Path: Local path outside workspace - ' .. abs_path)
   return abs_path
@@ -56,7 +56,7 @@ function M.to_local_path(container_path)
   if not container_path then
     return nil
   end
-  
+
   -- Check if path is within container workspace
   if vim.startswith(container_path, path_mappings.container_workspace) then
     local relative = string.sub(container_path, #path_mappings.container_workspace + 1)
@@ -65,7 +65,7 @@ function M.to_local_path(container_path)
     log.debug('Path: Container to local - ' .. container_path .. ' -> ' .. local_path)
     return local_path
   end
-  
+
   -- Check custom mount points
   for local_mount, container_mount in pairs(path_mappings.mounts) do
     if vim.startswith(container_path, container_mount) then
@@ -76,7 +76,7 @@ function M.to_local_path(container_path)
       return local_path
     end
   end
-  
+
   -- Path is outside mapped directories
   log.debug('Path: Container path outside mappings - ' .. container_path)
   return container_path
@@ -87,10 +87,10 @@ function M.transform_uri(uri, direction)
   if not uri or not vim.startswith(uri, 'file://') then
     return uri
   end
-  
+
   local path = vim.uri_to_fname(uri)
   local transformed_path
-  
+
   if direction == 'to_container' then
     transformed_path = M.to_container_path(path)
   elseif direction == 'to_local' then
@@ -99,13 +99,13 @@ function M.transform_uri(uri, direction)
     log.error('Path: Invalid direction - ' .. tostring(direction))
     return uri
   end
-  
+
   if transformed_path then
     local new_uri = vim.uri_from_fname(transformed_path)
     log.debug('Path: URI transform - ' .. uri .. ' -> ' .. new_uri)
     return new_uri
   end
-  
+
   return uri
 end
 
@@ -114,19 +114,19 @@ function M.transform_lsp_params(params, direction)
   if not params then
     return params
   end
-  
+
   local transformed = vim.deepcopy(params)
-  
+
   -- Transform textDocument.uri
   if transformed.textDocument and transformed.textDocument.uri then
     transformed.textDocument.uri = M.transform_uri(transformed.textDocument.uri, direction)
   end
-  
+
   -- Transform rootUri
   if transformed.rootUri then
     transformed.rootUri = M.transform_uri(transformed.rootUri, direction)
   end
-  
+
   -- Transform workspaceFolders
   if transformed.workspaceFolders then
     for i, folder in ipairs(transformed.workspaceFolders) do
@@ -135,18 +135,18 @@ function M.transform_lsp_params(params, direction)
       end
     end
   end
-  
+
   -- Transform location/locations in responses
   if transformed.location then
     transformed.location.uri = M.transform_uri(transformed.location.uri, direction)
   end
-  
+
   if transformed.locations then
     for i, location in ipairs(transformed.locations) do
       transformed.locations[i].uri = M.transform_uri(location.uri, direction)
     end
   end
-  
+
   -- Transform diagnostics
   if transformed.diagnostics then
     for i, diagnostic in ipairs(transformed.diagnostics) do
@@ -156,14 +156,14 @@ function M.transform_lsp_params(params, direction)
       if diagnostic.relatedInformation then
         for j, info in ipairs(diagnostic.relatedInformation) do
           if info.location and info.location.uri then
-            transformed.diagnostics[i].relatedInformation[j].location.uri = 
+            transformed.diagnostics[i].relatedInformation[j].location.uri =
               M.transform_uri(info.location.uri, direction)
           end
         end
       end
     end
   end
-  
+
   return transformed
 end
 

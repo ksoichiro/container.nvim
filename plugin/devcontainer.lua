@@ -182,8 +182,8 @@ vim.api.nvim_create_autocmd({'BufWritePost'}, {
   group = augroup,
   pattern = {'devcontainer.json', '.devcontainer/devcontainer.json'},
   callback = function()
-    vim.notify('devcontainer.json updated. You may need to rebuild the container.', 
-               vim.log.levels.INFO, 
+    vim.notify('devcontainer.json updated. You may need to rebuild the container.',
+               vim.log.levels.INFO,
                { title = 'devcontainer.nvim' })
   end,
 })
@@ -198,8 +198,8 @@ vim.api.nvim_create_autocmd({'VimEnter', 'DirChanged'}, {
       local parser = require('devcontainer.parser')
       local devcontainer_path = parser.find_devcontainer_json()
       if devcontainer_path then
-        vim.notify('Found devcontainer.json. Use :DevcontainerOpen to start.', 
-                   vim.log.levels.INFO, 
+        vim.notify('Found devcontainer.json. Use :DevcontainerOpen to start.',
+                   vim.log.levels.INFO,
                    { title = 'devcontainer.nvim' })
       end
     end

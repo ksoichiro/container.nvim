@@ -11,18 +11,18 @@ local stdio_bridges = {}
 local function find_available_port(start_port)
   start_port = start_port or 50000
   local max_attempts = 100
-  
+
   for i = 0, max_attempts do
     local port = start_port + i
     local sock = vim.loop.new_tcp()
     local success = sock:bind('127.0.0.1', port)
     sock:close()
-    
+
     if success then
       return port
     end
   end
-  
+
   return nil
 end
 
@@ -33,7 +33,7 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
     log.error('Forwarding: Could not find available local port')
     return nil
   end
-  
+
   -- Check if container is using host network
   local docker = require('devcontainer.docker.init')
   local inspect_result = docker.exec_command(container_id, 'docker inspect ' .. container_id .. ' --format "{{.HostConfig.NetworkMode}}"')
@@ -41,17 +41,17 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
     log.info('Forwarding: Container using host network, no forwarding needed')
     return container_port
   end
-  
+
   -- Setup port forwarding using docker port mapping
   -- Note: This requires the container to be started with port mapping
   -- For dynamic forwarding, we'll use SSH or socat inside the container
-  
+
   -- Try to setup socat forwarding inside the container
   local socat_cmd = string.format(
     'socat TCP-LISTEN:%d,reuseaddr,fork TCP:localhost:%d',
     local_port, container_port
   )
-  
+
   -- Check if socat is available
   local socat_check = docker.exec_command(container_id, 'which socat', { output = false })
   if socat_check.code ~= 0 then
@@ -69,7 +69,7 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
       return container_port, container_ip
     end
   end
-  
+
   -- Store forwarding info
   active_forwards[server_name] = {
     type = 'port',
@@ -77,32 +77,32 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
     container_port = container_port,
     container_id = container_id
   }
-  
+
   log.info(string.format('Forwarding: Set up port forwarding %s - localhost:%d -> container:%d',
     server_name, local_port, container_port))
-  
+
   return local_port, 'localhost'
 end
 
 -- Create stdio bridge for stdio-based LSP servers
 function M.create_stdio_bridge(container_id, cmd, server_name)
   log.info('Forwarding: Creating stdio bridge for ' .. server_name)
-  
+
   -- Create pipes for communication
   local stdin = vim.loop.new_pipe(false)
   local stdout = vim.loop.new_pipe(false)
   local stderr = vim.loop.new_pipe(false)
-  
+
   -- Build docker exec command
   local docker_cmd = {
     'docker', 'exec', '-i', container_id
   }
-  
+
   -- Add the LSP server command
   for _, arg in ipairs(cmd) do
     table.insert(docker_cmd, arg)
   end
-  
+
   -- Spawn the process
   local handle, pid = vim.loop.spawn(docker_cmd[1], {
     args = vim.list_slice(docker_cmd, 2),
@@ -112,7 +112,7 @@ function M.create_stdio_bridge(container_id, cmd, server_name)
     log.info('Forwarding: stdio bridge process exited - ' .. server_name)
     M.stop_stdio_bridge(server_name)
   end)
-  
+
   if not handle then
     log.error('Forwarding: Failed to create stdio bridge for ' .. server_name)
     stdin:close()
@@ -120,7 +120,7 @@ function M.create_stdio_bridge(container_id, cmd, server_name)
     stderr:close()
     return nil
   end
-  
+
   -- Store bridge info
   stdio_bridges[server_name] = {
     handle = handle,
@@ -130,9 +130,9 @@ function M.create_stdio_bridge(container_id, cmd, server_name)
     stderr = stderr,
     container_id = container_id
   }
-  
+
   log.info('Forwarding: stdio bridge created for ' .. server_name .. ' (pid: ' .. pid .. ')')
-  
+
   -- Return the stdio handles for LSP client
   return {
     stdin = stdin,
@@ -147,13 +147,13 @@ function M.create_request_handler(original_handler, direction)
     if err then
       return original_handler(err, result, ctx, config)
     end
-    
+
     -- Transform the result based on direction
     local transformed_result = result
     if result then
       transformed_result = path.transform_lsp_params(result, direction)
     end
-    
+
     -- Call original handler with transformed result
     return original_handler(err, transformed_result, ctx, config)
   end
@@ -167,7 +167,7 @@ function M.create_client_middleware()
       -- Pass through as-is
       return vim.lsp.handlers['window/showMessage'](nil, result, ctx, config)
     end,
-    
+
     -- Transform paths in common handlers
     ['textDocument/definition'] = function(err, result, ctx, config)
       if result then
@@ -175,14 +175,14 @@ function M.create_client_middleware()
       end
       return vim.lsp.handlers['textDocument/definition'](err, result, ctx, config)
     end,
-    
+
     ['textDocument/references'] = function(err, result, ctx, config)
       if result then
         result = path.transform_lsp_params(result, 'to_local')
       end
       return vim.lsp.handlers['textDocument/references'](err, result, ctx, config)
     end,
-    
+
     ['textDocument/implementation'] = function(err, result, ctx, config)
       if result then
         result = path.transform_lsp_params(result, 'to_local')
@@ -196,7 +196,7 @@ end
 function M.get_client_cmd(server_name, server_config, container_id)
   -- For now, use a simpler approach: create a docker exec command
   -- This bypasses the complexity of stdio bridges and should work reliably
-  
+
   local cmd = {
     'docker', 'exec', '-i',
     '--user', 'vscode',
@@ -204,9 +204,9 @@ function M.get_client_cmd(server_name, server_config, container_id)
     container_id,
     server_config.cmd or server_config.path or server_name
   }
-  
+
   log.info('Forwarding: Creating LSP command for ' .. server_name .. ': ' .. table.concat(cmd, ' '))
-  
+
   return cmd
 end
 
@@ -216,7 +216,7 @@ function M.stop_stdio_bridge(server_name)
   if not bridge then
     return
   end
-  
+
   -- Close pipes
   if bridge.stdin and not bridge.stdin:is_closing() then
     bridge.stdin:close()
@@ -227,12 +227,12 @@ function M.stop_stdio_bridge(server_name)
   if bridge.stderr and not bridge.stderr:is_closing() then
     bridge.stderr:close()
   end
-  
+
   -- Kill process
   if bridge.handle and not bridge.handle:is_closing() then
     bridge.handle:kill('sigterm')
   end
-  
+
   stdio_bridges[server_name] = nil
   log.info('Forwarding: Stopped stdio bridge for ' .. server_name)
 end
@@ -243,7 +243,7 @@ function M.stop_port_forwarding(server_name)
   if not forward then
     return
   end
-  
+
   active_forwards[server_name] = nil
   log.info('Forwarding: Stopped port forwarding for ' .. server_name)
 end
@@ -254,10 +254,10 @@ function M.stop_all()
   for server_name, _ in pairs(stdio_bridges) do
     M.stop_stdio_bridge(server_name)
   end
-  
+
   -- Clear port forwardings
   active_forwards = {}
-  
+
   log.info('Forwarding: Stopped all forwardings')
 end
 
@@ -267,7 +267,7 @@ function M.get_active_forwardings()
     ports = {},
     stdio = {}
   }
-  
+
   for name, info in pairs(active_forwards) do
     table.insert(result.ports, {
       name = name,
@@ -276,11 +276,11 @@ function M.get_active_forwardings()
       container_port = info.container_port
     })
   end
-  
+
   for name, _ in pairs(stdio_bridges) do
     table.insert(result.stdio, name)
   end
-  
+
   return result
 end
 

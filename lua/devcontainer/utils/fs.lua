@@ -8,18 +8,18 @@ function M.normalize_path(path)
   if not path then
     return nil
   end
-  
+
   -- Windows パスセパレータを Unix 形式に変換
   path = path:gsub("\\", "/")
-  
+
   -- 先頭の ./ を削除
   path = path:gsub("^%./", "")
-  
+
   -- 末尾のスラッシュを削除（ルートディレクトリ以外）
   if path ~= "/" then
     path = path:gsub("/$", "")
   end
-  
+
   return path
 end
 
@@ -47,7 +47,7 @@ function M.resolve_path(path, base_path)
   if M.is_absolute_path(path) then
     return M.normalize_path(path)
   end
-  
+
   base_path = base_path or vim.fn.getcwd()
   return M.normalize_path(M.join_path(base_path, path))
 end
@@ -81,12 +81,12 @@ function M.read_file(path)
   if not M.is_file(path) then
     return nil, "File does not exist: " .. path
   end
-  
+
   local file = io.open(path, "r")
   if not file then
     return nil, "Failed to open file: " .. path
   end
-  
+
   local content = file:read("*all")
   file:close()
   return content
@@ -99,12 +99,12 @@ function M.write_file(path, content)
   if not M.is_directory(dir) then
     vim.fn.mkdir(dir, "p")
   end
-  
+
   local file = io.open(path, "w")
   if not file then
     return false, "Failed to open file for writing: " .. path
   end
-  
+
   file:write(content)
   file:close()
   return true
@@ -113,20 +113,20 @@ end
 -- 上位ディレクトリを検索してファイルを見つける
 function M.find_file_upward(start_path, filename)
   local current_path = M.resolve_path(start_path)
-  
+
   while current_path and current_path ~= "/" do
     local target_path = M.join_path(current_path, filename)
     if M.exists(target_path) then
       return target_path
     end
-    
+
     local parent = vim.fn.fnamemodify(current_path, ":h")
     if parent == current_path then
       break
     end
     current_path = parent
   end
-  
+
   return nil
 end
 
@@ -135,7 +135,7 @@ function M.list_directory(path, pattern)
   if not M.is_directory(path) then
     return {}
   end
-  
+
   local files = {}
   local handle = vim.loop.fs_scandir(path)
   if handle then
@@ -144,7 +144,7 @@ function M.list_directory(path, pattern)
       if not name then
         break
       end
-      
+
       if not pattern or name:match(pattern) then
         table.insert(files, {
           name = name,
@@ -154,7 +154,7 @@ function M.list_directory(path, pattern)
       end
     end
   end
-  
+
   return files
 end
 
@@ -162,12 +162,12 @@ end
 function M.find_files(path, pattern, max_depth)
   max_depth = max_depth or 10
   local results = {}
-  
+
   local function search_recursive(current_path, depth)
     if depth > max_depth then
       return
     end
-    
+
     local files = M.list_directory(current_path)
     for _, file in ipairs(files) do
       if file.type == "file" and (not pattern or file.name:match(pattern)) then
@@ -177,11 +177,11 @@ function M.find_files(path, pattern, max_depth)
       end
     end
   end
-  
+
   if M.is_directory(path) then
     search_recursive(path, 1)
   end
-  
+
   return results
 end
 
@@ -190,7 +190,7 @@ function M.get_file_size(path)
   if not M.is_file(path) then
     return nil
   end
-  
+
   local stat = vim.loop.fs_stat(path)
   return stat and stat.size or nil
 end
@@ -200,7 +200,7 @@ function M.get_mtime(path)
   if not M.exists(path) then
     return nil
   end
-  
+
   local stat = vim.loop.fs_stat(path)
   return stat and stat.mtime.sec or nil
 end
@@ -242,21 +242,21 @@ function M.relative_path(path, base)
   base = base or vim.fn.getcwd()
   path = M.resolve_path(path)
   base = M.resolve_path(base)
-  
+
   -- 同じパスの場合
   if path == base then
     return "."
   end
-  
+
   -- 単純なケース: baseがpathの親ディレクトリ
   if path:sub(1, #base + 1) == base .. "/" then
     return path:sub(#base + 2)
   end
-  
+
   -- より複雑なケース: 共通の祖先を見つける
   local path_parts = vim.split(path, "/")
   local base_parts = vim.split(base, "/")
-  
+
   local common_length = 0
   for i = 1, math.min(#path_parts, #base_parts) do
     if path_parts[i] == base_parts[i] then
@@ -265,23 +265,23 @@ function M.relative_path(path, base)
       break
     end
   end
-  
+
   local relative_parts = {}
-  
+
   -- baseから共通祖先まで戻る
   for i = common_length + 1, #base_parts do
     table.insert(relative_parts, "..")
   end
-  
+
   -- 共通祖先からpathまで進む
   for i = common_length + 1, #path_parts do
     table.insert(relative_parts, path_parts[i])
   end
-  
+
   if #relative_parts == 0 then
     return "."
   end
-  
+
   return table.concat(relative_parts, "/")
 end
 

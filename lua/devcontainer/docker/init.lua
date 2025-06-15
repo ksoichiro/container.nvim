@@ -32,7 +32,7 @@ end
 -- Docker コマンドの可用性チェック（非同期版）
 function M.check_docker_availability_async(callback)
   log.debug("Checking Docker availability (async)")
-  
+
   -- Dockerバージョンチェック
   vim.fn.jobstart({'docker', '--version'}, {
     on_exit = function(_, exit_code, _)
@@ -41,7 +41,7 @@ function M.check_docker_availability_async(callback)
         callback(false, "Docker command not found")
         return
       end
-      
+
       -- Dockerデーモンチェック
       vim.fn.jobstart({'docker', 'info'}, {
         on_exit = function(_, daemon_exit_code, _)
@@ -66,23 +66,23 @@ end
 -- 同期的なDocker コマンド実行（互換性のため保持）
 function M.run_docker_command(args, opts)
   opts = opts or {}
-  
+
   -- 引数を適切にシェルエスケープ
   local escaped_args = {}
   for _, arg in ipairs(args) do
     table.insert(escaped_args, vim.fn.shellescape(arg))
   end
   local cmd = "docker " .. table.concat(escaped_args, " ")
-  
+
   if opts.cwd then
     cmd = "cd " .. vim.fn.shellescape(opts.cwd) .. " && " .. cmd
   end
-  
+
   log.debug("Executing (sync): %s", cmd)
-  
+
   local stdout = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
-  
+
   return {
     success = exit_code == 0,
     code = exit_code,
@@ -94,17 +94,17 @@ end
 -- 非同期的なDocker コマンド実行
 function M.run_docker_command_async(args, opts, callback)
   opts = opts or {}
-  
+
   local cmd_args = {'docker'}
   for _, arg in ipairs(args) do
     table.insert(cmd_args, arg)
   end
-  
+
   log.debug("Executing (async): %s", table.concat(cmd_args, " "))
-  
+
   local stdout_lines = {}
   local stderr_lines = {}
-  
+
   local job_opts = {
     on_stdout = function(_, data, _)
       if data then
@@ -131,7 +131,7 @@ function M.run_docker_command_async(args, opts, callback)
         stdout = table.concat(stdout_lines, "\n"),
         stderr = table.concat(stderr_lines, "\n"),
       }
-      
+
       if callback then
         vim.schedule(function()
           callback(result)
@@ -141,20 +141,20 @@ function M.run_docker_command_async(args, opts, callback)
     stdout_buffered = true,
     stderr_buffered = true,
   }
-  
+
   if opts.cwd then
     job_opts.cwd = opts.cwd
   end
-  
+
   return vim.fn.jobstart(cmd_args, job_opts)
 end
 
 -- Dockerイメージの存在確認
 function M.check_image_exists(image_name)
   log.debug("Checking if image exists: %s", image_name)
-  
+
   local result = M.run_docker_command({"images", "-q", image_name})
-  
+
   if result.success then
     local image_id = result.stdout:gsub("%s+", "")
     return image_id ~= ""
@@ -167,7 +167,7 @@ end
 -- Dockerイメージの存在確認（非同期版）
 function M.check_image_exists_async(image_name, callback)
   log.debug("Checking if image exists (async): %s", image_name)
-  
+
   M.run_docker_command_async({"images", "-q", image_name}, {}, function(result)
     if result.success then
       local image_id = result.stdout:gsub("%s+", "")
@@ -182,7 +182,7 @@ end
 -- Dockerイメージのプル（修正版 - 詳細デバッグ付き）
 function M.pull_image_async(image_name, on_progress, on_complete)
   log.info("Pulling Docker image (async): %s", image_name)
-  
+
   -- 開始直後のデバッグ情報
   if on_progress then
     on_progress("Starting image pull...")
@@ -194,14 +194,14 @@ function M.pull_image_async(image_name, on_progress, on_complete)
   local start_time = vim.loop.hrtime()
   local job_started = false
   local data_received = false
-  
+
   log.debug("About to start docker pull job for: %s", image_name)
-  
+
   local job_id = vim.fn.jobstart({'docker', 'pull', image_name}, {
     on_stdout = function(job_id, data, event)
       log.debug("Docker pull stdout callback triggered (job: %d, event: %s)", job_id, event)
       data_received = true
-      
+
       if data then
         log.debug("Docker pull stdout data length: %d", #data)
         for i, line in ipairs(data) do
@@ -211,7 +211,7 @@ function M.pull_image_async(image_name, on_progress, on_complete)
             if on_progress then
               local progress_line = "   [stdout] " .. line
               on_progress(progress_line)
-              
+
               -- Special handling for common docker pull messages
               if line:match("Pulling") or line:match("Downloading") or line:match("Extracting") or line:match("Pull complete") then
                 log.info("Docker pull progress: %s", line)
@@ -223,11 +223,11 @@ function M.pull_image_async(image_name, on_progress, on_complete)
         log.debug("Docker pull stdout: data is nil")
       end
     end,
-    
+
     on_stderr = function(job_id, data, event)
       log.debug("Docker pull stderr callback triggered (job: %d, event: %s)", job_id, event)
       data_received = true
-      
+
       if data then
         log.debug("Docker pull stderr data length: %d", #data)
         for i, line in ipairs(data) do
@@ -244,16 +244,16 @@ function M.pull_image_async(image_name, on_progress, on_complete)
         log.debug("Docker pull stderr: data is nil")
       end
     end,
-    
+
     on_exit = function(job_id, exit_code, event)
       local end_time = vim.loop.hrtime()
       local duration = (end_time - start_time) / 1e9 -- seconds
-      
+
       log.debug("Docker pull exit callback (job: %d, exit_code: %d, event: %s, duration: %.1fs)", job_id, exit_code, event, duration)
       log.debug("Data received during job: %s", tostring(data_received))
       log.debug("Total stdout lines: %d", #stdout_lines)
       log.debug("Total stderr lines: %d", #stderr_lines)
-      
+
       local result = {
         success = exit_code == 0,
         code = exit_code,
@@ -262,7 +262,7 @@ function M.pull_image_async(image_name, on_progress, on_complete)
         duration = duration,
         data_received = data_received
       }
-      
+
       if exit_code == 0 then
         log.info("Successfully pulled Docker image: %s (%.1fs)", image_name, duration)
         if on_progress then
@@ -281,14 +281,14 @@ function M.pull_image_async(image_name, on_progress, on_complete)
         end)
       end
     end,
-    
+
     -- Try without buffering to see if that helps
     stdout_buffered = false,
     stderr_buffered = false,
   })
-  
+
   log.debug("jobstart returned job_id: %s", tostring(job_id))
-  
+
   if job_id == 0 then
     log.error("Failed to start docker pull job (jobstart returned 0)")
     if on_progress then
@@ -312,36 +312,36 @@ function M.pull_image_async(image_name, on_progress, on_complete)
     end
     return nil
   end
-  
+
   job_started = true
   log.info("Started docker pull job with ID: %d", job_id)
-  
+
   if on_progress then
     on_progress("   Pull job started (ID: " .. job_id .. ")")
     on_progress("   Waiting for Docker output...")
   end
-  
+
   -- 進捗チェックを追加
   local progress_check_count = 0
   local function check_progress()
     progress_check_count = progress_check_count + 1
     local elapsed = (vim.loop.hrtime() - start_time) / 1e9
-    
+
     -- ジョブがまだ実行中かチェック
     local job_status = vim.fn.jobwait({job_id}, 0)[1]
-    
+
     if job_status == -1 then -- Still running
-      log.debug("Progress check #%d: job still running (%.1fs elapsed, data_received: %s)", 
+      log.debug("Progress check #%d: job still running (%.1fs elapsed, data_received: %s)",
         progress_check_count, elapsed, tostring(data_received))
-      
+
       if on_progress then
         on_progress(string.format("   [%.0fs] Pull in progress... (check #%d)", elapsed, progress_check_count))
-        
+
         if not data_received and elapsed > 30 then
           on_progress("   Warning: No data received from Docker yet. This might indicate a problem.")
         end
       end
-      
+
       -- 10分でタイムアウト
       if elapsed < 600 then
         vim.defer_fn(check_progress, 10000) -- Check every 10 seconds
@@ -361,10 +361,10 @@ function M.pull_image_async(image_name, on_progress, on_complete)
       log.debug("Progress check #%d: job finished with code %d", progress_check_count, job_status)
     end
   end
-  
+
   -- 最初の進捗チェックを5秒後に開始
   vim.defer_fn(check_progress, 5000)
-  
+
   return job_id
 end
 
@@ -375,7 +375,7 @@ function M.pull_image(image_name, on_progress, on_complete)
   -- 非同期処理をシミュレート
   vim.defer_fn(function()
     local result = M.run_docker_command({"pull", image_name})
-    
+
     if result.success then
       log.info("Successfully pulled Docker image: %s", image_name)
     else
@@ -421,7 +421,7 @@ function M.build_image(config, on_progress, on_complete)
     table.insert(args, context)
 
     local result = M.run_docker_command(args, {cwd = config.base_path})
-    
+
     if result.success then
       log.info("Successfully built Docker image: %s", tag)
       config.built_image = tag
@@ -487,7 +487,7 @@ function M.create_container_async(config, callback)
   log.info("Creating Docker container (async): %s", config.name)
 
   local args = M._build_create_args(config)
-  
+
   M.run_docker_command_async(args, {}, function(result)
     if result.success then
       local container_id = result.stdout:gsub("%s+", "")
@@ -501,12 +501,12 @@ function M.create_container_async(config, callback)
       if result.code then
         table.insert(error_parts, "Exit code: " .. tostring(result.code))
       end
-      
+
       local error_msg = "Docker create command failed"
       if #error_parts > 0 then
         error_msg = error_msg .. " | " .. table.concat(error_parts, " | ")
       end
-      
+
       log.error("Failed to create container: %s", error_msg)
       callback(nil, error_msg)
     end
@@ -722,7 +722,7 @@ function M.start_container(container_id, on_ready)
 
   vim.defer_fn(function()
     local result = M.run_docker_command({"start", container_id})
-    
+
     if result.success then
       log.info("Successfully started container: %s", container_id)
 
@@ -749,7 +749,7 @@ end
 -- コンテナの開始（改良版 - 非ブロッキング）
 function M.start_container_async(container_id, callback)
   log.info("Starting container asynchronously: %s", container_id)
-  
+
   -- コンテナを開始
   local result = M.run_docker_command({"start", container_id})
   if not result.success then
@@ -758,16 +758,16 @@ function M.start_container_async(container_id, callback)
     callback(false, error_msg)
     return
   end
-  
+
   log.info("Container started, checking readiness...")
-  
+
   -- 非ブロッキングで準備完了を待つ
   local attempts = 0
   local max_attempts = 30
-  
+
   local function check_ready()
     attempts = attempts + 1
-    
+
     local status = M.get_container_status(container_id)
     if status == "running" then
       -- 簡単なコマンドで確認
@@ -778,7 +778,7 @@ function M.start_container_async(container_id, callback)
         return
       end
     end
-    
+
     if attempts < max_attempts then
       -- 1秒後に再試行（非ブロッキング）
       vim.defer_fn(check_ready, 1000)
@@ -787,7 +787,7 @@ function M.start_container_async(container_id, callback)
       callback(false, "timeout")
     end
   end
-  
+
   -- 最初のチェックを開始
   vim.defer_fn(check_ready, 500)
 end
@@ -795,7 +795,7 @@ end
 -- シンプルなコンテナ起動テスト
 function M.start_container_simple(container_id)
   log.info("Starting container (simple): %s", container_id)
-  
+
   -- コンテナを開始
   local result = M.run_docker_command({"start", container_id})
   if not result.success then
@@ -803,9 +803,9 @@ function M.start_container_simple(container_id)
     log.error("Failed to start container: %s", error_msg)
     return false, error_msg
   end
-  
+
   log.info("Container start command completed: %s", container_id)
-  
+
   -- 状態確認（1回のみ）
   local status = M.get_container_status(container_id)
   return status == "running", status
@@ -825,7 +825,7 @@ function M.stop_container(container_id, timeout)
 
   vim.defer_fn(function()
     local result = M.run_docker_command(args)
-    
+
     if result.success then
       log.info("Successfully stopped container: %s", container_id)
     else
@@ -846,7 +846,7 @@ function M.remove_container(container_id, force)
 
   vim.defer_fn(function()
     local result = M.run_docker_command(args)
-    
+
     if result.success then
       log.info("Successfully removed container: %s", container_id)
     else
@@ -892,9 +892,9 @@ function M.exec_command(container_id, command, opts)
   -- 環境変数をクリアしてコンテナのデフォルト環境を使用（ユーザーのローカルbinも含める）
   table.insert(args, "-e")
   table.insert(args, "PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/bin:/usr/bin:/bin")
-  
+
   table.insert(args, container_id)
-  
+
   -- コマンドを分割
   if type(command) == "string" then
     -- シェルコマンドとして実行（適切にエスケープ）
@@ -911,17 +911,17 @@ function M.exec_command(container_id, command, opts)
 
   -- デバッグ：実行予定のコマンドをログ出力
   log.debug("Docker exec command: docker %s", table.concat(args, " "))
-  
+
   vim.defer_fn(function()
     local result = M.run_docker_command(args)
-    
+
     -- デバッグ：結果をログ出力
-    log.debug("Docker exec result: success=%s, code=%s, stdout_len=%s, stderr_len=%s", 
-      tostring(result.success), 
-      tostring(result.code), 
+    log.debug("Docker exec result: success=%s, code=%s, stdout_len=%s, stderr_len=%s",
+      tostring(result.success),
+      tostring(result.code),
       tostring(result.stdout and #result.stdout or 0),
       tostring(result.stderr and #result.stderr or 0))
-    
+
     if opts.on_complete then
       opts.on_complete(result)
     end

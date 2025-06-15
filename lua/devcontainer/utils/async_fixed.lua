@@ -18,15 +18,15 @@ end
 function M.run_command(cmd, args, opts, callback)
   opts = opts or {}
   args = args or {}
-  
+
   local stdout_chunks = {}
   local stderr_chunks = {}
-  
+
   -- stdoutハンドル
   local stdout = uv.new_pipe(false)
-  -- stderrハンドル  
+  -- stderrハンドル
   local stderr = uv.new_pipe(false)
-  
+
   local handle
   local function on_exit(code, signal)
     -- パイプとハンドルをクリーンアップ
@@ -39,11 +39,11 @@ function M.run_command(cmd, args, opts, callback)
     if handle and not handle:is_closing() then
       handle:close()
     end
-    
+
     local stdout_str = table.concat(stdout_chunks)
     local stderr_str = table.concat(stderr_chunks)
     local result = create_result(code, stdout_str, stderr_str)
-    
+
     -- コールバックを必ず呼び出す
     if callback then
       vim.schedule(function()
@@ -51,7 +51,7 @@ function M.run_command(cmd, args, opts, callback)
       end)
     end
   end
-  
+
   -- stdoutデータ読み取り
   local function on_stdout_read(err, data)
     if err then
@@ -67,7 +67,7 @@ function M.run_command(cmd, args, opts, callback)
       end
     end
   end
-  
+
   -- stderrデータ読み取り
   local function on_stderr_read(err, data)
     if err then
@@ -83,7 +83,7 @@ function M.run_command(cmd, args, opts, callback)
       end
     end
   end
-  
+
   -- プロセス開始
   handle = uv.spawn(cmd, {
     args = args,
@@ -91,12 +91,12 @@ function M.run_command(cmd, args, opts, callback)
     env = opts.env,
     stdio = { nil, stdout, stderr },
   }, on_exit)
-  
+
   if not handle then
     -- スポーンに失敗した場合
     if stdout then stdout:close() end
     if stderr then stderr:close() end
-    
+
     if callback then
       vim.schedule(function()
         callback(create_result(-1, "", "Failed to spawn process: " .. cmd))
@@ -104,12 +104,12 @@ function M.run_command(cmd, args, opts, callback)
     end
     return nil
   end
-  
+
   -- stdout読み取り開始
   stdout:read_start(on_stdout_read)
   -- stderr読み取り開始
   stderr:read_start(on_stderr_read)
-  
+
   return handle
 end
 
@@ -119,13 +119,13 @@ function M.run_command_sync(cmd, args, opts)
   if not co then
     error("run_command_sync must be called from within a coroutine")
   end
-  
+
   local result = nil
   M.run_command(cmd, args, opts, function(res)
     result = res
     coroutine.resume(co)
   end)
-  
+
   coroutine.yield()
   return result
 end

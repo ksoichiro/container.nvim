@@ -21,21 +21,21 @@ local state = {
 function M.setup(user_config)
   log = require('devcontainer.utils.log')
   config = require('devcontainer.config')
-  
+
   local success, result = config.setup(user_config)
   if not success then
     log.error("Failed to setup configuration")
     return false
   end
-  
+
   state.initialized = true
   log.debug("devcontainer.nvim initialized successfully")
-  
+
   -- 既存のコンテナを自動検出して再接続を試みる
   vim.defer_fn(function()
     M._try_reconnect_existing_container()
   end, 1000)
-  
+
   return true
 end
 
@@ -45,27 +45,27 @@ function M.open(path)
     log.error("Plugin not initialized. Call setup() first.")
     return false
   end
-  
+
   parser = parser or require('devcontainer.parser')
   docker = docker or require('devcontainer.docker')
-  
+
   path = path or vim.fn.getcwd()
   log.info("Opening devcontainer from path: %s", path)
-  
+
   -- Dockerの利用可能性をチェック
   local docker_ok, docker_err = docker.check_docker_availability()
   if not docker_ok then
     log.error("Docker is not available: %s", docker_err)
     return false
   end
-  
+
   -- devcontainer.jsonを検索・解析
   local devcontainer_config, parse_err = parser.find_and_parse(path)
   if not devcontainer_config then
     log.error("Failed to parse devcontainer.json: %s", parse_err)
     return false
   end
-  
+
   -- 設定の検証
   local validation_errors = parser.validate(devcontainer_config)
   if #validation_errors > 0 then
@@ -74,15 +74,15 @@ function M.open(path)
     end
     return false
   end
-  
+
   -- プラグイン用の設定に正規化
   local normalized_config = parser.normalize_for_plugin(devcontainer_config)
-  
+
   -- プラグイン設定とマージ
   parser.merge_with_plugin_config(devcontainer_config, config.get())
-  
+
   state.current_config = normalized_config
-  
+
   log.info("Successfully loaded devcontainer configuration: %s", normalized_config.name)
   return true
 end
@@ -93,11 +93,11 @@ function M.build()
     log.error("No devcontainer configuration loaded")
     return false
   end
-  
+
   docker = docker or require('devcontainer.docker')
-  
+
   log.info("Preparing devcontainer image")
-  
+
   return docker.prepare_image(state.current_config, function(data)
     -- プログレス表示
     print(data)
@@ -116,17 +116,17 @@ function M.start()
     log.error("No devcontainer configuration loaded")
     return false
   end
-  
+
   docker = docker or require('devcontainer.docker.init')
-  
+
   log.info("Starting devcontainer...")
   print("=== DevContainer Start (Async) ===")
-  
+
   -- イメージが準備されているかチェック
-  local has_image = state.current_config.built_image or 
-                   state.current_config.prepared_image or 
+  local has_image = state.current_config.built_image or
+                   state.current_config.prepared_image or
                    state.current_config.image
-  
+
   if not has_image then
     log.info("Image not prepared, building/pulling first...")
     print("Building/pulling image... This may take a while.")
@@ -134,7 +134,7 @@ function M.start()
     M.build()
     return true
   end
-  
+
   -- Docker可用性確認（非同期）
   print("Step 1: Checking Docker...")
   docker.check_docker_availability_async(function(available, err)
@@ -144,19 +144,19 @@ function M.start()
         return
       end
       print("✓ Docker is available")
-      
+
       -- 既存のコンテナをチェック（非同期）
       print("Step 2: Checking for existing containers...")
       M._list_containers_async("name=" .. state.current_config.name, function(containers)
         vim.schedule(function()
           local container_id = nil
-          
+
           if #containers > 0 then
             container_id = containers[1].id
             log.info("Found existing container: %s", container_id)
             print("✓ Found existing container: " .. container_id)
             state.current_container = container_id
-            
+
             -- コンテナ起動へ進む
             M._start_final_step(container_id)
           else
@@ -172,7 +172,7 @@ function M.start()
                 container_id = create_result
                 print("✓ Created container: " .. container_id)
                 state.current_container = container_id
-                
+
                 -- コンテナ起動へ進む
                 M._start_final_step(container_id)
               end)
@@ -182,7 +182,7 @@ function M.start()
       end)
     end)
   end)
-  
+
   print("DevContainer start initiated (non-blocking)...")
   return true
 end
@@ -191,20 +191,20 @@ end
 function M._start_final_step(container_id)
   print("Step 4: Starting container...")
   docker = docker or require('devcontainer.docker.init')
-  
+
   docker.start_container_async(container_id, function(success, error_msg)
     vim.schedule(function()
       if success then
         print("✓ Container started successfully!")
         log.info("Container is ready: %s", container_id)
-        
+
         -- LSP統合のセットアップ
         if config.get_value('lsp.auto_setup') then
           print("Step 5: Setting up LSP...")
           lsp = lsp or require('devcontainer.lsp.init')
           lsp.setup(config.get_value('lsp'))
           lsp.set_container_id(container_id)
-          
+
           -- パスマッピングの設定
           local lsp_path = require('devcontainer.lsp.path')
           lsp_path.setup(
@@ -212,18 +212,18 @@ function M._start_final_step(container_id)
             state.current_config.workspace_mount or '/workspace',
             state.current_config.mounts or {}
           )
-          
+
           -- LSPサーバーのセットアップ
           lsp.setup_lsp_in_container()
           print("✓ LSP setup complete!")
         end
-        
+
         -- post-start コマンドの実行
         if state.current_config.post_start_command then
           print("Step 6: Running post-start command...")
           M.exec(state.current_config.post_start_command)
         end
-        
+
         print("=== DevContainer is ready! ===")
       else
         log.error("Failed to start container")
@@ -236,7 +236,7 @@ end
 -- 本格的なコンテナ作成（完全非同期版）
 function M._create_container_full_async(config, callback)
   local docker = require('devcontainer.docker.init')
-  
+
   -- Step 1: イメージ存在確認
   print("Step 3a: Checking if image exists locally...")
   docker.check_image_exists_async(config.image, function(exists, image_id)
@@ -257,23 +257,23 @@ end
 -- イメージプル後にコンテナ作成
 function M._pull_and_create_container(config, callback)
   local docker = require('devcontainer.docker.init')
-  
+
   print("Step 3b: Pulling image (this may take a while)...")
   print("   Image: " .. config.image)
   print("   This is a large download and may take 5-15 minutes depending on your connection.")
   print("   Progress will be shown below. You can continue using Neovim while this runs.")
   print("   Note: If no progress appears after 30 seconds, there may be an issue.")
-  
+
   local start_time = vim.fn.reltime()
   local progress_count = 0
-  
+
   local job_id = docker.pull_image_async(
     config.image,
     function(progress)
       progress_count = progress_count + 1
       local elapsed = vim.fn.reltimestr(vim.fn.reltime(start_time))
       print(string.format("   [%ss] %s", elapsed, progress))
-      
+
       -- 進捗が見えていることを確認
       if progress_count == 1 then
         print("   ✓ Docker pull output started - progress tracking is working")
@@ -283,7 +283,7 @@ function M._pull_and_create_container(config, callback)
       vim.schedule(function()
         local elapsed = vim.fn.reltimestr(vim.fn.reltime(start_time))
         print(string.format("   [%ss] Pull completed with status: %s", elapsed, tostring(success)))
-        
+
         if success then
           print("✓ Image pull completed successfully!")
           print("   Now proceeding to create container...")
@@ -291,7 +291,7 @@ function M._pull_and_create_container(config, callback)
           M._create_container_direct(config, callback)
         else
           print("✗ Image pull failed:")
-          
+
           if result then
             if result.stderr and result.stderr ~= "" then
               print("   Error output: " .. result.stderr)
@@ -307,24 +307,24 @@ function M._pull_and_create_container(config, callback)
               print(string.format("   Duration: %.1f seconds", result.duration))
             end
           end
-          
+
           print("   Troubleshooting steps:")
           print("   1. Check your internet connection")
           print("   2. Verify the image name: " .. config.image)
           print("   3. Try manually: docker pull " .. config.image)
           print("   4. Check if Docker daemon is responsive: docker info")
           print("   5. Use :DevcontainerTestPull for isolated testing")
-          
+
           callback(nil, "Failed to pull image: " .. (result and result.stderr or result and result.error or "unknown"))
         end
       end)
     end
   )
-  
+
   if job_id and job_id > 0 then
     print("   ✓ Pull job started successfully (ID: " .. job_id .. ")")
     print("   Tip: Use :messages to see all progress, or :DevcontainerTestPull for testing")
-    
+
     -- 30秒後に進捗チェック
     vim.defer_fn(function()
       if progress_count == 0 then
@@ -342,7 +342,7 @@ end
 -- 直接コンテナ作成
 function M._create_container_direct(config, callback)
   local docker = require('devcontainer.docker.init')
-  
+
   print("Step 3c: Creating container...")
   docker.create_container_async(config, function(container_id, error_msg)
     if container_id then
@@ -360,17 +360,17 @@ function M.stop()
     log.error("No active container")
     return false
   end
-  
+
   docker = docker or require('devcontainer.docker')
-  
+
   -- LSPクライアントを停止
   if lsp then
     lsp.stop_all()
   end
-  
+
   log.info("Stopping container: %s", state.current_container)
   docker.stop_container(state.current_container)
-  
+
   return true
 end
 
@@ -381,20 +381,20 @@ function M.exec(command, opts)
     log.error("No active container")
     return false
   end
-  
+
   docker = docker or require('devcontainer.docker.init')
   opts = opts or {}
-  
+
   -- Use the remote user from devcontainer config if available
   if state.current_config and state.current_config.remote_user and not opts.user then
     opts.user = state.current_config.remote_user
   end
-  
+
   print("Executing in container: " .. command)
   if opts.user then
     print("  As user: " .. opts.user)
   end
-  
+
   -- Add callback to display output
   opts.on_complete = function(result)
     vim.schedule(function()
@@ -419,7 +419,7 @@ function M.exec(command, opts)
       end
     end)
   end
-  
+
   return docker.exec_command(state.current_container, command, opts)
 end
 
@@ -429,15 +429,15 @@ function M.shell(shell)
     log.error("No active container")
     return false
   end
-  
+
   shell = shell or "/bin/bash"
-  
+
   -- 新しいターミナルバッファを開く
   vim.cmd("split")
   local term_opts = string.format("docker exec -it %s %s", state.current_container, shell)
   vim.cmd("terminal " .. term_opts)
   vim.cmd("startinsert")
-  
+
   return true
 end
 
@@ -447,20 +447,20 @@ function M.status()
     print("No active container")
     return nil
   end
-  
+
   docker = docker or require('devcontainer.docker')
-  
+
   local status = docker.get_container_status(state.current_container)
   local info = docker.get_container_info(state.current_container)
-  
+
   print("=== DevContainer Status ===")
   print("Container ID: " .. state.current_container)
   print("Status: " .. (status or "unknown"))
-  
+
   if info then
     print("Image: " .. (info.Config.Image or "unknown"))
     print("Created: " .. (info.Created or "unknown"))
-    
+
     if info.NetworkSettings and info.NetworkSettings.Ports then
       print("Ports:")
       for container_port, host_bindings in pairs(info.NetworkSettings.Ports) do
@@ -472,7 +472,7 @@ function M.status()
       end
     end
   end
-  
+
   return {
     container_id = state.current_container,
     status = status,
@@ -486,10 +486,10 @@ function M.logs(opts)
     log.error("No active container")
     return false
   end
-  
+
   docker = docker or require('devcontainer.docker')
   opts = opts or { tail = 100 }
-  
+
   return docker.get_logs(state.current_container, opts)
 end
 
@@ -516,21 +516,21 @@ function M.lsp_status()
   if not lsp then
     log = log or require('devcontainer.utils.log')
     config = config or require('devcontainer.config')
-    
+
     if not state.initialized then
       log.warn("Plugin not fully initialized")
       return nil
     end
-    
+
     lsp = require('devcontainer.lsp.init')
     lsp.setup(config.get_value('lsp') or {})
   end
-  
+
   local lsp_state = lsp.get_state()
   print("=== DevContainer LSP Status ===")
   print("Container ID: " .. (lsp_state.container_id or "none"))
   print("Auto setup: " .. tostring(lsp_state.config and lsp_state.config.auto_setup or "unknown"))
-  
+
   if lsp_state.servers and next(lsp_state.servers) then
     print("Detected servers:")
     for name, server in pairs(lsp_state.servers) do
@@ -539,7 +539,7 @@ function M.lsp_status()
   else
     print("No servers detected (container may not be running)")
   end
-  
+
   if lsp_state.clients and #lsp_state.clients > 0 then
     print("Active clients:")
     for _, client_name in ipairs(lsp_state.clients) do
@@ -548,7 +548,7 @@ function M.lsp_status()
   else
     print("No active LSP clients")
   end
-  
+
   return lsp_state
 end
 
@@ -557,22 +557,22 @@ function M.lsp_setup()
   -- 基本的な初期化チェック
   log = log or require('devcontainer.utils.log')
   config = config or require('devcontainer.config')
-  
+
   if not state.initialized then
     log.error("Plugin not initialized. Call setup() first.")
     return false
   end
-  
+
   if not state.current_container then
     log.error("No active container. Start container first with :DevcontainerStart")
     return false
   end
-  
+
   -- LSPモジュールを初期化
   lsp = lsp or require('devcontainer.lsp.init')
   lsp.setup(config.get_value('lsp') or {})
   lsp.set_container_id(state.current_container)
-  
+
   -- パスマッピングの設定
   local lsp_path = require('devcontainer.lsp.path')
   lsp_path.setup(
@@ -580,10 +580,10 @@ function M.lsp_setup()
     (state.current_config and state.current_config.workspace_mount) or '/workspace',
     (state.current_config and state.current_config.mounts) or {}
   )
-  
+
   -- LSPサーバーのセットアップ
   lsp.setup_lsp_in_container()
-  
+
   log.info("LSP setup completed")
   return true
 end
@@ -593,13 +593,13 @@ function M.test_minimal()
   print("=== Minimal Test ===")
   print("✓ Plugin loaded successfully")
   print("✓ State initialized: " .. tostring(state.initialized))
-  
+
   if state.current_config then
     print("✓ Config loaded: " .. (state.current_config.name or "unnamed"))
   else
     print("⚠ No config loaded (run :DevcontainerOpen first)")
   end
-  
+
   print("=== Test completed without blocking ===")
   return true
 end
@@ -608,14 +608,14 @@ end
 function M.test_docker()
   print("=== Docker Test (Async) ===")
   print("Testing Docker availability...")
-  
+
   -- 非同期でDockerバージョンチェック
   vim.fn.jobstart({'docker', '--version'}, {
     on_exit = function(_, exit_code, _)
       vim.schedule(function()
         if exit_code == 0 then
           print("✓ Docker is available")
-          
+
           -- Docker daemonのチェック
           print("Testing Docker daemon...")
           vim.fn.jobstart({'docker', 'info'}, {
@@ -640,7 +640,7 @@ function M.test_docker()
     stdout_buffered = true,
     stderr_buffered = true,
   })
-  
+
   print("Docker test initiated (non-blocking)...")
   return true
 end
@@ -648,15 +648,15 @@ end
 -- シンプルなコンテナテスト（完全非同期版）
 function M.test_container_basic()
   print("=== Basic Container Test (Async) ===")
-  
+
   if not state.current_config then
     print("✗ No devcontainer configuration loaded")
     print("Run :DevcontainerOpen first")
     return false
   end
-  
+
   docker = docker or require('devcontainer.docker.init')
-  
+
   -- Step 1: Docker確認（非同期）
   print("Step 1: Checking Docker...")
   docker.check_docker_availability_async(function(available, err)
@@ -666,29 +666,29 @@ function M.test_container_basic()
         return
       end
       print("✓ Docker is available")
-      
+
       -- Step 2: イメージ確認
       print("Step 2: Checking image...")
-      local has_image = state.current_config.built_image or 
-                       state.current_config.prepared_image or 
+      local has_image = state.current_config.built_image or
+                       state.current_config.prepared_image or
                        state.current_config.image
       if not has_image then
         print("✗ No image specified")
         return
       end
       print("✓ Image: " .. (has_image or "unknown"))
-      
+
       -- Step 3: コンテナリスト確認（非同期）
       print("Step 3: Checking for existing containers...")
       M._list_containers_async("name=" .. state.current_config.name, function(containers)
         vim.schedule(function()
           local container_id = nil
-          
+
           if #containers > 0 then
             container_id = containers[1].id
             print("✓ Found existing container: " .. container_id)
             state.current_container = container_id
-            
+
             -- Step 4: コンテナ状態確認
             print("Step 4: Checking container status...")
             M._get_container_status_async(container_id, function(status)
@@ -707,7 +707,7 @@ function M.test_container_basic()
       end)
     end)
   end)
-  
+
   print("Basic container test initiated (non-blocking)...")
   return true
 end
@@ -715,12 +715,12 @@ end
 -- 非同期でコンテナリストを取得
 function M._list_containers_async(filter, callback)
   local args = {"ps", "-a", "--format", "{{.ID}}\\t{{.Names}}\\t{{.Status}}\\t{{.Image}}"}
-  
+
   if filter then
     table.insert(args, "--filter")
     table.insert(args, filter)
   end
-  
+
   vim.fn.jobstart(vim.list_extend({'docker'}, args), {
     on_stdout = function(_, data, _)
       local containers = {}
@@ -764,15 +764,15 @@ end
 -- 段階的なコンテナ起動（完全非同期版）
 function M.start_step_by_step()
   print("=== Step-by-step Container Start (Async) ===")
-  
+
   if not state.current_config then
     print("✗ No devcontainer configuration loaded")
     print("Run :DevcontainerOpen first")
     return false
   end
-  
+
   docker = docker or require('devcontainer.docker.init')
-  
+
   -- Step 1: Docker確認（非同期）
   print("Step 1: Checking Docker...")
   docker.check_docker_availability_async(function(available, err)
@@ -782,29 +782,29 @@ function M.start_step_by_step()
         return
       end
       print("✓ Docker is available")
-      
+
       -- Step 2: イメージ確認
       print("Step 2: Checking image...")
-      local has_image = state.current_config.built_image or 
-                       state.current_config.prepared_image or 
+      local has_image = state.current_config.built_image or
+                       state.current_config.prepared_image or
                        state.current_config.image
       if not has_image then
         print("✗ No image specified")
         return
       end
       print("✓ Image: " .. (has_image or "unknown"))
-      
+
       -- Step 3: コンテナ確認/作成（非同期）
       print("Step 3: Checking for existing containers...")
       M._list_containers_async("name=" .. state.current_config.name, function(containers)
         vim.schedule(function()
           local container_id = nil
-          
+
           if #containers > 0 then
             container_id = containers[1].id
             print("✓ Found existing container: " .. container_id)
             state.current_container = container_id
-            
+
             -- Step 4へ進む
             M._start_container_step4(container_id)
           else
@@ -818,7 +818,7 @@ function M.start_step_by_step()
                 container_id = create_result
                 print("✓ Created container: " .. container_id)
                 state.current_container = container_id
-                
+
                 -- Step 4へ進む
                 M._start_container_step4(container_id)
               end)
@@ -828,7 +828,7 @@ function M.start_step_by_step()
       end)
     end)
   end)
-  
+
   print("Step-by-step container start initiated (non-blocking)...")
   return true
 end
@@ -837,31 +837,31 @@ end
 function M._start_container_step4(container_id)
   print("Step 4: Starting container...")
   docker = docker or require('devcontainer.docker.init')
-  
+
   docker.start_container_async(container_id, function(success, error_msg)
     vim.schedule(function()
       if success then
         print("✓ Container started successfully and is ready!")
         print("=== Container Ready ===")
-        
+
         -- LSP統合のセットアップ
         if config.get_value('lsp.auto_setup') then
           print("Setting up LSP...")
           lsp = lsp or require('devcontainer.lsp.init')
           lsp.setup(config.get_value('lsp'))
           lsp.set_container_id(container_id)
-          
+
           local lsp_path = require('devcontainer.lsp.path')
           lsp_path.setup(
             vim.fn.getcwd(),
             state.current_config.workspace_mount or '/workspace',
             state.current_config.mounts or {}
           )
-          
+
           lsp.setup_lsp_in_container()
           print("✓ LSP setup complete!")
         end
-        
+
         print("=== DevContainer fully ready! ===")
       else
         print("✗ Failed to start container: " .. (error_msg or "unknown"))
@@ -883,15 +883,15 @@ end
 -- 既存コンテナ専用の段階的起動
 function M.start_existing_container()
   print("=== Start Existing Container (Async) ===")
-  
+
   if not state.current_config then
     print("✗ No devcontainer configuration loaded")
     print("Run :DevcontainerOpen first")
     return false
   end
-  
+
   docker = docker or require('devcontainer.docker.init')
-  
+
   -- Step 1: Docker確認（非同期）
   print("Step 1: Checking Docker...")
   docker.check_docker_availability_async(function(available, err)
@@ -901,7 +901,7 @@ function M.start_existing_container()
         return
       end
       print("✓ Docker is available")
-      
+
       -- Step 2: 既存コンテナ検索
       print("Step 2: Looking for existing containers...")
       M._list_containers_async("name=" .. state.current_config.name, function(containers)
@@ -911,18 +911,18 @@ function M.start_existing_container()
             print("Please run :DevcontainerStart to create a new container")
             return
           end
-          
+
           local container_id = containers[1].id
           print("✓ Found existing container: " .. container_id)
           state.current_container = container_id
-          
+
           -- Step 3: コンテナ起動
           M._start_container_step4(container_id)
         end)
       end)
     end)
   end)
-  
+
   print("Existing container start initiated (non-blocking)...")
   return true
 end
@@ -930,14 +930,14 @@ end
 -- コンテナの状況確認
 function M.check_container_status()
   print("=== Container Status Check ===")
-  
+
   if not state.current_config then
     print("✗ No devcontainer configuration loaded")
     return
   end
-  
+
   docker = docker or require('devcontainer.docker.init')
-  
+
   -- 非同期でコンテナリストを確認
   M._list_containers_async("name=" .. state.current_config.name, function(containers)
     vim.schedule(function()
@@ -947,13 +947,13 @@ function M.check_container_status()
         print("Try running :DevcontainerStart to create one")
       else
         for _, container in ipairs(containers) do
-          print(string.format("✓ Found: %s (ID: %s, Status: %s)", 
+          print(string.format("✓ Found: %s (ID: %s, Status: %s)",
             container.name, container.id, container.status))
         end
       end
     end)
   end)
-  
+
   print("Checking containers (async)...")
 end
 
@@ -964,11 +964,11 @@ function M.debug_detailed()
   print("  Initialized: " .. tostring(state.initialized))
   print("  Current container: " .. (state.current_container or "none"))
   print("  Current config name: " .. (state.current_config and state.current_config.name or "none"))
-  
+
   if state.current_config then
     print("  Current config image: " .. (state.current_config.image or "none"))
   end
-  
+
   -- Docker の状態確認
   docker = docker or require('devcontainer.docker.init')
   docker.check_docker_availability_async(function(available, err)
@@ -980,7 +980,7 @@ function M.debug_detailed()
       end
     end)
   end)
-  
+
   -- イメージ確認
   if state.current_config and state.current_config.image then
     print("Checking image: " .. state.current_config.image)
@@ -994,7 +994,7 @@ function M.debug_detailed()
       end)
     end)
   end
-  
+
   print("Async checks initiated...")
 end
 
@@ -1004,7 +1004,7 @@ function M.debug_info()
   print("Initialized: " .. tostring(state.initialized))
   print("Current container: " .. (state.current_container or "none"))
   print("Current config: " .. (state.current_config and state.current_config.name or "none"))
-  
+
   -- Docker の状態確認
   docker = docker or require('devcontainer.docker.init')
   local docker_available, docker_err = docker.check_docker_availability()
@@ -1012,19 +1012,19 @@ function M.debug_info()
   if docker_err then
     print("Docker error: " .. docker_err)
   end
-  
+
   if config then
     print("\nPlugin configuration:")
     config.show_config()
   end
-  
+
   if state.current_config then
     print("\nDevContainer configuration:")
     print("  Name: " .. (state.current_config.name or "none"))
     print("  Image: " .. (state.current_config.image or "none"))
     print("  Full config available via :lua print(vim.inspect(require('devcontainer').get_config()))")
   end
-  
+
   if lsp then
     print("\nLSP Status:")
     M.lsp_status()
@@ -1034,24 +1034,24 @@ end
 -- シンプルなDocker pullテスト
 function M.test_simple_pull()
   print("=== Simple Docker Pull Test ===")
-  
+
   if not state.current_config then
     print("✗ No devcontainer configuration loaded")
     print("Run :DevcontainerOpen first")
     return false
   end
-  
+
   local image = state.current_config.image
   if not image then
     print("✗ No image specified in configuration")
     return false
   end
-  
+
   print("Testing docker pull with image: " .. image)
   print("This is a simplified test to isolate the pull issue...")
-  
+
   docker = docker or require('devcontainer.docker.init')
-  
+
   -- 直接的なテスト
   local job_id = docker.pull_image_async(
     image,
@@ -1077,14 +1077,14 @@ function M.test_simple_pull()
       end)
     end
   )
-  
+
   if job_id then
     print("✓ Pull test started with job ID: " .. job_id)
     print("Monitor progress above. Use :messages to see all output.")
   else
     print("✗ Failed to start pull test")
   end
-  
+
   return true
 end
 
@@ -1094,40 +1094,40 @@ function M._try_reconnect_existing_container()
     -- 既にコンテナが設定されている場合はスキップ
     return
   end
-  
+
   docker = docker or require('devcontainer.docker.init')
-  
+
   -- 現在のディレクトリでdevcontainer.jsonを探す
   local cwd = vim.fn.getcwd()
   parser = parser or require('devcontainer.parser')
-  
+
   local devcontainer_config, parse_err = parser.find_and_parse(cwd)
   if not devcontainer_config then
     -- devcontainer.jsonが見つからない場合は何もしない
     return
   end
-  
+
   -- 正規化された設定を取得
   local normalized_config = parser.normalize_for_plugin(devcontainer_config)
   local container_name_pattern = normalized_config.name:lower():gsub("[^a-z0-9_.-]", "-") .. "_devcontainer"
-  
+
   log.info("Looking for existing container with pattern: %s", container_name_pattern)
-  
+
   -- 既存のコンテナを検索
   M._list_containers_async("name=" .. container_name_pattern, function(containers)
     vim.schedule(function()
       if #containers > 0 then
         local container = containers[1]
         log.info("Found existing container: %s (%s)", container.id, container.status)
-        
+
         -- 状態を復元
         state.current_container = container.id
         state.current_config = normalized_config
-        
+
         print("✓ Reconnected to existing container: " .. container.id:sub(1, 12))
         print("  Status: " .. container.status)
         print("  Use :DevcontainerStatus for details")
-        
+
         -- LSPを自動セットアップ（設定されている場合）
         if config and config.get_value('lsp.auto_setup') and container.status == "running" then
           print("  Setting up LSP...")
@@ -1156,16 +1156,16 @@ function M.debug_exec()
     print("✗ No active container")
     return
   end
-  
+
   docker = docker or require('devcontainer.docker.init')
-  
+
   print("=== Docker Exec Debug Test ===")
   print("Container ID: " .. state.current_container)
-  
+
   -- 手動でコマンド構築をテスト
   local args = {"exec", "--user", "vscode", state.current_container, "echo", "test"}
   print("Manual command: docker " .. table.concat(args, " "))
-  
+
   -- 直接実行してみる
   local result = docker.run_docker_command and docker.run_docker_command(args) or nil
   if result then

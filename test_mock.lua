@@ -12,7 +12,7 @@ _G.vim = {
   tbl_deep_extend = function(behavior, ...)
     local result = {}
     local sources = {...}
-    
+
     local function deep_extend(target, source)
       for k, v in pairs(source) do
         if type(v) == 'table' and type(target[k]) == 'table' then
@@ -22,7 +22,7 @@ _G.vim = {
         end
       end
     end
-    
+
     for _, source in ipairs(sources) do
       deep_extend(result, source)
     end
@@ -102,21 +102,21 @@ package.path = './lua/?.lua;' .. package.path
 -- Simple test for path conversion
 local function test_path_conversion_simple()
   print("=== Simple Path Conversion Test ===")
-  
+
   local path_module = require('devcontainer.lsp.path')
-  
+
   -- Setup test paths
   path_module.setup('/test/workspace', '/workspace', {})
-  
+
   -- Test basic conversion
   local local_path = '/test/workspace/main.py'
   local container_path = path_module.to_container_path(local_path)
   local back_to_local = path_module.to_local_path(container_path)
-  
+
   print("Local path: " .. local_path)
   print("Container path: " .. (container_path or "nil"))
   print("Back to local: " .. (back_to_local or "nil"))
-  
+
   if container_path == '/workspace/main.py' and back_to_local == local_path then
     print("✓ Path conversion working correctly")
     return true
@@ -128,9 +128,9 @@ end
 
 local function test_config_basic()
   print("\n=== Basic Configuration Test ===")
-  
+
   local config = require('devcontainer.config')
-  
+
   -- Test if we can access defaults
   if config.defaults and config.defaults.lsp then
     print("✓ Default configuration accessible")
@@ -145,11 +145,11 @@ end
 
 local function test_lsp_module_structure()
   print("\n=== LSP Module Structure Test ===")
-  
+
   local lsp = require('devcontainer.lsp.init')
   local path = require('devcontainer.lsp.path')
   local forwarding = require('devcontainer.lsp.forwarding')
-  
+
   -- Check if main functions exist
   local functions_to_check = {
     { lsp, 'setup' },
@@ -161,7 +161,7 @@ local function test_lsp_module_structure()
     { forwarding, 'setup_port_forwarding' },
     { forwarding, 'create_stdio_bridge' },
   }
-  
+
   for _, check in ipairs(functions_to_check) do
     local module, func_name = check[1], check[2]
     if type(module[func_name]) == 'function' then
@@ -171,33 +171,33 @@ local function test_lsp_module_structure()
       return false
     end
   end
-  
+
   return true
 end
 
 -- Run tests
 local function run_simple_tests()
   print("Running simplified devcontainer.nvim tests...\n")
-  
+
   local tests = {
     test_config_basic,
     test_path_conversion_simple,
     test_lsp_module_structure,
   }
-  
+
   local passed = 0
   local total = #tests
-  
+
   for _, test in ipairs(tests) do
     local success = test()
     if success then
       passed = passed + 1
     end
   end
-  
+
   print(string.format("\n=== Test Results ==="))
   print(string.format("Passed: %d/%d", passed, total))
-  
+
   if passed == total then
     print("All tests passed! ✓")
     return 0
