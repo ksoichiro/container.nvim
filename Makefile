@@ -83,7 +83,29 @@ lint-fix:
 # Run tests
 test:
 	@echo "Running test suite..."
-	cd test && lua test_mock.lua
+	@echo "Found test files:"
+	@ls test/test_*.lua | sed 's|test/||'
+	@echo ""
+	@failed=0; \
+	for test_file in test/test_*.lua; do \
+		test_name=$$(basename "$$test_file"); \
+		echo "=== Running $$test_name ==="; \
+		if lua "$$test_file"; then \
+			echo "✓ $$test_name PASSED"; \
+		else \
+			echo "✗ $$test_name FAILED"; \
+			failed=$$((failed + 1)); \
+		fi; \
+		echo ""; \
+	done; \
+	if [ $$failed -gt 0 ]; then \
+		echo "=== Test Summary ==="; \
+		echo "$$failed test(s) failed"; \
+		exit 1; \
+	else \
+		echo "=== Test Summary ==="; \
+		echo "All tests passed!"; \
+	fi
 
 # Clean temporary files
 clean:

@@ -97,7 +97,7 @@ _G.vim = {
 }
 
 -- Add parent directory to package path
-package.path = '../lua/?.lua;' .. package.path
+package.path = './lua/?.lua;' .. package.path
 
 -- Simple test for path conversion
 local function test_path_conversion_simple()

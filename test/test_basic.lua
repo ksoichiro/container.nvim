@@ -3,6 +3,67 @@
 -- Basic test script for devcontainer.nvim
 -- This tests core functionality without requiring a full Neovim session
 
+-- Mock vim global for testing
+_G.vim = {
+  tbl_contains = function(t, value)
+    for _, v in ipairs(t) do
+      if v == value then return true end
+    end
+    return false
+  end,
+  split = function(str, sep)
+    local result = {}
+    for match in (str .. sep):gmatch("(.-)" .. sep) do
+      table.insert(result, match)
+    end
+    return result
+  end,
+  startswith = function(str, prefix)
+    return str:sub(1, #prefix) == prefix
+  end,
+  tbl_deep_extend = function(behavior, ...)
+    local result = {}
+    local sources = {...}
+    for _, source in ipairs(sources) do
+      if type(source) == 'table' then
+        for k, v in pairs(source) do
+          result[k] = v
+        end
+      end
+    end
+    return result
+  end,
+  tbl_keys = function(t)
+    local keys = {}
+    for k, _ in pairs(t) do
+      table.insert(keys, k)
+    end
+    return keys
+  end,
+  fn = {
+    getcwd = function() return "/test/workspace" end,
+    shellescape = function(str) return "'" .. str .. "'" end,
+    system = function(cmd) return "" end,
+    sha256 = function(str) return "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234" end,
+    fnamemodify = function(path, mod)
+      if mod == ':p' then return path end
+      if mod == ':h' then return vim.split(path, '/')[1] or path end
+      return path
+    end
+  },
+  v = { shell_error = 0 },
+  loop = {
+    new_tcp = function()
+      return {
+        bind = function(self, addr, port) return true end,
+        close = function(self) end
+      }
+    end
+  },
+  notify = function(msg, level) print("[NOTIFY]", msg) end,
+  log = { levels = { INFO = 1, ERROR = 2 } }
+}
+
 local function test_module_loading()
   print("=== Module Loading Test ===")
 
@@ -117,7 +178,7 @@ end
 local function test_server_detection()
   print("\n=== Server Detection Test ===")
 
-  local lsp = require('devcontainer.lsp')
+  local lsp = require('devcontainer.lsp.init')
 
   -- Setup with test config
   lsp.setup({
@@ -177,7 +238,7 @@ local function run_tests()
 end
 
 -- Add parent directory to package path
-package.path = '../lua/?.lua;' .. package.path
+package.path = './lua/?.lua;' .. package.path
 
 -- Run tests
 local exit_code = run_tests()
