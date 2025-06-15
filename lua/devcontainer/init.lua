@@ -890,6 +890,16 @@ function M.lsp_setup()
   return true
 end
 
+-- Get current plugin state
+function M.get_state()
+  return {
+    initialized = state.initialized,
+    current_container = state.current_container,
+    current_config = state.current_config,
+    container_status = state.current_container and
+      (docker and docker.get_container_status(state.current_container)) or nil
+  }
+end
 
 -- Get container list asynchronously
 function M._list_containers_async(filter, callback)

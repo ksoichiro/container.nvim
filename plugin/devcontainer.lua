@@ -98,6 +98,38 @@ local function create_commands()
     desc = 'Show current configuration',
   })
 
+  vim.api.nvim_create_user_command('DevcontainerAutoStart', function(args)
+    local config = require('devcontainer.config')
+    local mode = args.args
+
+    if mode == '' then
+      local current_mode = config.get_value('auto_start_mode')
+      local auto_start = config.get_value('auto_start')
+      print('Current auto-start configuration:')
+      print('  auto_start: ' .. tostring(auto_start))
+      print('  auto_start_mode: ' .. current_mode)
+      print('')
+      print('Available modes: off, notify, prompt, immediate')
+      print('Usage: :DevcontainerAutoStart <mode>')
+    elseif vim.tbl_contains({'off', 'notify', 'prompt', 'immediate'}, mode) then
+      config.set_value('auto_start', mode ~= 'off')
+      config.set_value('auto_start_mode', mode)
+      if mode == 'off' then
+        vim.notify('Auto-start disabled', vim.log.levels.INFO, { title = 'devcontainer.nvim' })
+      else
+        vim.notify('Auto-start mode set to: ' .. mode, vim.log.levels.INFO, { title = 'devcontainer.nvim' })
+      end
+    else
+      vim.notify('Invalid mode. Available: off, notify, prompt, immediate', vim.log.levels.ERROR)
+    end
+  end, {
+    nargs = '?',
+    desc = 'Configure auto-start behavior',
+    complete = function()
+      return {'off', 'notify', 'prompt', 'immediate'}
+    end,
+  })
+
   vim.api.nvim_create_user_command('DevcontainerReset', function()
     require('devcontainer').reset()
   end, {
@@ -163,14 +195,45 @@ vim.api.nvim_create_autocmd({'VimEnter', 'DirChanged'}, {
   group = augroup,
   callback = function()
     local config = require('devcontainer.config').get()
-    if config and config.auto_start then
+    if config and config.auto_start and config.auto_start_mode ~= 'off' then
       -- Check for devcontainer.json existence
       local parser = require('devcontainer.parser')
       local devcontainer_path = parser.find_devcontainer_json()
       if devcontainer_path then
-        vim.notify('Found devcontainer.json. Use :DevcontainerOpen to start.',
-                   vim.log.levels.INFO,
-                   { title = 'devcontainer.nvim' })
+        -- Handle different auto-start modes
+        if config.auto_start_mode == 'notify' then
+          vim.notify('Found devcontainer.json. Use :DevcontainerOpen to start.',
+                     vim.log.levels.INFO,
+                     { title = 'devcontainer.nvim' })
+        elseif config.auto_start_mode == 'prompt' then
+          vim.defer_fn(function()
+            local choice = vim.fn.confirm(
+              'Found devcontainer.json. Start devcontainer?',
+              '&Yes\n&No\n&Always (change config)',
+              1
+            )
+            if choice == 1 then
+              require('devcontainer').open()
+            elseif choice == 3 then
+              require('devcontainer.config').set_value('auto_start_mode', 'immediate')
+              vim.notify('Auto-start mode changed to immediate. Restart Neovim to apply.',
+                         vim.log.levels.INFO,
+                         { title = 'devcontainer.nvim' })
+            end
+          end, 500)
+        elseif config.auto_start_mode == 'immediate' then
+          vim.defer_fn(function()
+            -- Check if container is already running first
+            local devcontainer = require('devcontainer')
+            local state = devcontainer.get_state()
+            if not state.current_container then
+              vim.notify('Auto-starting devcontainer...',
+                         vim.log.levels.INFO,
+                         { title = 'devcontainer.nvim' })
+              devcontainer.open()
+            end
+          end, config.auto_start_delay or 2000)
+        end
       end
     end
   end,

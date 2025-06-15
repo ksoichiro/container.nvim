@@ -8,6 +8,8 @@ local log = require('devcontainer.utils.log')
 M.defaults = {
   -- Basic settings
   auto_start = false,
+  auto_start_mode = 'notify', -- 'notify', 'prompt', 'immediate', 'off'
+  auto_start_delay = 2000, -- milliseconds to wait before auto-start
   log_level = 'info',
   container_runtime = 'docker', -- 'docker' or 'podman'
 
@@ -124,6 +126,17 @@ local function validate_config(config)
   local valid_runtimes = { 'docker', 'podman' }
   if not vim.tbl_contains(valid_runtimes, config.container_runtime) then
     table.insert(errors, "Invalid container_runtime: " .. config.container_runtime)
+  end
+
+  -- Validate auto_start_mode
+  local valid_auto_start_modes = { 'notify', 'prompt', 'immediate', 'off' }
+  if not vim.tbl_contains(valid_auto_start_modes, config.auto_start_mode) then
+    table.insert(errors, "Invalid auto_start_mode: " .. config.auto_start_mode)
+  end
+
+  -- Validate auto_start_delay
+  if type(config.auto_start_delay) ~= 'number' or config.auto_start_delay < 0 then
+    table.insert(errors, "auto_start_delay must be a non-negative number")
   end
 
   -- Validate terminal direction
