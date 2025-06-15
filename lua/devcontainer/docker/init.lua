@@ -850,6 +850,52 @@ function M.stop_container(container_id, timeout)
   end, 100)
 end
 
+-- Container kill (immediate termination)
+function M.kill_container(container_id, callback)
+  log.info("Killing container: %s", container_id)
+
+  local args = {"kill", container_id}
+
+  M.run_docker_command_async(args, {}, function(result)
+    if result.success then
+      log.info("Successfully killed container: %s", container_id)
+      if callback then
+        vim.schedule(function()
+          callback(true, nil)
+        end)
+      end
+    else
+      local error_msg = result.stderr or "unknown error"
+      log.error("Failed to kill container: %s", error_msg)
+      if callback then
+        vim.schedule(function()
+          callback(false, error_msg)
+        end)
+      end
+    end
+  end)
+end
+
+-- Container terminate (alias for kill with additional cleanup)
+function M.terminate_container(container_id, callback)
+  log.info("Terminating container: %s", container_id)
+
+  -- First try to kill the container
+  M.kill_container(container_id, function(success, error_msg)
+    if success then
+      log.info("Container terminated successfully: %s", container_id)
+      if callback then
+        callback(true, nil)
+      end
+    else
+      log.error("Failed to terminate container: %s", error_msg or "unknown error")
+      if callback then
+        callback(false, error_msg)
+      end
+    end
+  end)
+end
+
 -- Container removal
 function M.remove_container(container_id, force)
   log.info("Removing container: %s", container_id)

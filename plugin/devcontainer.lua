@@ -36,6 +36,18 @@ local function create_commands()
     desc = 'Stop devcontainer',
   })
 
+  vim.api.nvim_create_user_command('DevcontainerKill', function()
+    require('devcontainer').kill()
+  end, {
+    desc = 'Kill devcontainer (immediate termination)',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTerminate', function()
+    require('devcontainer').terminate()
+  end, {
+    desc = 'Terminate devcontainer (immediate termination)',
+  })
+
   vim.api.nvim_create_user_command('DevcontainerRestart', function()
     require('devcontainer').stop()
     vim.defer_fn(function()

@@ -92,10 +92,12 @@ This file records future improvements and plans after the completion of v0.2.0 L
   - Current behavior: May create duplicate or conflicting LSP clients
   - Solution: Check for existing containers before LSP setup
 
-- [ ] **Container Termination Command**
+- [x] **Container Termination Command** ✅
   - Issue: Missing command to terminate/kill containers (vs stop)
   - Need: `:DevcontainerKill` or `:DevcontainerTerminate` command
   - Use case: Force stop unresponsive containers
+  - **FIXED**: Implemented both `:DevcontainerKill` and `:DevcontainerTerminate` commands
+  - **Solution**: Added kill_container() and terminate_container() functions with proper cleanup
 
 - [x] **LSP Error Fix: window/showMessage Handler** ✅
   - Issue: `vim.schedule callback: ...forwarding.lua:168: attempt to call field 'window/showMessage' (a nil value)`

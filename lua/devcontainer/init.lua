@@ -424,6 +424,82 @@ function M.stop()
   return true
 end
 
+-- Kill container (immediate termination)
+function M.kill()
+  log = log or require('devcontainer.utils.log')
+
+  if not state.current_container then
+    log.error("No active container")
+    return false
+  end
+
+  docker = docker or require('devcontainer.docker.init')
+
+  -- Stop LSP clients
+  if lsp then
+    lsp.stop_all()
+  end
+
+  -- Clean up port allocations
+  if state.current_config and state.current_config.project_id then
+    local port_utils = require('devcontainer.utils.port')
+    port_utils.release_project_ports(state.current_config.project_id)
+  end
+
+  log.info("Killing container: %s", state.current_container)
+  docker.kill_container(state.current_container, function(success, error_msg)
+    vim.schedule(function()
+      if success then
+        print("✓ Container killed successfully")
+        state.current_container = nil
+        state.current_config = nil
+      else
+        print("✗ Failed to kill container: " .. (error_msg or "unknown"))
+      end
+    end)
+  end)
+
+  return true
+end
+
+-- Terminate container (alias for kill)
+function M.terminate()
+  log = log or require('devcontainer.utils.log')
+
+  if not state.current_container then
+    log.error("No active container")
+    return false
+  end
+
+  docker = docker or require('devcontainer.docker.init')
+
+  -- Stop LSP clients
+  if lsp then
+    lsp.stop_all()
+  end
+
+  -- Clean up port allocations
+  if state.current_config and state.current_config.project_id then
+    local port_utils = require('devcontainer.utils.port')
+    port_utils.release_project_ports(state.current_config.project_id)
+  end
+
+  log.info("Terminating container: %s", state.current_container)
+  docker.terminate_container(state.current_container, function(success, error_msg)
+    vim.schedule(function()
+      if success then
+        print("✓ Container terminated successfully")
+        state.current_container = nil
+        state.current_config = nil
+      else
+        print("✗ Failed to terminate container: " .. (error_msg or "unknown"))
+      end
+    end)
+  end)
+
+  return true
+end
+
 -- Execute command in container
 function M.exec(command, opts)
   log = log or require('devcontainer.utils.log')
