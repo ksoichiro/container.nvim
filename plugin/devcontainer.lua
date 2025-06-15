@@ -111,7 +111,7 @@ local function create_commands()
       print('')
       print('Available modes: off, notify, prompt, immediate')
       print('Usage: :DevcontainerAutoStart <mode>')
-    elseif vim.tbl_contains({'off', 'notify', 'prompt', 'immediate'}, mode) then
+    elseif vim.tbl_contains({ 'off', 'notify', 'prompt', 'immediate' }, mode) then
       config.set_value('auto_start', mode ~= 'off')
       config.set_value('auto_start_mode', mode)
       if mode == 'off' then
@@ -126,7 +126,7 @@ local function create_commands()
     nargs = '?',
     desc = 'Configure auto-start behavior',
     complete = function()
-      return {'off', 'notify', 'prompt', 'immediate'}
+      return { 'off', 'notify', 'prompt', 'immediate' }
     end,
   })
 
@@ -180,18 +180,20 @@ end
 local augroup = vim.api.nvim_create_augroup('DevcontainerNvim', { clear = true })
 
 -- Monitor changes to devcontainer.json file
-vim.api.nvim_create_autocmd({'BufWritePost'}, {
+vim.api.nvim_create_autocmd({ 'BufWritePost' }, {
   group = augroup,
-  pattern = {'devcontainer.json', '.devcontainer/devcontainer.json'},
+  pattern = { 'devcontainer.json', '.devcontainer/devcontainer.json' },
   callback = function()
-    vim.notify('devcontainer.json updated. You may need to rebuild the container.',
-               vim.log.levels.INFO,
-               { title = 'devcontainer.nvim' })
+    vim.notify(
+      'devcontainer.json updated. You may need to rebuild the container.',
+      vim.log.levels.INFO,
+      { title = 'devcontainer.nvim' }
+    )
   end,
 })
 
 -- Auto-detection when opening project directory (optional)
-vim.api.nvim_create_autocmd({'VimEnter', 'DirChanged'}, {
+vim.api.nvim_create_autocmd({ 'VimEnter', 'DirChanged' }, {
   group = augroup,
   callback = function()
     local config = require('devcontainer.config').get()
@@ -202,23 +204,24 @@ vim.api.nvim_create_autocmd({'VimEnter', 'DirChanged'}, {
       if devcontainer_path then
         -- Handle different auto-start modes
         if config.auto_start_mode == 'notify' then
-          vim.notify('Found devcontainer.json. Use :DevcontainerOpen to start.',
-                     vim.log.levels.INFO,
-                     { title = 'devcontainer.nvim' })
+          vim.notify(
+            'Found devcontainer.json. Use :DevcontainerOpen to start.',
+            vim.log.levels.INFO,
+            { title = 'devcontainer.nvim' }
+          )
         elseif config.auto_start_mode == 'prompt' then
           vim.defer_fn(function()
-            local choice = vim.fn.confirm(
-              'Found devcontainer.json. Start devcontainer?',
-              '&Yes\n&No\n&Always (change config)',
-              1
-            )
+            local choice =
+              vim.fn.confirm('Found devcontainer.json. Start devcontainer?', '&Yes\n&No\n&Always (change config)', 1)
             if choice == 1 then
               require('devcontainer').open()
             elseif choice == 3 then
               require('devcontainer.config').set_value('auto_start_mode', 'immediate')
-              vim.notify('Auto-start mode changed to immediate. Restart Neovim to apply.',
-                         vim.log.levels.INFO,
-                         { title = 'devcontainer.nvim' })
+              vim.notify(
+                'Auto-start mode changed to immediate. Restart Neovim to apply.',
+                vim.log.levels.INFO,
+                { title = 'devcontainer.nvim' }
+              )
             end
           end, 500)
         elseif config.auto_start_mode == 'immediate' then
@@ -227,9 +230,7 @@ vim.api.nvim_create_autocmd({'VimEnter', 'DirChanged'}, {
             local devcontainer = require('devcontainer')
             local state = devcontainer.get_state()
             if not state.current_container then
-              vim.notify('Auto-starting devcontainer...',
-                         vim.log.levels.INFO,
-                         { title = 'devcontainer.nvim' })
+              vim.notify('Auto-starting devcontainer...', vim.log.levels.INFO, { title = 'devcontainer.nvim' })
               devcontainer.open()
             end
           end, config.auto_start_delay or 2000)

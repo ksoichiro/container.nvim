@@ -36,8 +36,14 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
 
   -- Check if container is using host network
   local docker = require('devcontainer.docker.init')
-  local inspect_result = docker.exec_command(container_id, 'docker inspect ' .. container_id .. ' --format "{{.HostConfig.NetworkMode}}"')
-  if inspect_result and inspect_result.code == 0 and inspect_result.output and vim.trim(inspect_result.output) == 'host' then
+  local inspect_result =
+    docker.exec_command(container_id, 'docker inspect ' .. container_id .. ' --format "{{.HostConfig.NetworkMode}}"')
+  if
+    inspect_result
+    and inspect_result.code == 0
+    and inspect_result.output
+    and vim.trim(inspect_result.output) == 'host'
+  then
     log.info('Forwarding: Container using host network, no forwarding needed')
     return container_port
   end
@@ -57,13 +63,16 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
   if not socat_check or socat_check.code ~= 0 then
     log.warn('Forwarding: socat not available in container, trying direct connection')
     -- Fall back to direct container IP connection
-    local ip_result = docker.exec_command(container_id, 'docker inspect ' .. container_id .. ' --format "{{.NetworkSettings.IPAddress}}"')
+    local ip_result = docker.exec_command(
+      container_id,
+      'docker inspect ' .. container_id .. ' --format "{{.NetworkSettings.IPAddress}}"'
+    )
     if ip_result and ip_result.code == 0 and ip_result.output and ip_result.output ~= '' then
       local container_ip = vim.trim(ip_result.output)
       active_forwards[server_name] = {
         type = 'direct',
         host = container_ip,
-        port = container_port
+        port = container_port,
       }
       log.info('Forwarding: Using direct connection to ' .. container_ip .. ':' .. container_port)
       return container_port, container_ip
@@ -75,11 +84,17 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
     type = 'port',
     local_port = local_port,
     container_port = container_port,
-    container_id = container_id
+    container_id = container_id,
   }
 
-  log.info(string.format('Forwarding: Set up port forwarding %s - localhost:%d -> container:%d',
-    server_name, local_port, container_port))
+  log.info(
+    string.format(
+      'Forwarding: Set up port forwarding %s - localhost:%d -> container:%d',
+      server_name,
+      local_port,
+      container_port
+    )
+  )
 
   return local_port, 'localhost'
 end
@@ -95,7 +110,10 @@ function M.create_stdio_bridge(container_id, cmd, server_name)
 
   -- Build docker exec command
   local docker_cmd = {
-    'docker', 'exec', '-i', container_id
+    'docker',
+    'exec',
+    '-i',
+    container_id,
   }
 
   -- Add the LSP server command
@@ -106,8 +124,8 @@ function M.create_stdio_bridge(container_id, cmd, server_name)
   -- Spawn the process
   local handle, pid = vim.loop.spawn(docker_cmd[1], {
     args = vim.list_slice(docker_cmd, 2),
-    stdio = {stdin, stdout, stderr},
-    detached = false
+    stdio = { stdin, stdout, stderr },
+    detached = false,
   }, function(code, signal)
     log.info('Forwarding: stdio bridge process exited - ' .. server_name)
     M.stop_stdio_bridge(server_name)
@@ -128,7 +146,7 @@ function M.create_stdio_bridge(container_id, cmd, server_name)
     stdin = stdin,
     stdout = stdout,
     stderr = stderr,
-    container_id = container_id
+    container_id = container_id,
   }
 
   log.info('Forwarding: stdio bridge created for ' .. server_name .. ' (pid: ' .. pid .. ')')
@@ -137,7 +155,7 @@ function M.create_stdio_bridge(container_id, cmd, server_name)
   return {
     stdin = stdin,
     stdout = stdout,
-    stderr = stderr
+    stderr = stderr,
   }
 end
 
@@ -172,20 +190,25 @@ function M.create_client_middleware()
         -- Fallback: Simple notification display
         if result and result.message then
           local level = result.type or 1 -- 1=Error, 2=Warning, 3=Info, 4=Log
-          local level_names = {[1] = "ERROR", [2] = "WARN", [3] = "INFO", [4] = "DEBUG"}
-          local level_name = level_names[level] or "INFO"
+          local level_names = { [1] = 'ERROR', [2] = 'WARN', [3] = 'INFO', [4] = 'DEBUG' }
+          local level_name = level_names[level] or 'INFO'
 
-          log.info("LSP %s: %s", level_name, result.message)
+          log.info('LSP %s: %s', level_name, result.message)
 
           -- Also show as vim notification if available
           if vim.notify then
             local notify_level = vim.log.levels.INFO
-            if level == 1 then notify_level = vim.log.levels.ERROR
-            elseif level == 2 then notify_level = vim.log.levels.WARN
-            elseif level == 3 then notify_level = vim.log.levels.INFO
-            else notify_level = vim.log.levels.DEBUG end
+            if level == 1 then
+              notify_level = vim.log.levels.ERROR
+            elseif level == 2 then
+              notify_level = vim.log.levels.WARN
+            elseif level == 3 then
+              notify_level = vim.log.levels.INFO
+            else
+              notify_level = vim.log.levels.DEBUG
+            end
 
-            vim.notify(result.message, notify_level, {title = "LSP"})
+            vim.notify(result.message, notify_level, { title = 'LSP' })
           end
         end
       end
@@ -201,7 +224,7 @@ function M.create_client_middleware()
       if handler then
         return handler(err, result, ctx, config)
       else
-        log.warn("LSP handler for textDocument/definition not found")
+        log.warn('LSP handler for textDocument/definition not found')
         return nil
       end
     end,
@@ -215,7 +238,7 @@ function M.create_client_middleware()
       if handler then
         return handler(err, result, ctx, config)
       else
-        log.warn("LSP handler for textDocument/references not found")
+        log.warn('LSP handler for textDocument/references not found')
         return nil
       end
     end,
@@ -229,7 +252,7 @@ function M.create_client_middleware()
       if handler then
         return handler(err, result, ctx, config)
       else
-        log.warn("LSP handler for textDocument/implementation not found")
+        log.warn('LSP handler for textDocument/implementation not found')
         return nil
       end
     end,
@@ -242,11 +265,15 @@ function M.get_client_cmd(server_name, server_config, container_id)
   -- This bypasses the complexity of stdio bridges and should work reliably
 
   local cmd = {
-    'docker', 'exec', '-i',
-    '--user', 'vscode',
-    '-e', 'PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/go/bin:/go/bin:/usr/local/bin:/usr/bin:/bin',
+    'docker',
+    'exec',
+    '-i',
+    '--user',
+    'vscode',
+    '-e',
+    'PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/go/bin:/go/bin:/usr/local/bin:/usr/bin:/bin',
     container_id,
-    server_config.cmd or server_config.path or server_name
+    server_config.cmd or server_config.path or server_name,
   }
 
   log.info('Forwarding: Creating LSP command for ' .. server_name .. ': ' .. table.concat(cmd, ' '))
@@ -309,7 +336,7 @@ end
 function M.get_active_forwardings()
   local result = {
     ports = {},
-    stdio = {}
+    stdio = {},
   }
 
   for name, info in pairs(active_forwards) do
@@ -317,7 +344,7 @@ function M.get_active_forwardings()
       name = name,
       type = info.type,
       local_port = info.local_port,
-      container_port = info.container_port
+      container_port = info.container_port,
     })
   end
 

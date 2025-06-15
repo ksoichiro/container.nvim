@@ -44,6 +44,14 @@ repos:
         files: \.lua$
         pass_filenames: false
 
+      # StyLua formatting check
+      - id: stylua
+        name: Lua formatting with StyLua
+        entry: make format-check
+        language: system
+        files: \.lua$
+        pass_filenames: false
+
       # Run test suite
       - id: lua-tests
         name: Run Lua test suite

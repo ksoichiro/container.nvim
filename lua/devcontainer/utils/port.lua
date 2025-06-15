@@ -31,7 +31,7 @@ function M.find_available_port(start_port, end_port, exclude_ports)
   end_port = end_port or DEFAULT_DYNAMIC_PORT_END
   exclude_ports = exclude_ports or {}
 
-  log.debug("Searching for available port in range %d-%d", start_port, end_port)
+  log.debug('Searching for available port in range %d-%d', start_port, end_port)
 
   -- Convert exclude_ports to a set for faster lookup
   local exclude_set = {}
@@ -48,7 +48,7 @@ function M.find_available_port(start_port, end_port, exclude_ports)
       -- Skip if port is already allocated by us
       if not allocated_ports[port] then
         if is_port_available(port) then
-          log.debug("Found available port: %d (after %d attempts)", port, attempts)
+          log.debug('Found available port: %d (after %d attempts)', port, attempts)
           return port
         end
       end
@@ -60,21 +60,21 @@ function M.find_available_port(start_port, end_port, exclude_ports)
     end
   end
 
-  log.warn("No available port found in range %d-%d after %d attempts", start_port, end_port, attempts)
+  log.warn('No available port found in range %d-%d after %d attempts', start_port, end_port, attempts)
   return nil
 end
 
 -- Reserve a port for a specific project/container
 function M.allocate_port(port, project_id, purpose)
   if allocated_ports[port] then
-    log.warn("Port %d is already allocated to %s", port, allocated_ports[port].project_id)
+    log.warn('Port %d is already allocated to %s', port, allocated_ports[port].project_id)
     return false
   end
 
   allocated_ports[port] = {
-    project_id = project_id or "unknown",
-    purpose = purpose or "generic",
-    allocated_at = os.time()
+    project_id = project_id or 'unknown',
+    purpose = purpose or 'generic',
+    allocated_at = os.time(),
   }
 
   log.info("Allocated port %d for project '%s' (%s)", port, project_id, purpose)
@@ -86,11 +86,11 @@ function M.release_port(port)
   if allocated_ports[port] then
     local info = allocated_ports[port]
     allocated_ports[port] = nil
-    log.info("Released port %d (was allocated to %s)", port, info.project_id)
+    log.info('Released port %d (was allocated to %s)', port, info.project_id)
     return true
   end
 
-  log.debug("Port %d was not allocated, nothing to release", port)
+  log.debug('Port %d was not allocated, nothing to release', port)
   return false
 end
 
@@ -102,7 +102,7 @@ function M.release_project_ports(project_id)
     if info.project_id == project_id then
       allocated_ports[port] = nil
       released_count = released_count + 1
-      log.debug("Released port %d for project %s", port, project_id)
+      log.debug('Released port %d for project %s', port, project_id)
     end
   end
 
@@ -138,45 +138,45 @@ end
 
 -- Parse port specification string
 function M.parse_port_spec(port_spec)
-  if type(port_spec) == "number" then
+  if type(port_spec) == 'number' then
     return {
-      type = "fixed",
+      type = 'fixed',
       host_port = port_spec,
-      container_port = port_spec
+      container_port = port_spec,
     }
   end
 
-  if type(port_spec) ~= "string" then
-    return nil, "Invalid port specification type"
+  if type(port_spec) ~= 'string' then
+    return nil, 'Invalid port specification type'
   end
 
   -- Handle "auto:container_port" format
-  local auto_match = port_spec:match("^auto:(%d+)$")
+  local auto_match = port_spec:match('^auto:(%d+)$')
   if auto_match then
     return {
-      type = "auto",
-      container_port = tonumber(auto_match)
+      type = 'auto',
+      container_port = tonumber(auto_match),
     }
   end
 
   -- Handle "range:start-end:container_port" format
-  local range_start, range_end, container_port = port_spec:match("^range:(%d+)-(%d+):(%d+)$")
+  local range_start, range_end, container_port = port_spec:match('^range:(%d+)-(%d+):(%d+)$')
   if range_start and range_end and container_port then
     return {
-      type = "range",
+      type = 'range',
       range_start = tonumber(range_start),
       range_end = tonumber(range_end),
-      container_port = tonumber(container_port)
+      container_port = tonumber(container_port),
     }
   end
 
   -- Handle "host_port:container_port" format (existing)
-  local host_port, container_port_2 = port_spec:match("^(%d+):(%d+)$")
+  local host_port, container_port_2 = port_spec:match('^(%d+):(%d+)$')
   if host_port and container_port_2 then
     return {
-      type = "fixed",
+      type = 'fixed',
       host_port = tonumber(host_port),
-      container_port = tonumber(container_port_2)
+      container_port = tonumber(container_port_2),
     }
   end
 
@@ -184,13 +184,13 @@ function M.parse_port_spec(port_spec)
   local single_port = tonumber(port_spec)
   if single_port then
     return {
-      type = "fixed",
+      type = 'fixed',
       host_port = single_port,
-      container_port = single_port
+      container_port = single_port,
     }
   end
 
-  return nil, "Invalid port specification format: " .. port_spec
+  return nil, 'Invalid port specification format: ' .. port_spec
 end
 
 -- Resolve dynamic port specifications to actual ports
@@ -213,49 +213,50 @@ function M.resolve_dynamic_ports(port_specs, project_id, config)
   for i, port_spec in ipairs(port_specs) do
     local parsed, err = M.parse_port_spec(port_spec)
     if not parsed then
-      table.insert(errors, string.format("Port %d: %s", i, err))
+      table.insert(errors, string.format('Port %d: %s', i, err))
       goto continue
     end
 
     local resolved_port = {
       container_port = parsed.container_port,
-      protocol = "tcp",
-      original_spec = port_spec
+      protocol = 'tcp',
+      original_spec = port_spec,
     }
 
-    if parsed.type == "fixed" then
+    if parsed.type == 'fixed' then
       resolved_port.host_port = parsed.host_port
-      resolved_port.type = "fixed"
-
-    elseif parsed.type == "auto" then
+      resolved_port.type = 'fixed'
+    elseif parsed.type == 'auto' then
       local available_port = M.find_available_port(port_range_start, port_range_end, used_ports)
       if not available_port then
-        table.insert(errors, string.format("Port %d: No available port for auto allocation", i))
+        table.insert(errors, string.format('Port %d: No available port for auto allocation', i))
         goto continue
       end
 
       resolved_port.host_port = available_port
-      resolved_port.type = "dynamic"
+      resolved_port.type = 'dynamic'
       table.insert(used_ports, available_port)
 
       -- Allocate the port
-      M.allocate_port(available_port, project_id, "auto-allocated")
-
-    elseif parsed.type == "range" then
+      M.allocate_port(available_port, project_id, 'auto-allocated')
+    elseif parsed.type == 'range' then
       local available_port = M.find_available_port(parsed.range_start, parsed.range_end, used_ports)
       if not available_port then
-        table.insert(errors, string.format("Port %d: No available port in range %d-%d", i, parsed.range_start, parsed.range_end))
+        table.insert(
+          errors,
+          string.format('Port %d: No available port in range %d-%d', i, parsed.range_start, parsed.range_end)
+        )
         goto continue
       end
 
       resolved_port.host_port = available_port
-      resolved_port.type = "dynamic"
+      resolved_port.type = 'dynamic'
       resolved_port.range_start = parsed.range_start
       resolved_port.range_end = parsed.range_end
       table.insert(used_ports, available_port)
 
       -- Allocate the port
-      M.allocate_port(available_port, project_id, "range-allocated")
+      M.allocate_port(available_port, project_id, 'range-allocated')
     end
 
     table.insert(resolved_ports, resolved_port)
@@ -279,8 +280,8 @@ function M.get_port_statistics()
     port_range_usage = {
       start = DEFAULT_DYNAMIC_PORT_START,
       end_port = DEFAULT_DYNAMIC_PORT_END,
-      allocated_in_range = 0
-    }
+      allocated_in_range = 0,
+    },
   }
 
   for port, info in pairs(allocated_ports) do
@@ -307,15 +308,15 @@ function M.validate_port_config(config)
 
   if config.port_range_start and config.port_range_end then
     if config.port_range_start >= config.port_range_end then
-      table.insert(errors, "port_range_start must be less than port_range_end")
+      table.insert(errors, 'port_range_start must be less than port_range_end')
     end
 
     if config.port_range_start < 1024 then
-      table.insert(errors, "port_range_start should be >= 1024 to avoid system ports")
+      table.insert(errors, 'port_range_start should be >= 1024 to avoid system ports')
     end
 
     if config.port_range_end > 65535 then
-      table.insert(errors, "port_range_end must be <= 65535")
+      table.insert(errors, 'port_range_end must be <= 65535')
     end
   end
 

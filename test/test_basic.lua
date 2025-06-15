@@ -7,13 +7,15 @@
 _G.vim = {
   tbl_contains = function(t, value)
     for _, v in ipairs(t) do
-      if v == value then return true end
+      if v == value then
+        return true
+      end
     end
     return false
   end,
   split = function(str, sep)
     local result = {}
-    for match in (str .. sep):gmatch("(.-)" .. sep) do
+    for match in (str .. sep):gmatch('(.-)' .. sep) do
       table.insert(result, match)
     end
     return result
@@ -23,7 +25,7 @@ _G.vim = {
   end,
   tbl_deep_extend = function(behavior, ...)
     local result = {}
-    local sources = {...}
+    local sources = { ... }
     for _, source in ipairs(sources) do
       if type(source) == 'table' then
         for k, v in pairs(source) do
@@ -41,31 +43,47 @@ _G.vim = {
     return keys
   end,
   fn = {
-    getcwd = function() return "/test/workspace" end,
-    shellescape = function(str) return "'" .. str .. "'" end,
-    system = function(cmd) return "" end,
-    sha256 = function(str) return "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234" end,
+    getcwd = function()
+      return '/test/workspace'
+    end,
+    shellescape = function(str)
+      return "'" .. str .. "'"
+    end,
+    system = function(cmd)
+      return ''
+    end,
+    sha256 = function(str)
+      return 'abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234'
+    end,
     fnamemodify = function(path, mod)
-      if mod == ':p' then return path end
-      if mod == ':h' then return vim.split(path, '/')[1] or path end
+      if mod == ':p' then
+        return path
+      end
+      if mod == ':h' then
+        return vim.split(path, '/')[1] or path
+      end
       return path
-    end
+    end,
   },
   v = { shell_error = 0 },
   loop = {
     new_tcp = function()
       return {
-        bind = function(self, addr, port) return true end,
-        close = function(self) end
+        bind = function(self, addr, port)
+          return true
+        end,
+        close = function(self) end,
       }
-    end
+    end,
   },
-  notify = function(msg, level) print("[NOTIFY]", msg) end,
-  log = { levels = { INFO = 1, ERROR = 2 } }
+  notify = function(msg, level)
+    print('[NOTIFY]', msg)
+  end,
+  log = { levels = { INFO = 1, ERROR = 2 } },
 }
 
 local function test_module_loading()
-  print("=== Module Loading Test ===")
+  print('=== Module Loading Test ===')
 
   -- Test if modules can be loaded
   local modules = {
@@ -81,9 +99,9 @@ local function test_module_loading()
   for _, module_name in ipairs(modules) do
     local success, module = pcall(require, module_name)
     if success then
-      print("✓ " .. module_name .. " loaded successfully")
+      print('✓ ' .. module_name .. ' loaded successfully')
     else
-      print("✗ " .. module_name .. " failed to load: " .. module)
+      print('✗ ' .. module_name .. ' failed to load: ' .. module)
       return false
     end
   end
@@ -92,7 +110,7 @@ local function test_module_loading()
 end
 
 local function test_path_conversion()
-  print("\n=== Path Conversion Test ===")
+  print('\n=== Path Conversion Test ===')
 
   local path_module = require('devcontainer.lsp.path')
 
@@ -109,9 +127,9 @@ local function test_path_conversion()
   for local_path, expected_container in pairs(test_cases) do
     local container_path = path_module.to_container_path(local_path)
     if container_path == expected_container then
-      print("✓ " .. local_path .. " -> " .. container_path)
+      print('✓ ' .. local_path .. ' -> ' .. container_path)
     else
-      print("✗ " .. local_path .. " -> " .. (container_path or "nil") .. " (expected: " .. expected_container .. ")")
+      print('✗ ' .. local_path .. ' -> ' .. (container_path or 'nil') .. ' (expected: ' .. expected_container .. ')')
       return false
     end
   end
@@ -121,9 +139,9 @@ local function test_path_conversion()
     if container_path:match('^/workspace') then
       local local_path = path_module.to_local_path(container_path)
       if local_path == expected_local then
-        print("✓ " .. container_path .. " -> " .. local_path)
+        print('✓ ' .. container_path .. ' -> ' .. local_path)
       else
-        print("✗ " .. container_path .. " -> " .. (local_path or "nil") .. " (expected: " .. expected_local .. ")")
+        print('✗ ' .. container_path .. ' -> ' .. (local_path or 'nil') .. ' (expected: ' .. expected_local .. ')')
         return false
       end
     end
@@ -133,18 +151,18 @@ local function test_path_conversion()
 end
 
 local function test_config_loading()
-  print("\n=== Configuration Test ===")
+  print('\n=== Configuration Test ===')
 
   local config = require('devcontainer.config')
 
   -- Test default configuration
   local success, result = config.setup()
   if not success then
-    print("✗ Failed to load default configuration")
+    print('✗ Failed to load default configuration')
     return false
   end
 
-  print("✓ Default configuration loaded")
+  print('✓ Default configuration loaded')
 
   -- Test custom configuration
   local custom_config = {
@@ -152,23 +170,23 @@ local function test_config_loading()
     lsp = {
       auto_setup = false,
       timeout = 10000,
-    }
+    },
   }
 
   success, result = config.setup(custom_config)
   if not success then
-    print("✗ Failed to load custom configuration")
+    print('✗ Failed to load custom configuration')
     return false
   end
 
-  print("✓ Custom configuration loaded")
+  print('✓ Custom configuration loaded')
 
   -- Verify configuration values
   local current_config = config.get()
   if current_config.log_level == 'debug' and current_config.lsp.timeout == 10000 then
-    print("✓ Configuration values correctly set")
+    print('✓ Configuration values correctly set')
   else
-    print("✗ Configuration values not set correctly")
+    print('✗ Configuration values not set correctly')
     return false
   end
 
@@ -176,7 +194,7 @@ local function test_config_loading()
 end
 
 local function test_server_detection()
-  print("\n=== Server Detection Test ===")
+  print('\n=== Server Detection Test ===')
 
   local lsp = require('devcontainer.lsp.init')
 
@@ -186,18 +204,18 @@ local function test_server_detection()
     servers = {
       lua_ls = { cmd = 'lua-language-server' },
       pylsp = { cmd = 'pylsp' },
-    }
+    },
   })
 
   -- Test server detection logic (without actual container)
-  print("✓ LSP module initialized")
+  print('✓ LSP module initialized')
 
   -- Test get_state
   local state = lsp.get_state()
   if state and state.config then
-    print("✓ LSP state accessible")
+    print('✓ LSP state accessible')
   else
-    print("✗ LSP state not accessible")
+    print('✗ LSP state not accessible')
     return false
   end
 
@@ -206,7 +224,7 @@ end
 
 -- Main test runner
 local function run_tests()
-  print("Starting devcontainer.nvim basic tests...\n")
+  print('Starting devcontainer.nvim basic tests...\n')
 
   local tests = {
     test_module_loading,
@@ -225,14 +243,14 @@ local function run_tests()
     end
   end
 
-  print(string.format("\n=== Test Results ==="))
-  print(string.format("Passed: %d/%d", passed, total))
+  print(string.format('\n=== Test Results ==='))
+  print(string.format('Passed: %d/%d', passed, total))
 
   if passed == total then
-    print("All tests passed! ✓")
+    print('All tests passed! ✓')
     return 0
   else
-    print("Some tests failed! ✗")
+    print('Some tests failed! ✗')
     return 1
   end
 end

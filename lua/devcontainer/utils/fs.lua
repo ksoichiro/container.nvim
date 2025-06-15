@@ -10,14 +10,14 @@ function M.normalize_path(path)
   end
 
   -- Convert Windows path separators to Unix format
-  path = path:gsub("\\", "/")
+  path = path:gsub('\\', '/')
 
   -- Remove leading ./
-  path = path:gsub("^%./", "")
+  path = path:gsub('^%./', '')
 
   -- Remove trailing slash (except for root directory)
-  if path ~= "/" then
-    path = path:gsub("/$", "")
+  if path ~= '/' then
+    path = path:gsub('/$', '')
   end
 
   return path
@@ -26,12 +26,12 @@ end
 -- Path joining
 function M.join_path(...)
   local parts = {}
-  for _, part in ipairs({...}) do
-    if part and part ~= "" then
+  for _, part in ipairs({ ... }) do
+    if part and part ~= '' then
       table.insert(parts, M.normalize_path(part))
     end
   end
-  return table.concat(parts, "/")
+  return table.concat(parts, '/')
 end
 
 -- Check if path is absolute
@@ -39,7 +39,7 @@ function M.is_absolute_path(path)
   if not path then
     return false
   end
-  return path:match("^/") ~= nil or path:match("^%a:") ~= nil
+  return path:match('^/') ~= nil or path:match('^%a:') ~= nil
 end
 
 -- Convert relative path to absolute path
@@ -79,15 +79,15 @@ end
 -- File reading (sync)
 function M.read_file(path)
   if not M.is_file(path) then
-    return nil, "File does not exist: " .. path
+    return nil, 'File does not exist: ' .. path
   end
 
-  local file = io.open(path, "r")
+  local file = io.open(path, 'r')
   if not file then
-    return nil, "Failed to open file: " .. path
+    return nil, 'Failed to open file: ' .. path
   end
 
-  local content = file:read("*all")
+  local content = file:read('*all')
   file:close()
   return content
 end
@@ -95,14 +95,14 @@ end
 -- File writing (sync)
 function M.write_file(path, content)
   -- Create directory if it doesn't exist
-  local dir = vim.fn.fnamemodify(path, ":h")
+  local dir = vim.fn.fnamemodify(path, ':h')
   if not M.is_directory(dir) then
-    vim.fn.mkdir(dir, "p")
+    vim.fn.mkdir(dir, 'p')
   end
 
-  local file = io.open(path, "w")
+  local file = io.open(path, 'w')
   if not file then
-    return false, "Failed to open file for writing: " .. path
+    return false, 'Failed to open file for writing: ' .. path
   end
 
   file:write(content)
@@ -114,13 +114,13 @@ end
 function M.find_file_upward(start_path, filename)
   local current_path = M.resolve_path(start_path)
 
-  while current_path and current_path ~= "/" do
+  while current_path and current_path ~= '/' do
     local target_path = M.join_path(current_path, filename)
     if M.exists(target_path) then
       return target_path
     end
 
-    local parent = vim.fn.fnamemodify(current_path, ":h")
+    local parent = vim.fn.fnamemodify(current_path, ':h')
     if parent == current_path then
       break
     end
@@ -170,9 +170,9 @@ function M.find_files(path, pattern, max_depth)
 
     local files = M.list_directory(current_path)
     for _, file in ipairs(files) do
-      if file.type == "file" and (not pattern or file.name:match(pattern)) then
+      if file.type == 'file' and (not pattern or file.name:match(pattern)) then
         table.insert(results, file.path)
-      elseif file.type == "directory" then
+      elseif file.type == 'directory' then
         search_recursive(file.path, depth + 1)
       end
     end
@@ -210,7 +210,7 @@ function M.basename(path)
   if not path then
     return nil
   end
-  return vim.fn.fnamemodify(path, ":t")
+  return vim.fn.fnamemodify(path, ':t')
 end
 
 -- Get directory name from path
@@ -218,7 +218,7 @@ function M.dirname(path)
   if not path then
     return nil
   end
-  return vim.fn.fnamemodify(path, ":h")
+  return vim.fn.fnamemodify(path, ':h')
 end
 
 -- Get file extension
@@ -226,7 +226,7 @@ function M.extension(path)
   if not path then
     return nil
   end
-  return vim.fn.fnamemodify(path, ":e")
+  return vim.fn.fnamemodify(path, ':e')
 end
 
 -- Get filename without extension
@@ -234,7 +234,7 @@ function M.stem(path)
   if not path then
     return nil
   end
-  return vim.fn.fnamemodify(path, ":t:r")
+  return vim.fn.fnamemodify(path, ':t:r')
 end
 
 -- Calculate relative path
@@ -245,17 +245,17 @@ function M.relative_path(path, base)
 
   -- Same path case
   if path == base then
-    return "."
+    return '.'
   end
 
   -- Simple case: base is parent directory of path
-  if path:sub(1, #base + 1) == base .. "/" then
+  if path:sub(1, #base + 1) == base .. '/' then
     return path:sub(#base + 2)
   end
 
   -- More complex case: find common ancestor
-  local path_parts = vim.split(path, "/")
-  local base_parts = vim.split(base, "/")
+  local path_parts = vim.split(path, '/')
+  local base_parts = vim.split(base, '/')
 
   local common_length = 0
   for i = 1, math.min(#path_parts, #base_parts) do
@@ -270,7 +270,7 @@ function M.relative_path(path, base)
 
   -- Go back from base to common ancestor
   for i = common_length + 1, #base_parts do
-    table.insert(relative_parts, "..")
+    table.insert(relative_parts, '..')
   end
 
   -- Go forward from common ancestor to path
@@ -279,22 +279,22 @@ function M.relative_path(path, base)
   end
 
   if #relative_parts == 0 then
-    return "."
+    return '.'
   end
 
-  return table.concat(relative_parts, "/")
+  return table.concat(relative_parts, '/')
 end
 
 -- Get temporary directory
 function M.get_temp_dir()
-  return vim.fn.tempname():match("(.*)/[^/]*$") or "/tmp"
+  return vim.fn.tempname():match('(.*)/[^/]*$') or '/tmp'
 end
 
 -- Generate temporary file path
 function M.temp_file(prefix, suffix)
-  prefix = prefix or "devcontainer"
-  suffix = suffix or ""
-  return M.join_path(M.get_temp_dir(), prefix .. "_" .. os.time() .. suffix)
+  prefix = prefix or 'devcontainer'
+  suffix = suffix or ''
+  return M.join_path(M.get_temp_dir(), prefix .. '_' .. os.time() .. suffix)
 end
 
 return M

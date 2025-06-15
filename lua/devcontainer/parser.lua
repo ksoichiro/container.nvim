@@ -20,7 +20,7 @@ local function parse_json(content)
 
   local success, result = pcall(vim.json.decode, content)
   if not success then
-    return nil, "Invalid JSON: " .. result
+    return nil, 'Invalid JSON: ' .. result
   end
 
   return result
@@ -59,7 +59,7 @@ function M.generate_project_id(project_path)
   -- Use project directory name and path hash for uniqueness
   local project_name = fs.basename(project_path)
   local path_hash = vim.fn.sha256(project_path):sub(1, 8)
-  return string.format("%s-%s", project_name, path_hash)
+  return string.format('%s-%s', project_name, path_hash)
 end
 
 -- Resolve dynamic ports to actual port numbers
@@ -73,17 +73,19 @@ function M.resolve_dynamic_ports(config, plugin_config)
 
   -- Check if dynamic ports are enabled
   if not plugin_config.port_forwarding.enable_dynamic_ports then
-    log.debug("Dynamic ports disabled, using only fixed ports")
+    log.debug('Dynamic ports disabled, using only fixed ports')
     return config
   end
 
   local port_specs = {}
   for _, port_entry in ipairs(config.normalized_ports) do
     if port_entry.type == 'auto' then
-      table.insert(port_specs, string.format("auto:%d", port_entry.container_port))
+      table.insert(port_specs, string.format('auto:%d', port_entry.container_port))
     elseif port_entry.type == 'range' then
-      table.insert(port_specs, string.format("range:%d-%d:%d",
-        port_entry.range_start, port_entry.range_end, port_entry.container_port))
+      table.insert(
+        port_specs,
+        string.format('range:%d-%d:%d', port_entry.range_start, port_entry.range_end, port_entry.container_port)
+      )
     else
       -- Fixed ports remain as-is
       table.insert(port_specs, port_entry.original_spec)
@@ -92,17 +94,17 @@ function M.resolve_dynamic_ports(config, plugin_config)
 
   local resolved_ports, errors = port_utils.resolve_dynamic_ports(port_specs, project_id, {
     port_range_start = plugin_config.port_forwarding.port_range_start,
-    port_range_end = plugin_config.port_forwarding.port_range_end
+    port_range_end = plugin_config.port_forwarding.port_range_end,
   })
 
   if errors and #errors > 0 then
-    log.warn("Port resolution errors for project %s:", project_id)
+    log.warn('Port resolution errors for project %s:', project_id)
     for _, error in ipairs(errors) do
-      log.warn("  %s", error)
+      log.warn('  %s', error)
     end
 
     if plugin_config.port_forwarding.conflict_resolution == 'error' then
-      return nil, "Port resolution failed: " .. table.concat(errors, "; ")
+      return nil, 'Port resolution failed: ' .. table.concat(errors, '; ')
     end
   end
 
@@ -110,7 +112,7 @@ function M.resolve_dynamic_ports(config, plugin_config)
   config.normalized_ports = resolved_ports or {}
   config.port_resolution_errors = errors or {}
 
-  log.info("Resolved %d ports for project %s", #config.normalized_ports, project_id)
+  log.info('Resolved %d ports for project %s', #config.normalized_ports, project_id)
 
   return config
 end
@@ -140,7 +142,7 @@ end
 function M.find_devcontainer_json(start_path)
   start_path = start_path or vim.fn.getcwd()
 
-  log.debug("Searching for devcontainer.json from: %s", start_path)
+  log.debug('Searching for devcontainer.json from: %s', start_path)
 
   -- Search for .devcontainer/devcontainer.json
   local devcontainer_path = fs.find_file_upward(start_path, '.devcontainer/devcontainer.json')
@@ -197,14 +199,13 @@ local function normalize_ports(ports)
     local port_entry = {
       protocol = 'tcp',
       original_spec = port,
-      index = i
+      index = i,
     }
 
     if type(port) == 'number' then
       port_entry.type = 'fixed'
       port_entry.host_port = port
       port_entry.container_port = port
-
     elseif type(port) == 'string' then
       -- Check for auto allocation: "auto:3000"
       local auto_container_port = port:match('^auto:(%d+)$')
@@ -212,7 +213,6 @@ local function normalize_ports(ports)
         port_entry.type = 'auto'
         port_entry.container_port = tonumber(auto_container_port)
         -- host_port will be assigned during resolution
-
       else
         -- Check for range allocation: "range:8000-8010:3000"
         local range_start, range_end, container_port = port:match('^range:(%d+)-(%d+):(%d+)$')
@@ -222,7 +222,6 @@ local function normalize_ports(ports)
           port_entry.range_end = tonumber(range_end)
           port_entry.container_port = tonumber(container_port)
           -- host_port will be assigned during resolution
-
         else
           -- Check for host:container mapping: "8080:3000"
           local host_port, container_port_2 = port:match('(%d+):(%d+)')
@@ -230,7 +229,6 @@ local function normalize_ports(ports)
             port_entry.type = 'fixed'
             port_entry.host_port = tonumber(host_port)
             port_entry.container_port = tonumber(container_port_2)
-
           else
             -- Single port as string: "3000"
             local single_port = tonumber(port)
@@ -239,21 +237,19 @@ local function normalize_ports(ports)
               port_entry.host_port = single_port
               port_entry.container_port = single_port
             else
-              log.warn("Invalid port specification at index %d: %s", i, tostring(port))
+              log.warn('Invalid port specification at index %d: %s', i, tostring(port))
               goto continue
             end
           end
         end
       end
-
     elseif type(port) == 'table' then
       port_entry.type = 'fixed'
       port_entry.host_port = port.hostPort or port.containerPort
       port_entry.container_port = port.containerPort
       port_entry.protocol = port.protocol or 'tcp'
-
     else
-      log.warn("Unsupported port specification type at index %d: %s", i, type(port))
+      log.warn('Unsupported port specification type at index %d: %s', i, type(port))
       goto continue
     end
 
@@ -311,15 +307,15 @@ function M.parse(file_path, context)
   context = context or {}
 
   if not fs.is_file(file_path) then
-    return nil, "File not found: " .. file_path
+    return nil, 'File not found: ' .. file_path
   end
 
-  log.debug("Parsing devcontainer.json: %s", file_path)
+  log.debug('Parsing devcontainer.json: %s', file_path)
 
   -- Read file
   local content, err = fs.read_file(file_path)
   if not content then
-    return nil, "Failed to read file: " .. err
+    return nil, 'Failed to read file: ' .. err
   end
 
   -- Parse JSON
@@ -329,7 +325,7 @@ function M.parse(file_path, context)
   end
 
   -- Debug: postCreateCommand after parsing
-  log.debug("Raw config postCreateCommand: %s", tostring(config.postCreateCommand))
+  log.debug('Raw config postCreateCommand: %s', tostring(config.postCreateCommand))
 
   -- Set base path
   local base_path = fs.dirname(file_path)
@@ -357,14 +353,14 @@ function M.parse(file_path, context)
   config.normalized_mounts = normalize_mounts(config.mounts, context)
 
   -- Set default values
-  config.name = config.name or "devcontainer"
-  config.workspaceFolder = config.workspaceFolder or "/workspace"
-  config.remoteUser = config.remoteUser or "root"
+  config.name = config.name or 'devcontainer'
+  config.workspaceFolder = config.workspaceFolder or '/workspace'
+  config.remoteUser = config.remoteUser or 'root'
 
   -- Debug: final postCreateCommand
-  log.debug("Final config postCreateCommand: %s", tostring(config.postCreateCommand))
+  log.debug('Final config postCreateCommand: %s', tostring(config.postCreateCommand))
 
-  log.info("Successfully parsed devcontainer.json: %s", config.name)
+  log.info('Successfully parsed devcontainer.json: %s', config.name)
   return config
 end
 
@@ -372,7 +368,7 @@ end
 function M.find_and_parse(start_path, context)
   local devcontainer_path = M.find_devcontainer_json(start_path)
   if not devcontainer_path then
-    return nil, "No devcontainer.json found"
+    return nil, 'No devcontainer.json found'
   end
 
   return M.parse(devcontainer_path, context)
@@ -384,34 +380,34 @@ function M.validate(config)
 
   -- Check required fields
   if not config.name then
-    table.insert(errors, "Missing required field: name")
+    table.insert(errors, 'Missing required field: name')
   end
 
   -- Check Dockerfile or image specification
   if not config.dockerFile and not config.image and not config.dockerComposeFile then
-    table.insert(errors, "Must specify one of: dockerFile, image, or dockerComposeFile")
+    table.insert(errors, 'Must specify one of: dockerFile, image, or dockerComposeFile')
   end
 
   -- Validate port settings
   if config.normalized_ports then
     for _, port in ipairs(config.normalized_ports) do
       if not port.container_port or port.container_port <= 0 or port.container_port > 65535 then
-        table.insert(errors, "Invalid container port: " .. tostring(port.container_port))
+        table.insert(errors, 'Invalid container port: ' .. tostring(port.container_port))
       end
 
       -- Only validate host_port for fixed ports (auto/range ports don't have host_port yet)
-      if port.type == "fixed" then
+      if port.type == 'fixed' then
         if not port.host_port or port.host_port <= 0 or port.host_port > 65535 then
-          table.insert(errors, "Invalid host port: " .. tostring(port.host_port))
+          table.insert(errors, 'Invalid host port: ' .. tostring(port.host_port))
         end
-      elseif port.type == "range" then
+      elseif port.type == 'range' then
         -- Validate range boundaries
         if not port.range_start or not port.range_end then
-          table.insert(errors, "Range port missing start or end boundary")
+          table.insert(errors, 'Range port missing start or end boundary')
         elseif port.range_start >= port.range_end then
-          table.insert(errors, "Range port start must be less than end")
+          table.insert(errors, 'Range port start must be less than end')
         elseif port.range_start <= 0 or port.range_end > 65535 then
-          table.insert(errors, "Range port boundaries must be 1-65535")
+          table.insert(errors, 'Range port boundaries must be 1-65535')
         end
       end
     end
@@ -420,11 +416,11 @@ function M.validate(config)
   -- Validate mount settings
   if config.normalized_mounts then
     for _, mount in ipairs(config.normalized_mounts) do
-      if not mount.source or mount.source == "" then
-        table.insert(errors, "Mount source cannot be empty")
+      if not mount.source or mount.source == '' then
+        table.insert(errors, 'Mount source cannot be empty')
       end
-      if not mount.target or mount.target == "" then
-        table.insert(errors, "Mount target cannot be empty")
+      if not mount.target or mount.target == '' then
+        table.insert(errors, 'Mount target cannot be empty')
       end
     end
   end
@@ -439,12 +435,12 @@ function M.validate_resolved_ports(config)
   if config.normalized_ports then
     for _, port in ipairs(config.normalized_ports) do
       if not port.container_port or port.container_port <= 0 or port.container_port > 65535 then
-        table.insert(errors, "Invalid container port: " .. tostring(port.container_port))
+        table.insert(errors, 'Invalid container port: ' .. tostring(port.container_port))
       end
 
       -- All ports should have host_port after resolution
       if not port.host_port or port.host_port <= 0 or port.host_port > 65535 then
-        table.insert(errors, "Invalid or missing host port after resolution: " .. tostring(port.host_port))
+        table.insert(errors, 'Invalid or missing host port after resolution: ' .. tostring(port.host_port))
       end
     end
   end
@@ -457,12 +453,12 @@ function M.normalize_for_plugin(config)
   local normalized = {}
 
   -- Basic settings
-  normalized.name = config.name or "devcontainer"
+  normalized.name = config.name or 'devcontainer'
   normalized.image = config.image
   normalized.dockerfile = config.resolved_dockerfile
-  normalized.context = config.build and config.build.context or "."
+  normalized.context = config.build and config.build.context or '.'
   normalized.build_args = config.build and config.build.args or {}
-  normalized.workspace_folder = config.workspaceFolder or "/workspace"
+  normalized.workspace_folder = config.workspaceFolder or '/workspace'
   normalized.remote_user = config.remoteUser
 
   -- Environment variables

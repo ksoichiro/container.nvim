@@ -48,11 +48,11 @@ M.defaults = {
     show_notifications = true,
     status_line = true,
     icons = {
-      container = "🐳",
-      running = "✅",
-      stopped = "⏹️",
-      building = "🔨",
-      error = "❌",
+      container = '🐳',
+      running = '✅',
+      stopped = '⏹️',
+      building = '🔨',
+      error = '❌',
     },
   },
 
@@ -61,7 +61,7 @@ M.defaults = {
     auto_forward = true,
     notification = true,
     bind_address = '127.0.0.1',
-    common_ports = {3000, 8080, 5000, 3001},
+    common_ports = { 3000, 8080, 5000, 3001 },
     -- Dynamic port allocation settings
     enable_dynamic_ports = true,
     port_range_start = 10000,
@@ -119,40 +119,40 @@ local function validate_config(config)
   -- Validate log level
   local valid_log_levels = { 'debug', 'info', 'warn', 'error' }
   if not vim.tbl_contains(valid_log_levels, config.log_level:lower()) then
-    table.insert(errors, "Invalid log_level: " .. config.log_level)
+    table.insert(errors, 'Invalid log_level: ' .. config.log_level)
   end
 
   -- Validate container runtime
   local valid_runtimes = { 'docker', 'podman' }
   if not vim.tbl_contains(valid_runtimes, config.container_runtime) then
-    table.insert(errors, "Invalid container_runtime: " .. config.container_runtime)
+    table.insert(errors, 'Invalid container_runtime: ' .. config.container_runtime)
   end
 
   -- Validate auto_start_mode
   local valid_auto_start_modes = { 'notify', 'prompt', 'immediate', 'off' }
   if not vim.tbl_contains(valid_auto_start_modes, config.auto_start_mode) then
-    table.insert(errors, "Invalid auto_start_mode: " .. config.auto_start_mode)
+    table.insert(errors, 'Invalid auto_start_mode: ' .. config.auto_start_mode)
   end
 
   -- Validate auto_start_delay
   if type(config.auto_start_delay) ~= 'number' or config.auto_start_delay < 0 then
-    table.insert(errors, "auto_start_delay must be a non-negative number")
+    table.insert(errors, 'auto_start_delay must be a non-negative number')
   end
 
   -- Validate terminal direction
   local valid_directions = { 'horizontal', 'vertical', 'float' }
   if not vim.tbl_contains(valid_directions, config.terminal.direction) then
-    table.insert(errors, "Invalid terminal direction: " .. config.terminal.direction)
+    table.insert(errors, 'Invalid terminal direction: ' .. config.terminal.direction)
   end
 
   -- Validate port range
   if config.lsp.port_range[1] >= config.lsp.port_range[2] then
-    table.insert(errors, "Invalid LSP port_range: start port must be less than end port")
+    table.insert(errors, 'Invalid LSP port_range: start port must be less than end port')
   end
 
   -- Validate paths
-  if config.workspace.mount_point == "" then
-    table.insert(errors, "workspace.mount_point cannot be empty")
+  if config.workspace.mount_point == '' then
+    table.insert(errors, 'workspace.mount_point cannot be empty')
   end
 
   return errors
@@ -172,7 +172,7 @@ function M.setup(user_config)
   local errors = validate_config(current_config)
   if #errors > 0 then
     for _, error in ipairs(errors) do
-      log.error("Configuration error: %s", error)
+      log.error('Configuration error: %s', error)
     end
     return false, errors
   end
@@ -180,7 +180,7 @@ function M.setup(user_config)
   -- Set log level
   log.set_level(current_config.log_level)
 
-  log.debug("Configuration loaded successfully")
+  log.debug('Configuration loaded successfully')
   return true, current_config
 end
 
@@ -191,7 +191,7 @@ end
 
 -- Get specific configuration item
 function M.get_value(path)
-  local keys = vim.split(path, ".", { plain = true })
+  local keys = vim.split(path, '.', { plain = true })
   local value = current_config
 
   for _, key in ipairs(keys) do
@@ -207,7 +207,7 @@ end
 
 -- Update configuration item
 function M.set_value(path, new_value)
-  local keys = vim.split(path, ".", { plain = true })
+  local keys = vim.split(path, '.', { plain = true })
   local target = current_config
 
   -- Navigate to all keys except the last one
@@ -222,26 +222,26 @@ function M.set_value(path, new_value)
   -- Set value with the last key
   target[keys[#keys]] = new_value
 
-  log.debug("Configuration updated: %s = %s", path, vim.inspect(new_value))
+  log.debug('Configuration updated: %s = %s', path, vim.inspect(new_value))
 end
 
 -- Save configuration to file
 function M.save_to_file(filepath)
   local fs = require('devcontainer.utils.fs')
 
-  local content = "-- devcontainer.nvim configuration\n"
-  content = content .. "return " .. vim.inspect(current_config, {
-    indent = "  ",
+  local content = '-- devcontainer.nvim configuration\n'
+  content = content .. 'return ' .. vim.inspect(current_config, {
+    indent = '  ',
     depth = 10,
   })
 
   local success, err = fs.write_file(filepath, content)
   if not success then
-    log.error("Failed to save configuration: %s", err)
+    log.error('Failed to save configuration: %s', err)
     return false, err
   end
 
-  log.info("Configuration saved to %s", filepath)
+  log.info('Configuration saved to %s', filepath)
   return true
 end
 
@@ -250,25 +250,25 @@ function M.load_from_file(filepath)
   local fs = require('devcontainer.utils.fs')
 
   if not fs.is_file(filepath) then
-    log.warn("Configuration file not found: %s", filepath)
-    return false, "File not found"
+    log.warn('Configuration file not found: %s', filepath)
+    return false, 'File not found'
   end
 
   local content, err = fs.read_file(filepath)
   if not content then
-    log.error("Failed to read configuration file: %s", err)
+    log.error('Failed to read configuration file: %s', err)
     return false, err
   end
 
   local chunk, load_err = loadstring(content)
   if not chunk then
-    log.error("Failed to parse configuration file: %s", load_err)
+    log.error('Failed to parse configuration file: %s', load_err)
     return false, load_err
   end
 
   local success, config = pcall(chunk)
   if not success then
-    log.error("Failed to execute configuration file: %s", config)
+    log.error('Failed to execute configuration file: %s', config)
     return false, config
   end
 
@@ -278,7 +278,7 @@ end
 -- Reset to default configuration
 function M.reset()
   current_config = deep_copy(M.defaults)
-  log.info("Configuration reset to defaults")
+  log.info('Configuration reset to defaults')
   return current_config
 end
 
@@ -286,15 +286,15 @@ end
 function M.diff_from_defaults()
   local function table_diff(default, current, prefix)
     local diffs = {}
-    prefix = prefix or ""
+    prefix = prefix or ''
 
     for key, value in pairs(current) do
-      local path = prefix == "" and key or prefix .. "." .. key
+      local path = prefix == '' and key or prefix .. '.' .. key
 
       if default[key] == nil then
         table.insert(diffs, {
           path = path,
-          action = "added",
+          action = 'added',
           value = value,
         })
       elseif type(value) == 'table' and type(default[key]) == 'table' then
@@ -305,7 +305,7 @@ function M.diff_from_defaults()
       elseif value ~= default[key] then
         table.insert(diffs, {
           path = path,
-          action = "changed",
+          action = 'changed',
           old_value = default[key],
           new_value = value,
         })
@@ -313,11 +313,11 @@ function M.diff_from_defaults()
     end
 
     for key, value in pairs(default) do
-      local path = prefix == "" and key or prefix .. "." .. key
+      local path = prefix == '' and key or prefix .. '.' .. key
       if current[key] == nil then
         table.insert(diffs, {
           path = path,
-          action = "removed",
+          action = 'removed',
           value = value,
         })
       end
@@ -333,29 +333,27 @@ end
 function M.show_config()
   local diffs = M.diff_from_defaults()
 
-  print("=== devcontainer.nvim Configuration ===")
+  print('=== devcontainer.nvim Configuration ===')
   print()
 
   if #diffs == 0 then
-    print("Using default configuration")
+    print('Using default configuration')
   else
-    print("Differences from defaults:")
+    print('Differences from defaults:')
     for _, diff in ipairs(diffs) do
-      if diff.action == "changed" then
-        print(string.format("  %s: %s -> %s", diff.path,
-                          vim.inspect(diff.old_value),
-                          vim.inspect(diff.new_value)))
-      elseif diff.action == "added" then
-        print(string.format("  +%s: %s", diff.path, vim.inspect(diff.value)))
-      elseif diff.action == "removed" then
-        print(string.format("  -%s: %s", diff.path, vim.inspect(diff.value)))
+      if diff.action == 'changed' then
+        print(string.format('  %s: %s -> %s', diff.path, vim.inspect(diff.old_value), vim.inspect(diff.new_value)))
+      elseif diff.action == 'added' then
+        print(string.format('  +%s: %s', diff.path, vim.inspect(diff.value)))
+      elseif diff.action == 'removed' then
+        print(string.format('  -%s: %s', diff.path, vim.inspect(diff.value)))
       end
     end
   end
 
   print()
-  print("Current log level: " .. current_config.log_level)
-  print("Container runtime: " .. current_config.container_runtime)
+  print('Current log level: ' .. current_config.log_level)
+  print('Container runtime: ' .. current_config.container_runtime)
   print()
 end
 
@@ -363,14 +361,14 @@ end
 function M.get_schema()
   local function extract_schema(config, prefix)
     local schema = {}
-    prefix = prefix or ""
+    prefix = prefix or ''
 
     for key, value in pairs(config) do
-      local path = prefix == "" and key or prefix .. "." .. key
+      local path = prefix == '' and key or prefix .. '.' .. key
 
       if type(value) == 'table' then
         schema[path] = {
-          type = "table",
+          type = 'table',
           children = extract_schema(value, path),
         }
       else

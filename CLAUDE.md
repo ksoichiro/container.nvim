@@ -48,6 +48,7 @@ make install-dev
 
 **Pre-commit hooks automatically run:**
 - Luacheck linting on all Lua files
+- StyLua code formatting checks
 - Test suite execution
 - File formatting (trailing whitespace, end-of-file fixes)
 - JSON/YAML validation
@@ -66,17 +67,27 @@ make install-dev
 #### Available Make Targets
 - `make install-hooks` - Install pre-commit hooks (one-time setup)
 - `make lint` - Run luacheck on all Lua files
+- `make format` - Format all Lua code with StyLua
+- `make format-check` - Check if code is properly formatted
 - `make test` - Run test suite
-- `make install-dev` - Install development dependencies (luacheck)
-- `make pre-commit` - Run both lint and test (manual verification)
+- `make install-dev` - Install development dependencies (luacheck, stylua)
+- `make pre-commit` - Run lint, format-check, and test (manual verification)
 - `make help-tags` - Generate Neovim help tags
 - `make help` - Show all available targets
 
-#### Linting Configuration
+#### Code Quality Configuration
+**Linting (Luacheck)**
 - Configuration: `.luacheckrc`
 - Standards: lua54+luajit with Neovim globals
 - Max line length: 120 characters
 - Cyclomatic complexity limit: 15
+
+**Formatting (StyLua)**
+- Configuration: `stylua.toml`
+- Line width: 120 characters
+- Indentation: 2 spaces
+- Quote style: AutoPreferSingle
+- Call parentheses: Always
 
 ### Documentation Updates
 When modifying the plugin:

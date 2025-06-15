@@ -1,6 +1,6 @@
 # Makefile for devcontainer.nvim
 
-.PHONY: help lint lint-fix test install-dev clean install-hooks help-tags
+.PHONY: help lint lint-fix format format-check test install-dev clean install-hooks help-tags
 
 # Default target
 help:
@@ -10,6 +10,8 @@ help:
 	@echo "  help         Show this help message"
 	@echo "  lint         Run luacheck on all Lua files"
 	@echo "  lint-fix     Run luacheck and attempt to fix some issues"
+	@echo "  format       Format Lua code with stylua"
+	@echo "  format-check Check if Lua code is properly formatted"
 	@echo "  test         Run test suite"
 	@echo "  install-dev  Install development dependencies"
 	@echo "  install-hooks Install pre-commit hooks"
@@ -34,6 +36,24 @@ install-dev:
 		echo "  - Via luarocks: luarocks install luacheck"; \
 		echo "  - Via brew: brew install luacheck"; \
 		echo "  - Via apt: apt-get install luacheck"; \
+		exit 1; \
+	fi
+	@echo "Installing stylua..."
+	@if command -v cargo >/dev/null 2>&1; then \
+		echo "Installing stylua via cargo..."; \
+		cargo install stylua; \
+	elif command -v brew >/dev/null 2>&1; then \
+		echo "Installing stylua via homebrew..."; \
+		brew install stylua; \
+	elif command -v npm >/dev/null 2>&1; then \
+		echo "Installing stylua via npm..."; \
+		npm install -g @johnnymorganz/stylua; \
+	else \
+		echo "Error: Could not find package manager to install stylua"; \
+		echo "Please install stylua manually:"; \
+		echo "  - Via cargo: cargo install stylua"; \
+		echo "  - Via brew: brew install stylua"; \
+		echo "  - Via npm: npm install -g @johnnymorganz/stylua"; \
 		exit 1; \
 	fi
 	@echo "Development dependencies installed!"
@@ -80,6 +100,24 @@ lint-fix:
 	fi
 	luacheck lua/ plugin/ --config .luacheckrc --fix
 
+# Format Lua code with stylua
+format:
+	@echo "Formatting Lua code with stylua..."
+	@if ! command -v stylua >/dev/null 2>&1; then \
+		echo "Error: stylua not found. Run 'make install-dev' first."; \
+		exit 1; \
+	fi
+	stylua lua/ plugin/ test/
+
+# Check if Lua code is properly formatted
+format-check:
+	@echo "Checking Lua code formatting with stylua..."
+	@if ! command -v stylua >/dev/null 2>&1; then \
+		echo "Error: stylua not found. Run 'make install-dev' first."; \
+		exit 1; \
+	fi
+	stylua --check lua/ plugin/ test/
+
 # Run tests
 test:
 	@echo "Running test suite..."
@@ -124,6 +162,6 @@ help-tags:
 		echo "Run ':helptags doc' inside Neovim to generate tags."; \
 	fi
 
-# Lint before commit (git hook helper)
-pre-commit: lint test
+# Lint and format check before commit (git hook helper)
+pre-commit: lint format-check test
 	@echo "Pre-commit checks passed!"

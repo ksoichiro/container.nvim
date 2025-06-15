@@ -7,7 +7,7 @@ local state = {
   servers = {},
   clients = {},
   port_mappings = {},
-  container_id = nil
+  container_id = nil,
 }
 
 -- Track if path mappings have been initialized
@@ -19,7 +19,7 @@ function M.setup(config)
   M.config = vim.tbl_deep_extend('force', {
     auto_setup = true,
     timeout = 5000,
-    servers = {}
+    servers = {},
   }, config or {})
 end
 
@@ -41,25 +41,25 @@ function M.detect_language_servers()
   -- Common LSP server executables to check
   local common_servers = {
     -- Lua
-    { name = 'lua_ls', cmd = 'lua-language-server', languages = {'lua'} },
+    { name = 'lua_ls', cmd = 'lua-language-server', languages = { 'lua' } },
     -- Python
-    { name = 'pylsp', cmd = 'pylsp', languages = {'python'} },
-    { name = 'pyright', cmd = 'pyright-langserver', languages = {'python'} },
+    { name = 'pylsp', cmd = 'pylsp', languages = { 'python' } },
+    { name = 'pyright', cmd = 'pyright-langserver', languages = { 'python' } },
     -- JavaScript/TypeScript
-    { name = 'tsserver', cmd = 'typescript-language-server', languages = {'javascript', 'typescript'} },
-    { name = 'eslint', cmd = 'vscode-eslint-language-server', languages = {'javascript', 'typescript'} },
+    { name = 'tsserver', cmd = 'typescript-language-server', languages = { 'javascript', 'typescript' } },
+    { name = 'eslint', cmd = 'vscode-eslint-language-server', languages = { 'javascript', 'typescript' } },
     -- Go
-    { name = 'gopls', cmd = 'gopls', languages = {'go'} },
+    { name = 'gopls', cmd = 'gopls', languages = { 'go' } },
     -- Rust
-    { name = 'rust_analyzer', cmd = 'rust-analyzer', languages = {'rust'} },
+    { name = 'rust_analyzer', cmd = 'rust-analyzer', languages = { 'rust' } },
     -- C/C++
-    { name = 'clangd', cmd = 'clangd', languages = {'c', 'cpp'} },
+    { name = 'clangd', cmd = 'clangd', languages = { 'c', 'cpp' } },
     -- Java
-    { name = 'jdtls', cmd = 'jdtls', languages = {'java'} },
+    { name = 'jdtls', cmd = 'jdtls', languages = { 'java' } },
     -- Ruby
-    { name = 'solargraph', cmd = 'solargraph', languages = {'ruby'} },
+    { name = 'solargraph', cmd = 'solargraph', languages = { 'ruby' } },
     -- PHP
-    { name = 'intelephense', cmd = 'intelephense', languages = {'php'} },
+    { name = 'intelephense', cmd = 'intelephense', languages = { 'php' } },
   }
 
   local detected_servers = {}
@@ -71,7 +71,16 @@ function M.detect_language_servers()
     log.debug('LSP: Checking for ' .. server.name .. ' (' .. server.cmd .. ')')
 
     -- Use synchronous execution to check if server exists
-    local args = {"exec", "--user", "vscode", "-e", "PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/go/bin:/go/bin:/usr/local/bin:/usr/bin:/bin", state.container_id, "which", server.cmd}
+    local args = {
+      'exec',
+      '--user',
+      'vscode',
+      '-e',
+      'PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/go/bin:/go/bin:/usr/local/bin:/usr/bin:/bin',
+      state.container_id,
+      'which',
+      server.cmd,
+    }
     local result = docker.run_docker_command(args)
 
     if result and result.success then
@@ -80,7 +89,7 @@ function M.detect_language_servers()
         cmd = server.cmd,
         languages = server.languages,
         available = true,
-        path = vim.trim(result.stdout)
+        path = vim.trim(result.stdout),
       }
     else
       log.debug('LSP: ' .. server.name .. ' not found')
@@ -94,7 +103,7 @@ end
 -- Check if LSP client already exists for a server
 function M.client_exists(server_name)
   -- Check active clients first
-  local active_clients = vim.lsp.get_active_clients({name = server_name})
+  local active_clients = vim.lsp.get_active_clients({ name = server_name })
   if #active_clients > 0 then
     log.debug('LSP: Found existing active client for %s', server_name)
     return true, active_clients[1].id
@@ -141,7 +150,7 @@ function M.setup_lsp_in_container()
           state.clients[name] = {
             client_id = client_id,
             config = nil, -- Will be filled if needed
-            server_config = server
+            server_config = server,
           }
         end
       else
@@ -157,50 +166,50 @@ end
 
 -- Create an LSP client for a server in the container
 function M.create_lsp_client(name, server_config)
-  if not name or type(name) ~= "string" then
-    log.error("Invalid server name provided")
+  if not name or type(name) ~= 'string' then
+    log.error('Invalid server name provided')
     return
   end
-  if not server_config or type(server_config) ~= "table" then
-    log.error("Invalid server config provided")
+  if not server_config or type(server_config) ~= 'table' then
+    log.error('Invalid server config provided')
     return
   end
 
-  log.debug("Creating LSP client for %s", name)
+  log.debug('Creating LSP client for %s', name)
   local lsp_config = M._prepare_lsp_config(name, server_config)
 
   -- Check if lspconfig is available
   local ok, lspconfig = pcall(require, 'lspconfig')
   if not ok then
-    print("ERROR: nvim-lspconfig not found")
+    print('ERROR: nvim-lspconfig not found')
     log.warn('LSP: nvim-lspconfig not found, skipping LSP setup')
     return
   end
 
   -- Check if the server is supported by lspconfig
   if not lspconfig[name] then
-    print("ERROR: Server " .. name .. " not supported by lspconfig")
+    print('ERROR: Server ' .. name .. ' not supported by lspconfig')
     log.warn('LSP: Server ' .. name .. ' not supported by lspconfig')
     return
   end
 
-  log.debug("Getting forwarding command for %s", name)
+  log.debug('Getting forwarding command for %s', name)
   -- Get forwarding module for communication setup
   local forwarding = require('devcontainer.lsp.forwarding')
 
   -- Configure the command for container communication
   local cmd = forwarding.get_client_cmd(name, server_config, state.container_id)
   if cmd then
-    log.debug("LSP command: %s", table.concat(cmd, " "))
+    log.debug('LSP command: %s', table.concat(cmd, ' '))
     lsp_config.cmd = cmd
     lsp_config.handlers = forwarding.create_client_middleware()
   else
-    print("ERROR: Failed to setup communication for " .. name)
+    print('ERROR: Failed to setup communication for ' .. name)
     log.error('LSP: Failed to setup communication for ' .. name)
     return
   end
 
-  log.debug("Setting up LSP client with lspconfig")
+  log.debug('Setting up LSP client with lspconfig')
 
   -- Use lspconfig to properly register the server configuration
   lspconfig[name].setup(lsp_config)
@@ -223,17 +232,17 @@ function M.create_lsp_client(name, server_config)
   state.clients[name] = {
     client_id = nil, -- Will be set when client actually starts
     config = lsp_config,
-    server_config = server_config
+    server_config = server_config,
   }
 
   -- Wait a moment for the client to start, then set up additional functionality
   vim.defer_fn(function()
-    local clients = vim.lsp.get_active_clients({name = name})
+    local clients = vim.lsp.get_active_clients({ name = name })
     local client_id = nil
     for _, client in ipairs(clients) do
       if client.name == name then
         client_id = client.id
-        log.info("LSP client started via lspconfig with ID: %s", client_id)
+        log.info('LSP client started via lspconfig with ID: %s', client_id)
 
         -- Update state with actual client ID
         if state.clients[name] then
@@ -251,7 +260,7 @@ function M.create_lsp_client(name, server_config)
     end
 
     if not client_id then
-      log.warn("LSP client for %s not found after lspconfig setup", name)
+      log.warn('LSP client for %s not found after lspconfig setup', name)
     end
   end, 500) -- Increase delay to allow lspconfig to start the client
 
@@ -294,8 +303,8 @@ function M._prepare_lsp_config(name, server_config)
     workspaceFolders = {
       {
         uri = 'file://' .. path_utils.get_container_workspace(),
-        name = 'devcontainer-workspace'
-      }
+        name = 'devcontainer-workspace',
+      },
     },
 
     -- On attach callback
@@ -359,7 +368,7 @@ function M.get_state()
     servers = state.servers,
     clients = vim.tbl_keys(state.clients),
     container_id = state.container_id,
-    config = M.config
+    config = M.config,
   }
 end
 
@@ -368,19 +377,19 @@ function M._setup_auto_attach(server_name, server_config, client_id)
   local supported_filetypes = server_config.filetypes or server_config.languages or {}
 
   if #supported_filetypes == 0 then
-    log.debug("No filetypes specified for %s, skipping auto-attach setup", server_name)
+    log.debug('No filetypes specified for %s, skipping auto-attach setup', server_name)
     return
   end
 
   -- Create autocmd group for this server
-  local group_name = "DevcontainerLSP_" .. server_name
+  local group_name = 'DevcontainerLSP_' .. server_name
   vim.api.nvim_create_augroup(group_name, { clear = true })
 
   -- Setup autocommand for each supported filetype
   for _, filetype in ipairs(supported_filetypes) do
-    vim.api.nvim_create_autocmd({"BufEnter", "BufNewFile"}, {
+    vim.api.nvim_create_autocmd({ 'BufEnter', 'BufNewFile' }, {
       group = group_name,
-      pattern = "*",
+      pattern = '*',
       callback = function(args)
         local buf = args.buf
         local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
@@ -401,17 +410,17 @@ function M._setup_auto_attach(server_name, server_config, client_id)
 
             if not already_attached then
               vim.lsp.buf_attach_client(buf, client_id)
-              log.info("Auto-attached %s LSP to buffer %s (filetype: %s)", server_name, buf, ft)
+              log.info('Auto-attached %s LSP to buffer %s (filetype: %s)', server_name, buf, ft)
             end
           else
-            log.debug("LSP client %s is no longer active, skipping auto-attach", server_name)
+            log.debug('LSP client %s is no longer active, skipping auto-attach', server_name)
           end
         end
       end,
     })
   end
 
-  log.debug("Setup auto-attach for %s (filetypes: %s)", server_name, vim.inspect(supported_filetypes))
+  log.debug('Setup auto-attach for %s (filetypes: %s)', server_name, vim.inspect(supported_filetypes))
 end
 
 -- Attach LSP client to existing buffers with matching filetypes
@@ -434,7 +443,7 @@ function M._attach_to_existing_buffers(server_name, server_config, client_id)
 
         if not already_attached then
           vim.lsp.buf_attach_client(buf, client_id)
-          log.info("Attached %s LSP to existing buffer %s (filetype: %s)", server_name, buf, ft)
+          log.info('Attached %s LSP to existing buffer %s (filetype: %s)', server_name, buf, ft)
         end
       end
     end

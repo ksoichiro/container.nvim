@@ -11,10 +11,10 @@ local log_levels = {
 }
 
 local log_level_names = {
-  [1] = "DEBUG",
-  [2] = "INFO",
-  [3] = "WARN",
-  [4] = "ERROR",
+  [1] = 'DEBUG',
+  [2] = 'INFO',
+  [3] = 'WARN',
+  [4] = 'ERROR',
 }
 
 -- Default configuration
@@ -26,7 +26,7 @@ M.config = {
 
 -- Set log level
 function M.set_level(level)
-  if type(level) == "string" then
+  if type(level) == 'string' then
     M.config.level = log_levels[level:upper()] or log_levels.INFO
   else
     M.config.level = level
@@ -44,19 +44,19 @@ local function log(level, msg, ...)
     return
   end
 
-  local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-  local level_name = log_level_names[level] or "UNKNOWN"
+  local timestamp = os.date('%Y-%m-%d %H:%M:%S')
+  local level_name = log_level_names[level] or 'UNKNOWN'
   local formatted_msg = string.format(msg, ...)
-  local log_line = string.format("[%s] [%s] %s", timestamp, level_name, formatted_msg)
+  local log_line = string.format('[%s] [%s] %s', timestamp, level_name, formatted_msg)
 
   -- Console output
   if M.config.console then
     if level >= log_levels.ERROR then
-      vim.notify(formatted_msg, vim.log.levels.ERROR, { title = "devcontainer.nvim" })
+      vim.notify(formatted_msg, vim.log.levels.ERROR, { title = 'devcontainer.nvim' })
     elseif level >= log_levels.WARN then
-      vim.notify(formatted_msg, vim.log.levels.WARN, { title = "devcontainer.nvim" })
+      vim.notify(formatted_msg, vim.log.levels.WARN, { title = 'devcontainer.nvim' })
     elseif level >= log_levels.INFO then
-      vim.notify(formatted_msg, vim.log.levels.INFO, { title = "devcontainer.nvim" })
+      vim.notify(formatted_msg, vim.log.levels.INFO, { title = 'devcontainer.nvim' })
     else
       print(log_line)
     end
@@ -64,9 +64,9 @@ local function log(level, msg, ...)
 
   -- File output
   if M.config.file then
-    local file = io.open(M.config.file, "a")
+    local file = io.open(M.config.file, 'a')
     if file then
-      file:write(log_line .. "\n")
+      file:write(log_line .. '\n')
       file:close()
     end
   end

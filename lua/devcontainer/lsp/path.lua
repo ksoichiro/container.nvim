@@ -5,7 +5,7 @@ local log = require('devcontainer.utils.log')
 local path_mappings = {
   workspace_folder = nil,
   container_workspace = nil,
-  mounts = {}
+  mounts = {},
 }
 
 -- Initialize path mappings
@@ -14,8 +14,12 @@ function M.setup(workspace_folder, container_workspace, mounts)
   path_mappings.container_workspace = container_workspace or '/workspace'
   path_mappings.mounts = mounts or {}
 
-  log.debug('Path: Initialized mappings - Local: ' .. path_mappings.workspace_folder ..
-            ', Container: ' .. path_mappings.container_workspace)
+  log.debug(
+    'Path: Initialized mappings - Local: '
+      .. path_mappings.workspace_folder
+      .. ', Container: '
+      .. path_mappings.container_workspace
+  )
 end
 
 -- Convert local path to container path

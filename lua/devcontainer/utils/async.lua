@@ -10,8 +10,8 @@ local uv = vim.loop
 local function create_result(code, stdout, stderr)
   return {
     code = code,
-    stdout = stdout or "",
-    stderr = stderr or "",
+    stdout = stdout or '',
+    stderr = stderr or '',
     success = code == 0,
   }
 end
@@ -96,12 +96,16 @@ function M.run_command(cmd, args, opts, callback)
 
   if not handle then
     -- If spawn failed
-    if stdout then stdout:close() end
-    if stderr then stderr:close() end
+    if stdout then
+      stdout:close()
+    end
+    if stderr then
+      stderr:close()
+    end
 
     if callback then
       vim.schedule(function()
-        callback(create_result(-1, "", "Failed to spawn process: " .. cmd))
+        callback(create_result(-1, '', 'Failed to spawn process: ' .. cmd))
       end)
     end
     return nil
@@ -119,7 +123,7 @@ end
 function M.run_command_sync(cmd, args, opts)
   local co = coroutine.running()
   if not co then
-    error("run_command_sync must be called from within a coroutine")
+    error('run_command_sync must be called from within a coroutine')
   end
 
   local result = nil
@@ -134,7 +138,7 @@ end
 
 -- Asynchronous file reading
 function M.read_file(path, callback)
-  uv.fs_open(path, "r", 438, function(err, fd)
+  uv.fs_open(path, 'r', 438, function(err, fd)
     if err then
       callback(nil, err)
       return
@@ -161,7 +165,7 @@ end
 
 -- Asynchronous file writing
 function M.write_file(path, data, callback)
-  uv.fs_open(path, "w", 438, function(err, fd)
+  uv.fs_open(path, 'w', 438, function(err, fd)
     if err then
       callback(err)
       return
@@ -180,7 +184,7 @@ function M.dir_exists(path, callback)
     if err then
       callback(false)
     else
-      callback(stat.type == "directory")
+      callback(stat.type == 'directory')
     end
   end)
 end
@@ -191,7 +195,7 @@ function M.file_exists(path, callback)
     if err then
       callback(false)
     else
-      callback(stat.type == "file")
+      callback(stat.type == 'file')
     end
   end)
 end
@@ -200,12 +204,12 @@ end
 function M.mkdir_p(path, callback)
   local function mkdir_recursive(dir, cb)
     uv.fs_mkdir(dir, 493, function(err) -- 755 in octal
-      if err and err:match("EEXIST") then
+      if err and err:match('EEXIST') then
         -- Directory already exists
         cb(nil)
-      elseif err and err:match("ENOENT") then
+      elseif err and err:match('ENOENT') then
         -- Parent directory doesn't exist
-        local parent = vim.fn.fnamemodify(dir, ":h")
+        local parent = vim.fn.fnamemodify(dir, ':h')
         if parent ~= dir then
           mkdir_recursive(parent, function(parent_err)
             if parent_err then
