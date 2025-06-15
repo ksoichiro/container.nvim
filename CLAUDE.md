@@ -24,10 +24,36 @@ Currently no formal test framework is implemented. Test manually by:
 4. View logs: `:DevcontainerLogs`
 
 ### Development Workflow
-Since there are no linting/formatting tools configured yet:
-- Follow existing code style (2-space indentation, clear module separation)
-- Test changes manually in Neovim
-- Use git for version control
+
+#### Code Quality Requirements
+**MANDATORY: Run linter before any commit**
+```bash
+# Always run before committing Lua file changes
+make lint
+
+# Install development dependencies if needed
+make install-dev
+```
+
+#### Development Rules
+1. **Linting**: ALWAYS run `make lint` after modifying any Lua files
+2. **Testing**: Run `make test` to verify functionality after changes
+3. **Code Style**: Follow existing patterns (2-space indentation, clear module separation)
+4. **Error Handling**: Add proper error handling and parameter validation
+5. **Documentation**: Keep comments clear and concise in English
+
+#### Available Make Targets
+- `make lint` - Run luacheck on all Lua files (REQUIRED before commits)
+- `make test` - Run test suite
+- `make install-dev` - Install development dependencies (luacheck)
+- `make pre-commit` - Run both lint and test (recommended before commits)
+- `make help` - Show all available targets
+
+#### Linting Configuration
+- Configuration: `.luacheckrc`
+- Standards: lua54+luajit with Neovim globals
+- Max line length: 120 characters
+- Cyclomatic complexity limit: 15
 
 ## High-Level Architecture
 

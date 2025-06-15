@@ -1,6 +1,6 @@
 local M = {}
 local log = require('devcontainer.utils.log')
-local async = require('devcontainer.utils.async')
+-- local async = require('devcontainer.utils.async')  -- Reserved for future use
 
 -- State management
 local state = {

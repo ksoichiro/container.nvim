@@ -373,16 +373,49 @@ lua test_basic.lua
 - **Path conversion tests** - Test local/container path mapping
 - **LSP module tests** - Verify LSP integration structure
 
+## Development
+
+### Prerequisites
+
+- Neovim 0.8+
+- Docker or Podman
+- luacheck (for linting)
+
+### Setup Development Environment
+
+```bash
+# Install development dependencies
+make install-dev
+
+# Run linter (REQUIRED before commits)
+make lint
+
+# Run tests
+make test
+
+# Run both lint and test
+make pre-commit
+```
+
+### Code Quality Standards
+
+- **Linting**: All Lua code must pass `make lint` checks
+- **Testing**: Changes should pass existing tests
+- **Style**: Follow existing code patterns and conventions
+- **Documentation**: Keep comments clear and in English
+
 ## Contributing
 
 Pull requests and issue reports are welcome!
 
 1. Fork this repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. **Run tests** (`cd test && lua test_mock.lua`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Create a pull request
+3. **Set up development environment** (`make install-dev`)
+4. Make your changes
+5. **Run quality checks** (`make pre-commit`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Create a pull request
 
 ## License
 

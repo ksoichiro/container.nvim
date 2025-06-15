@@ -8,7 +8,7 @@ local log = require('devcontainer.utils.log')
 function M.check_docker_availability()
   log.debug("Checking Docker availability (sync)")
 
-  local result = vim.fn.system("docker --version 2>/dev/null")
+  local _ = vim.fn.system("docker --version 2>/dev/null")
   local exit_code = vim.v.shell_error
 
   if exit_code ~= 0 then
@@ -17,7 +17,7 @@ function M.check_docker_availability()
   end
 
   -- Check Docker daemon operation
-  result = vim.fn.system("docker info 2>/dev/null")
+  _ = vim.fn.system("docker info 2>/dev/null")
   exit_code = vim.v.shell_error
 
   if exit_code ~= 0 then
@@ -312,7 +312,6 @@ function M.pull_image_async(image_name, on_progress, on_complete)
     return nil
   end
 
-  job_started = true
   log.info("Started docker pull job with ID: %d", job_id)
 
   if on_progress then

@@ -1,7 +1,7 @@
 local M = {}
 local log = require('devcontainer.utils.log')
 local path = require('devcontainer.lsp.path')
-local async = require('devcontainer.utils.async')
+-- local async = require('devcontainer.utils.async')  -- Reserved for future use
 
 -- State for active forwardings
 local active_forwards = {}
@@ -47,10 +47,10 @@ function M.setup_port_forwarding(container_id, container_port, server_name)
   -- For dynamic forwarding, we'll use SSH or socat inside the container
 
   -- Try to setup socat forwarding inside the container
-  local socat_cmd = string.format(
-    'socat TCP-LISTEN:%d,reuseaddr,fork TCP:localhost:%d',
-    local_port, container_port
-  )
+  -- local socat_cmd = string.format(
+  --   'socat TCP-LISTEN:%d,reuseaddr,fork TCP:localhost:%d',
+  --   local_port, container_port
+  -- )
 
   -- Check if socat is available
   local socat_check = docker.exec_command(container_id, 'which socat', { output = false })
