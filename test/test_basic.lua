@@ -176,8 +176,8 @@ local function run_tests()
   end
 end
 
--- Add current directory to package path
-package.path = './lua/?.lua;' .. package.path
+-- Add parent directory to package path
+package.path = '../lua/?.lua;' .. package.path
 
 -- Run tests
 local exit_code = run_tests()

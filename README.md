@@ -351,6 +351,28 @@ Use this command to check configuration and verify devcontainer.json syntax.
 - 📋 Comprehensive testing
 - 📋 Complete documentation
 
+## Testing
+
+The project includes test suites to verify functionality:
+
+### Running Tests
+
+```bash
+# Run basic tests (requires standard Lua)
+cd test
+lua test_mock.lua
+
+# Run comprehensive tests (requires standard Lua)
+lua test_basic.lua
+```
+
+### Test Coverage
+
+- **Module loading tests** - Verify all Lua modules load correctly
+- **Configuration tests** - Test configuration loading and merging
+- **Path conversion tests** - Test local/container path mapping
+- **LSP module tests** - Verify LSP integration structure
+
 ## Contributing
 
 Pull requests and issue reports are welcome!
@@ -358,8 +380,9 @@ Pull requests and issue reports are welcome!
 1. Fork this repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Create a pull request
+4. **Run tests** (`cd test && lua test_mock.lua`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Create a pull request
 
 ## License
 
