@@ -29,7 +29,7 @@ function M.setup(user_config)
   end
   
   state.initialized = true
-  log.info("devcontainer.nvim initialized successfully")
+  log.debug("devcontainer.nvim initialized successfully")
   
   -- 既存のコンテナを自動検出して再接続を試みる
   vim.defer_fn(function()

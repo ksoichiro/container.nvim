@@ -153,7 +153,7 @@ end
 function M.check_image_exists(image_name)
   log.debug("Checking if image exists: %s", image_name)
   
-  local result = M.M.run_docker_command({"images", "-q", image_name})
+  local result = M.run_docker_command({"images", "-q", image_name})
   
   if result.success then
     local image_id = result.stdout:gsub("%s+", "")
@@ -374,7 +374,7 @@ function M.pull_image(image_name, on_progress, on_complete)
 
   -- 非同期処理をシミュレート
   vim.defer_fn(function()
-    local result = M.M.run_docker_command({"pull", image_name})
+    local result = M.run_docker_command({"pull", image_name})
     
     if result.success then
       log.info("Successfully pulled Docker image: %s", image_name)
@@ -420,7 +420,7 @@ function M.build_image(config, on_progress, on_complete)
     local context = config.context or "."
     table.insert(args, context)
 
-    local result = M.M.run_docker_command(args, {cwd = config.base_path})
+    local result = M.run_docker_command(args, {cwd = config.base_path})
     
     if result.success then
       log.info("Successfully built Docker image: %s", tag)
@@ -911,8 +911,6 @@ function M.exec_command(container_id, command, opts)
 
   -- デバッグ：実行予定のコマンドをログ出力
   log.debug("Docker exec command: docker %s", table.concat(args, " "))
-  -- 強制的にプリント出力も追加
-  print("DEBUG: Docker exec command: docker " .. table.concat(args, " "))
   
   vim.defer_fn(function()
     local result = M.run_docker_command(args)

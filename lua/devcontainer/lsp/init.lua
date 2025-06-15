@@ -107,7 +107,7 @@ end
 
 -- Create an LSP client for a server in the container
 function M.create_lsp_client(name, server_config)
-  print("DEBUG: Creating LSP client for " .. name)
+  log.debug("Creating LSP client for %s", name)
   local lsp_config = M._prepare_lsp_config(name, server_config)
   
   -- Check if lspconfig is available
@@ -125,14 +125,14 @@ function M.create_lsp_client(name, server_config)
     return
   end
   
-  print("DEBUG: Getting forwarding command for " .. name)
+  log.debug("Getting forwarding command for %s", name)
   -- Get forwarding module for communication setup
   local forwarding = require('devcontainer.lsp.forwarding')
   
   -- Configure the command for container communication
   local cmd = forwarding.get_client_cmd(name, server_config, state.container_id)
   if cmd then
-    print("DEBUG: LSP command: " .. table.concat(cmd, " "))
+    log.debug("LSP command: %s", table.concat(cmd, " "))
     lsp_config.cmd = cmd
     lsp_config.handlers = forwarding.create_client_middleware()
   else
@@ -141,29 +141,33 @@ function M.create_lsp_client(name, server_config)
     return
   end
   
-  print("DEBUG: Setting up LSP client with lspconfig")
+  log.debug("Setting up LSP client with lspconfig")
   
   -- Instead of creating a new server, directly start the client with custom configuration
   -- This bypasses lspconfig's setup and creates the client directly
   local client_id = vim.lsp.start_client(lsp_config)
   
   if client_id then
-    print("DEBUG: LSP client started with ID: " .. client_id)
+    log.info("LSP client started with ID: %s", client_id)
     
     -- Attach to current buffer if it matches the filetype
     local bufnr = vim.api.nvim_get_current_buf()
     local ft = vim.api.nvim_buf_get_option(bufnr, 'filetype')
     
-    if vim.tbl_contains(server_config.languages or {}, ft) then
+    -- Attach to current buffer if it matches the supported filetypes
+    local supported_filetypes = server_config.filetypes or server_config.languages or {}
+    if vim.tbl_contains(supported_filetypes, ft) then
       vim.lsp.buf_attach_client(bufnr, client_id)
-      print("DEBUG: Attached client to buffer " .. bufnr)
+      log.info("Attached LSP client %s to buffer %s (filetype: %s)", name, bufnr, ft)
+    else
+      log.debug("Filetype %s not supported by %s (supported: %s)", ft, name, vim.inspect(supported_filetypes))
     end
     
     -- Store the client ID for later reference
     state.clients[name] = state.clients[name] or {}
     state.clients[name].client_id = client_id
   else
-    print("ERROR: Failed to start LSP client")
+    log.error("Failed to start LSP client for %s", name)
     log.error('LSP: Failed to start client for ' .. name)
     return
   end
@@ -180,7 +184,7 @@ function M.create_lsp_client(name, server_config)
       if vim.api.nvim_buf_is_loaded(buf) then
         local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
         if vim.tbl_contains(server_config.languages or {}, ft) then
-          print("DEBUG: Starting LSP for buffer " .. buf .. " (filetype: " .. ft .. ")")
+          log.debug("Starting LSP for buffer %s (filetype: %s)", buf, ft)
           vim.api.nvim_buf_call(buf, function()
             vim.cmd('LspStart ' .. name)
           end)

@@ -162,7 +162,7 @@ function M.setup(user_config)
   -- ログレベルを設定
   log.set_level(current_config.log_level)
   
-  log.info("Configuration loaded successfully")
+  log.debug("Configuration loaded successfully")
   return true, current_config
 end
 
