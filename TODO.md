@@ -84,6 +84,34 @@ This file records future improvements and plans after the completion of v0.2.0 L
 - [ ] Test suite improvements (deferred to next release)
 - [ ] Documentation updates (deferred to next release)
 
+### v0.2.2 (Minor Improvements) - 1-2 weeks
+
+#### High Priority Issues
+- [ ] **LSP Priority for Running Containers**
+  - Issue: If devcontainer is already running, LSP should prioritize that instance
+  - Current behavior: May create duplicate or conflicting LSP clients
+  - Solution: Check for existing containers before LSP setup
+
+- [ ] **Container Termination Command**
+  - Issue: Missing command to terminate/kill containers (vs stop)
+  - Need: `:DevcontainerKill` or `:DevcontainerTerminate` command
+  - Use case: Force stop unresponsive containers
+
+- [ ] **LSP Error Fix: window/showMessage Handler**
+  - Issue: `vim.schedule callback: ...forwarding.lua:168: attempt to call field 'window/showMessage' (a nil value)`
+  - Occurs when: Opening Go files after DevcontainerLspSetup in Go projects
+  - Location: lua/devcontainer/lsp/forwarding.lua:168
+  - Root cause: `vim.lsp.handlers['window/showMessage']` doesn't exist or is nil
+  - Analysis: Line 168 calls non-existent handler, should use default LSP message handling
+  - Fix needed: Check if handler exists before calling, or implement proper fallback
+
+#### Medium Priority Improvements  
+- [ ] **Auto DevcontainerOpen Investigation**
+  - Question: Should DevcontainerOpen run automatically vs manual execution?
+  - Consider: Auto-detection of devcontainer.json and auto-start option
+  - Balance: User control vs convenience
+  - Proposal: Add `auto_start` configuration option enhancement
+
 ### v0.3.0 (Terminal Integration) - 4-6 weeks
 
 #### New Features
@@ -313,6 +341,6 @@ Currently, environment variables (PATH, GOPATH, etc.) for postCreateCommand exec
 ---
 
 **Last Updated**: 2025-06-15  
-**Next Review Scheduled**: During v0.3.0 planning
+**Next Review Scheduled**: During v0.2.2 planning
 
 This TODO list is regularly updated as the project progresses.
