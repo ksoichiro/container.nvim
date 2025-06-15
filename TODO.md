@@ -79,6 +79,11 @@
   - [ ] コマンド履歴ピッカー
   - [ ] ポート管理ピッカー
 
+- [ ] **外部プラグイン統合**
+  - [ ] nvim-test統合（テストコマンドのコンテナ内実行）
+  - [ ] nvim-dap統合（デバッガーのコンテナ内実行）
+  - [ ] 一般的なコマンド実行プラグインとの統合
+
 #### 技術的改善
 - [ ] **設定システムの拡張**
   - [ ] ユーザー設定のバリデーション
@@ -108,6 +113,46 @@
 - [ ] **包括的なテストスイート**
 - [ ] **完全なドキュメント**
 - [ ] **パフォーマンス最適化**
+
+## 外部プラグイン統合の詳細設計
+
+### nvim-test統合
+現在、`klen/nvim-test`や`vim-test/vim-test`などのテストプラグインはローカル環境でコマンドを実行しますが、devcontainer環境では以下の統合が必要：
+
+**実装アプローチ:**
+- テストプラグインのコマンド実行をフック/オーバーライド
+- コンテナが起動している場合は自動的にコンテナ内で実行
+- 例: `:TestNearest` → `docker exec container_id go test -run TestFunction`
+
+**対象プラグイン:**
+- `klen/nvim-test` 
+- `vim-test/vim-test`
+- `nvim-neotest/neotest`
+
+### nvim-dap統合
+デバッガーもコンテナ内で実行する必要があり、以下が必要：
+
+**実装要件:**
+- DAP アダプターの設定をコンテナ内実行用に自動変更
+- デバッグポートのフォワーディング
+- コンテナ内でのデバッガー起動
+
+### 一般的なコマンド実行統合
+他のプラグインでも同様のパターンで統合可能：
+
+**設計パターン:**
+```lua
+-- プラグイン統合のためのAPI
+devcontainer.integrate_command_plugin({
+  plugin_name = "nvim-test",
+  command_patterns = {"Test*"},
+  wrapper_function = function(original_cmd)
+    return devcontainer.wrap_command(original_cmd)
+  end
+})
+```
+
+この機能により、開発者はdevcontainer内で完全な開発体験を得られます。
 
 ## 技術的負債と改善案
 
