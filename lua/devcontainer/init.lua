@@ -1219,7 +1219,9 @@ function M._run_post_create_command(container_id, callback)
   local docker = require('devcontainer.docker.init')
   local exec_args = {
     "exec", "-i", "--user", "vscode",
-    "-e", "PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/bin:/usr/bin:/bin",
+    "-e", "PATH=/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:/usr/local/python/current/bin:/usr/local/bin:/usr/bin:/bin",
+    "-e", "GOPATH=/go",
+    "-e", "GOROOT=/usr/local/go",
     container_id, "bash", "-c", command
   }
 

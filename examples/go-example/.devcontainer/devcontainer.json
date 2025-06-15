@@ -1,0 +1,26 @@
+{
+  "name": "Go LSP Example",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.23-bookworm",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-vscode.vscode-go"
+      ]
+    }
+  },
+  
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  
+  "postCreateCommand": "which go && go version && go install golang.org/x/tools/gopls@latest && go install github.com/go-delve/delve/cmd/dlv@latest && go mod tidy",
+  
+  "forwardPorts": [8080, 2345],
+  
+  "remoteUser": "vscode"
+}

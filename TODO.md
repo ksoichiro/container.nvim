@@ -16,13 +16,7 @@
 
 ### 🔴 高優先度
 
-1. **postCreateCommand サポートの欠如**
-   - 現状: devcontainer.json の postCreateCommand が実行されない
-   - 影響: LSPサーバーやツールがインストールされず、LSP機能が使用不可
-   - 重要度: 極めて高い（基本機能の前提条件）
-   - 修正案: コンテナ作成後に postCreateCommand を自動実行する機能追加
-
-2. **LSP Info でのクライアント表示問題**
+1. **LSP Info でのクライアント表示問題**
    - 現状: `:LspInfo` でdevcontainer内pylspクライアントが表示されない
    - 影響: デバッグ時の状態確認が困難（ただし機能は正常動作）
    - 優先度: 中（実用上の問題は少ない）
@@ -42,6 +36,14 @@
 6. **LSP自動アタッチ機能** ✅
    - 実装済み: autocommandによる新規バッファへの自動アタッチ
 
+7. **postCreateCommand サポート** ✅
+   - 実装済み: コンテナ作成後に postCreateCommand を自動実行
+   - パーサーの正規化によるフィールド名変換(postCreateCommand → post_create_command)に対応
+
+8. **Go環境でのLSP検出問題** ✅
+   - 修正済み: LSP検出およびLSP実行時のPATHにGoバイナリパス(/usr/local/go/bin, /go/bin)を追加
+   - 暫定対応: 環境固有設定のdevcontainer.json対応が実装されるまでの一時的な修正
+
 ### 🟡 中優先度
 
 7. **パフォーマンス最適化**
@@ -56,10 +58,13 @@
 
 ## 次のマイルストーン計画
 
-### v0.2.1 (バグ修正リリース) - 1週間
-- [ ] 上記高優先度問題の修正
-- [ ] テストスイートの改善
-- [ ] ドキュメントの更新
+### v0.2.1 (バグ修正リリース) ✅ 完了
+- [x] 高優先度問題の修正
+  - [x] postCreateCommand サポート実装
+  - [x] LSP自動アタッチ機能
+  - [x] Go環境でのLSP検出問題修正
+- [ ] テストスイートの改善（次回へ延期）
+- [ ] ドキュメントの更新（次回へ延期）
 
 ### v0.3.0 (ターミナル統合) - 4-6週間
 
@@ -89,6 +94,12 @@
   - [ ] ユーザー設定のバリデーション
   - [ ] 設定の動的変更
   - [ ] プロファイル機能
+
+- [ ] **環境固有設定のdevcontainer.json対応**
+  - [ ] 実行時環境変数の設定可能化（PATH、GOPATH等）
+  - [ ] postCreateCommand実行時の環境変数カスタマイズ
+  - [ ] 言語固有の設定をdevcontainer.jsonで指定
+  - [ ] プラグインからハードコードされた環境設定を除去
 
 - [ ] **UI/UX の向上**
   - [ ] ステータスライン表示
@@ -153,6 +164,60 @@ devcontainer.integrate_command_plugin({
 ```
 
 この機能により、開発者はdevcontainer内で完全な開発体験を得られます。
+
+## 環境固有設定の設計改善
+
+### 問題の現状
+現在、postCreateCommand実行時の環境変数（PATH、GOPATH等）がプラグイン内にハードコードされており、言語ごとに個別対応が必要になっている。
+
+### 提案する改善案
+
+#### 1. devcontainer.jsonでの環境変数指定
+```json
+{
+  "name": "Go Project",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.23-bookworm",
+  "postCreateCommand": "go install golang.org/x/tools/gopls@latest",
+  
+  "customizations": {
+    "devcontainer.nvim": {
+      "postCreateEnvironment": {
+        "PATH": "/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:$PATH",
+        "GOPATH": "/go",
+        "GOROOT": "/usr/local/go"
+      },
+      "execEnvironment": {
+        "PATH": "/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:$PATH"
+      }
+    }
+  }
+}
+```
+
+#### 2. 言語固有のプリセット
+```json
+{
+  "customizations": {
+    "devcontainer.nvim": {
+      "languagePreset": "go",  // go, python, node, rust等
+      "additionalEnvironment": {
+        "CUSTOM_VAR": "value"
+      }
+    }
+  }
+}
+```
+
+#### 3. 実行コンテキスト別設定
+- `postCreateEnvironment`: postCreateCommand実行時の環境
+- `execEnvironment`: DevcontainerExec実行時の環境  
+- `lspEnvironment`: LSP関連コマンド実行時の環境
+
+### 実装の利点
+- プラグインから言語固有のハードコードを除去
+- ユーザーが環境を完全にコントロール可能
+- 新しい言語サポートが容易
+- devcontainer.jsonの標準的な拡張パターンに準拠
 
 ## 技術的負債と改善案
 
@@ -229,7 +294,7 @@ devcontainer.integrate_command_plugin({
 
 ---
 
-**最終更新**: 2024-06-14  
-**次回レビュー予定**: v0.2.1リリース後
+**最終更新**: 2025-06-15  
+**次回レビュー予定**: v0.3.0計画時
 
 このTODOリストは、プロジェクトの進行に合わせて定期的に更新されます。

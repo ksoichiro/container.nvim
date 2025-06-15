@@ -200,7 +200,7 @@ function M.get_client_cmd(server_name, server_config, container_id)
   local cmd = {
     'docker', 'exec', '-i',
     '--user', 'vscode',
-    '-e', 'PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/bin:/usr/bin:/bin',
+    '-e', 'PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/go/bin:/go/bin:/usr/local/bin:/usr/bin:/bin',
     container_id,
     server_config.cmd or server_config.path or server_name
   }
