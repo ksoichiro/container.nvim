@@ -118,14 +118,21 @@ This file records future improvements and plans after the completion of v0.2.0 L
   - **Solution**: Added auto_start_mode (off/notify/prompt/immediate) and auto_start_delay configuration
   - **Features**: :DevcontainerAutoStart command for easy configuration changes
 
-### v0.3.0 (Terminal Integration) - 4-6 weeks
+### v0.3.0 (Terminal Integration) ✅ Complete
 
 #### New Features
-- [ ] **Enhanced Terminal Integration**
-  - [ ] Improved in-container terminal
-  - [ ] Session management functionality
-  - [ ] Terminal history persistence
+- [x] **Enhanced Terminal Integration** ✅
+  - [x] Improved in-container terminal with proper buffer management
+  - [x] Session management functionality with named sessions
+  - [x] Terminal history persistence across sessions with project isolation
+  - [x] Flexible terminal positioning (split, vsplit, tab, float)
+  - [x] Comprehensive terminal configuration options
+  - [x] Terminal-specific keybindings and automation
+  - [x] Proper session cleanup and window management
 
+### v0.4.0 (Advanced Features) - 4-6 weeks
+
+#### New Features
 - [ ] **Port Forwarding Features**
   - [ ] Automatic port detection
   - [ ] Dynamic forwarding
@@ -135,6 +142,7 @@ This file records future improvements and plans after the completion of v0.2.0 L
   - [ ] devcontainer picker
   - [ ] Command history picker
   - [ ] Port management picker
+  - [ ] Terminal session picker
 
 - [ ] **External Plugin Integration**
   - [ ] nvim-test integration (container-based test command execution)
@@ -158,7 +166,7 @@ This file records future improvements and plans after the completion of v0.2.0 L
   - [ ] Notification system
   - [ ] Enhanced progress display
 
-### v0.4.0 (Multi-container Support) - 6-8 weeks
+### v0.5.0 (Multi-container Support) - 6-8 weeks
 
 - [ ] **Docker Compose Support**
   - [ ] docker-compose.yml parsing
@@ -346,7 +354,7 @@ Currently, environment variables (PATH, GOPATH, etc.) for postCreateCommand exec
 
 ---
 
-**Last Updated**: 2025-06-15  
-**Next Review Scheduled**: During v0.2.2 planning
+**Last Updated**: 2025-06-16  
+**Next Review Scheduled**: During v0.4.0 planning
 
 This TODO list is regularly updated as the project progresses.

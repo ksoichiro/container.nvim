@@ -10,11 +10,12 @@ CONTENTS                                                *devcontainer-contents*
     3. Installation ......................... |devcontainer-installation|
     4. Quick Start .......................... |devcontainer-quickstart|
     5. Commands ............................. |devcontainer-commands|
-    6. Configuration ........................ |devcontainer-configuration|
-    7. API .................................. |devcontainer-api|
-    8. devcontainer.json .................... |devcontainer-json|
-    9. Troubleshooting ...................... |devcontainer-troubleshooting|
-    10. Contributing ........................ |devcontainer-contributing|
+    6. Enhanced Terminal Integration ........ |devcontainer-terminal|
+    7. Configuration ........................ |devcontainer-configuration|
+    8. API .................................. |devcontainer-api|
+    9. devcontainer.json .................... |devcontainer-json|
+    10. Troubleshooting ..................... |devcontainer-troubleshooting|
+    11. Contributing ........................ |devcontainer-contributing|
 
 ==============================================================================
 1. INTRODUCTION                                     *devcontainer-introduction*
@@ -26,9 +27,9 @@ seamless integration.
 Key features:
   • Full devcontainer.json compatibility
   • Automatic LSP server detection and configuration
+  • Enhanced terminal integration with session management
   • Asynchronous Docker operations
-  • Port forwarding support
-  • Terminal integration
+  • Smart port forwarding with dynamic allocation
   • Project-specific container isolation
 
 ==============================================================================
@@ -90,7 +91,7 @@ Using packer.nvim: >lua
 
 3. Open a terminal in the container:
 >vim
-    :DevcontainerShell
+    :DevcontainerTerminal
 <
 
 ==============================================================================
@@ -190,8 +191,263 @@ Management~
     Attempt to reconnect to an existing devcontainer. Useful after restarting
     Neovim.
 
+Enhanced Terminal Commands~
+                                                     *:DevcontainerTerminal*
+:DevcontainerTerminal [options]
+    Open an enhanced terminal session in the container. Supports session
+    management, flexible positioning, and persistent history.
+
+    Options can be provided as arguments:
+      --position=<pos>    Position: split, vsplit, tab, float
+      --name=<name>       Session name
+      --shell=<shell>     Shell to use
+      --size=<size>       Window size
+      --split, --vsplit, --tab, --float  Position shortcuts
+
+    Examples: >vim
+        :DevcontainerTerminal
+        :DevcontainerTerminal --position=float --name=build
+        :DevcontainerTerminal --float --name=dev --shell=/bin/zsh
+<
+
+                                                  *:DevcontainerTerminalNew*
+:DevcontainerTerminalNew [name]
+    Create a new terminal session with the specified name.
+    Example: >vim
+        :DevcontainerTerminalNew build
+<
+
+                                                 *:DevcontainerTerminalList*
+:DevcontainerTerminalList
+    List all active terminal sessions with their status and details.
+
+                                                *:DevcontainerTerminalClose*
+:DevcontainerTerminalClose [name]
+    Close the specified terminal session. If no name is provided, closes
+    the current session.
+    Example: >vim
+        :DevcontainerTerminalClose build
+<
+
+                                             *:DevcontainerTerminalCloseAll*
+:DevcontainerTerminalCloseAll
+    Close all terminal sessions.
+
+                                                *:DevcontainerTerminalNext*
+:DevcontainerTerminalNext
+    Switch to the next terminal session in the list.
+
+                                                *:DevcontainerTerminalPrev*
+:DevcontainerTerminalPrev
+    Switch to the previous terminal session in the list.
+
+                                              *:DevcontainerTerminalStatus*
+:DevcontainerTerminalStatus
+    Show comprehensive status of the terminal system including active
+    sessions, history statistics, and configuration.
+
+                                             *:DevcontainerTerminalRename*
+:DevcontainerTerminalRename {old_name} {new_name}
+    Rename a terminal session.
+    Example: >vim
+        :DevcontainerTerminalRename main development
+<
+
+                                            *:DevcontainerTerminalCleanup*
+:DevcontainerTerminalCleanup [days]
+    Clean up old terminal history files. Default is 30 days.
+    Example: >vim
+        :DevcontainerTerminalCleanup 7
+<
+
 ==============================================================================
-6. CONFIGURATION                                   *devcontainer-configuration*
+6. ENHANCED TERMINAL INTEGRATION                      *devcontainer-terminal*
+
+The enhanced terminal system provides advanced in-container terminal
+capabilities with session management, flexible positioning, and persistent
+history.
+
+Features~
+
+Session Management:
+  • Named terminal sessions for organized workflow
+  • Multiple concurrent sessions per container
+  • Session persistence across Neovim restarts
+  • Automatic session cleanup and validation
+
+Flexible Positioning:
+  • Horizontal split (split)
+  • Vertical split (vsplit)
+  • New tab (tab)
+  • Floating window (float)
+  • Configurable window sizes and appearance
+
+Persistent History:
+  • Terminal history saved across sessions
+  • Project-based history isolation using SHA256 hashes
+  • Configurable history limits and cleanup
+  • Automatic history restoration on session reopening
+
+Terminal Session Workflow~
+
+1. Create a new session:
+>vim
+    :DevcontainerTerminal --name=dev --position=float
+<
+
+2. List active sessions:
+>vim
+    :DevcontainerTerminalList
+<
+
+3. Switch between sessions:
+>vim
+    :DevcontainerTerminalNext
+    :DevcontainerTerminalPrev
+<
+
+4. Create specialized sessions:
+>vim
+    :DevcontainerTerminal --name=build --position=vsplit --shell=/bin/zsh
+    :DevcontainerTerminal --name=test --position=tab
+<
+
+5. Close sessions when done:
+>vim
+    :DevcontainerTerminalClose build
+    :DevcontainerTerminalCloseAll
+<
+
+Session Management~
+
+Sessions are automatically managed with the following behaviors:
+
+Valid Sessions:
+  • Have an active buffer and running job
+  • Display with ● (filled circle) in session lists
+  • Can be switched to and interacted with
+
+Invalid Sessions:
+  • Have terminated jobs or deleted buffers
+  • Display with ○ (empty circle) in session lists
+  • Are automatically cleaned up when accessed
+
+Session Names:
+  • Default session is named "main"
+  • Custom names can be specified
+  • Names must be unique per container
+  • Use descriptive names for better workflow organization
+
+History Persistence~
+
+Terminal history is automatically saved and restored:
+
+Project Isolation:
+  • Each project gets its own history directory
+  • Based on SHA256 hash of project path (first 8 characters)
+  • Prevents history conflicts between projects
+
+Storage Location:
+  • Default: ~/.local/share/nvim/devcontainer/terminal_history/
+  • Organized by project hash and session name
+  • Example: ~/.local/share/nvim/devcontainer/terminal_history/a1b2c3d4/main.history
+
+History Management:
+  • Automatic saving on buffer changes and exits
+  • Configurable maximum history lines (default: 10000)
+  • Manual cleanup with :DevcontainerTerminalCleanup
+  • History statistics with :DevcontainerTerminalStatus
+
+Terminal Positioning~
+
+Split Positioning:
+  • split: Horizontal split below current window
+  • vsplit: Vertical split to the right of current window
+  • Configurable heights and widths
+  • Respects ratio or absolute values
+
+Tab Positioning:
+  • Creates new tab for terminal
+  • Full-screen terminal experience
+  • Good for dedicated terminal work
+
+Float Positioning:
+  • Centered floating window
+  • Configurable size ratios
+  • Border and title customization
+  • Overlay-style terminal access
+
+Position Examples:
+>vim
+    " Quick horizontal split
+    :DevcontainerTerminal --split
+
+    " Large vertical split
+    :DevcontainerTerminal --vsplit --size=100
+
+    " Floating window with custom size
+    :DevcontainerTerminal --float --name=scratch
+
+    " Full-screen tab
+    :DevcontainerTerminal --tab --name=fullscreen
+<
+
+Advanced Usage~
+
+Multiple Session Workflow:
+>vim
+    " Development workflow with multiple sessions
+    :DevcontainerTerminal --name=server --split     " Main server
+    :DevcontainerTerminal --name=build --vsplit     " Build process
+    :DevcontainerTerminal --name=test --tab         " Testing
+    :DevcontainerTerminal --name=scratch --float    " Quick commands
+<
+
+Session Keybindings:
+The terminal system supports configurable keybindings within terminal buffers:
+  • <C-q>: Close current terminal (default)
+  • <C-\><C-n>: Exit terminal mode (default)
+  • <leader>tn: Create new session (normal mode)
+  • <leader>tl: List sessions (normal mode)
+  • <leader>t]: Next session (normal mode)
+  • <leader>t[: Previous session (normal mode)
+
+Session Monitoring:
+>vim
+    " Check terminal system status
+    :DevcontainerTerminalStatus
+
+    " View history statistics
+    :DevcontainerTerminalStatus
+
+    " List active sessions with details
+    :DevcontainerTerminalList
+<
+
+Troubleshooting Terminal Issues~
+
+Session Not Starting:
+  1. Verify container is running: :DevcontainerStatus
+  2. Check terminal configuration: :DevcontainerConfig
+  3. Try different shell: --shell=/bin/sh
+
+History Not Persisting:
+  1. Check persistent_history configuration
+  2. Verify history directory permissions
+  3. Check disk space for history storage
+
+Session List Empty:
+  1. Sessions auto-cleanup when invalid
+  2. Create new session: :DevcontainerTerminalNew
+  3. Check container connectivity
+
+Performance Issues:
+  1. Reduce max_history_lines in configuration
+  2. Clean old history: :DevcontainerTerminalCleanup
+  3. Disable persistent_history if not needed
+
+==============================================================================
+7. CONFIGURATION                                   *devcontainer-configuration*
 
 Configure the plugin by passing options to the setup function:
 >lua
@@ -245,15 +501,90 @@ terminal                                          *devcontainer-config-terminal*
     Type: |table|
     Default: See below
 
-    Terminal configuration:
+    Enhanced terminal configuration:
 >lua
     terminal = {
-      shell = '/bin/bash',
-      height = 15,
-      direction = 'horizontal', -- 'horizontal', 'vertical', 'float'
-      close_on_exit = false,
+      -- Default shell and behavior
+      default_shell = '/bin/bash',      -- Default shell for new sessions
+      auto_insert = true,               -- Auto enter insert mode
+      close_on_exit = false,           -- Keep buffer after process exit
+
+      -- Session management
+      persistent_history = true,        -- Save history across sessions
+      max_history_lines = 10000,       -- Max lines in history
+      history_dir = vim.fn.stdpath('data') .. '/devcontainer/terminal_history',
+
+      -- Default positioning
+      default_position = 'split',       -- 'split', 'vsplit', 'tab', 'float'
+
+      -- Split configuration
+      split = {
+        height = 15,                    -- Lines for horizontal split
+        width = 80,                     -- Columns for vertical split
+      },
+
+      -- Float configuration
+      float = {
+        width = 0.8,                    -- Ratio of editor width
+        height = 0.6,                   -- Ratio of editor height
+        border = 'rounded',             -- Border style
+        title = 'DevContainer Terminal',
+        title_pos = 'center',           -- Title position
+      },
+
+      -- Environment variables for terminal
+      environment = {
+        'TERM=xterm-256color',
+        'COLORTERM=truecolor',
+      },
+
+      -- Keymaps for terminal mode
+      keymaps = {
+        -- Terminal mode keymaps
+        close = '<C-q>',                -- Close terminal
+        escape = '<C-\\><C-n>',         -- Exit terminal mode
+
+        -- Normal mode keymaps
+        new_session = '<leader>tn',     -- Create new session
+        list_sessions = '<leader>tl',   -- List sessions
+        next_session = '<leader>t]',    -- Next session
+        prev_session = '<leader>t[',    -- Previous session
+      },
     }
 <
+
+Terminal Configuration Options:
+
+Basic Settings:
+  • default_shell          - Default shell for new terminal sessions
+  • auto_insert           - Automatically enter insert mode when opening terminal
+  • close_on_exit         - Close buffer when terminal process exits
+
+Session Management:
+  • persistent_history    - Enable terminal history persistence
+  • max_history_lines     - Maximum lines to keep in history files
+  • history_dir          - Directory for storing terminal history
+
+Positioning:
+  • default_position     - Default position for new terminals
+  • split.height         - Height for horizontal splits (lines or ratio)
+  • split.width          - Width for vertical splits (columns or ratio)
+  • float.width          - Width ratio for floating windows (0.0-1.0)
+  • float.height         - Height ratio for floating windows (0.0-1.0)
+  • float.border         - Border style for floating windows
+  • float.title          - Title for floating terminal windows
+  • float.title_pos      - Title position ('left', 'center', 'right')
+
+Environment:
+  • environment           - Array of environment variables for terminal
+
+Keybindings:
+  • keymaps.close         - Keymap to close terminal (terminal mode)
+  • keymaps.escape        - Keymap to exit terminal mode
+  • keymaps.new_session   - Keymap to create new session (normal mode)
+  • keymaps.list_sessions - Keymap to list sessions (normal mode)
+  • keymaps.next_session  - Keymap to switch to next session (normal mode)
+  • keymaps.prev_session  - Keymap to switch to previous session (normal mode)
 
 port_forwarding                            *devcontainer-config-port_forwarding*
     Type: |table|
@@ -339,7 +670,64 @@ devcontainer.exec(command, [opts])
 
                                                          *devcontainer.shell()*
 devcontainer.shell([shell])
-    Open a shell in the container.
+    Open a shell in the container (legacy function).
+
+Enhanced Terminal~
+                                                      *devcontainer.terminal()*
+devcontainer.terminal([opts])
+    Open an enhanced terminal session with the given options.
+
+    Parameters:
+      • {opts} (table, optional) Options table with fields:
+        - name (string): Session name
+        - position (string): Terminal position
+        - shell (string): Shell to use
+        - width (number): Window width
+        - height (number): Window height
+
+    Example: >lua
+        require('devcontainer').terminal({
+          name = 'build',
+          position = 'float',
+          shell = '/bin/zsh'
+        })
+<
+
+                                                  *devcontainer.terminal_new()*
+devcontainer.terminal_new([name])
+    Create a new terminal session.
+
+                                                 *devcontainer.terminal_list()*
+devcontainer.terminal_list()
+    List all terminal sessions.
+
+                                                *devcontainer.terminal_close()*
+devcontainer.terminal_close([name])
+    Close a terminal session.
+
+                                            *devcontainer.terminal_close_all()*
+devcontainer.terminal_close_all()
+    Close all terminal sessions.
+
+                                               *devcontainer.terminal_rename()*
+devcontainer.terminal_rename(old_name, new_name)
+    Rename a terminal session.
+
+                                                 *devcontainer.terminal_next()*
+devcontainer.terminal_next()
+    Switch to next terminal session.
+
+                                                 *devcontainer.terminal_prev()*
+devcontainer.terminal_prev()
+    Switch to previous terminal session.
+
+                                               *devcontainer.terminal_status()*
+devcontainer.terminal_status()
+    Show terminal system status.
+
+                                      *devcontainer.terminal_cleanup_history()*
+devcontainer.terminal_cleanup_history([days])
+    Clean up old terminal history files.
 
 Information~
                                                         *devcontainer.status()*
@@ -577,8 +965,47 @@ Common Error Messages~
   • Check for port conflicts with other applications
   • Use :DevcontainerPortStats to monitor usage
 
+Terminal Issues~
+
+"Terminal session not starting":
+  • Check container is running: :DevcontainerStatus
+  • Verify terminal configuration: :DevcontainerConfig
+  • Try different shell: :DevcontainerTerminal --shell=/bin/sh
+
+"Terminal history not persisting":
+  • Verify persistent_history is enabled in configuration
+  • Check history directory permissions
+  • Ensure adequate disk space for history storage
+  • Use :DevcontainerTerminalStatus to check history statistics
+
+"Session list appears empty":
+  • Invalid sessions are automatically cleaned up
+  • Create new session: :DevcontainerTerminalNew
+  • Check container connectivity and status
+
+"Multiple terminal sessions not working":
+  • Ensure unique session names
+  • Use :DevcontainerTerminalList to view all sessions
+  • Check for session conflicts: :DevcontainerTerminalStatus
+
+"Terminal keybindings not working":
+  • Verify keymaps configuration in terminal settings
+  • Check for keymap conflicts with other plugins
+  • Ensure terminal is in correct buffer context
+
+"Floating terminal sizing issues":
+  • Adjust float.width and float.height ratios
+  • Check terminal content fits in window size
+  • Verify border configuration settings
+
+"Terminal performance problems":
+  • Reduce max_history_lines setting
+  • Disable persistent_history if not needed
+  • Clean old history: :DevcontainerTerminalCleanup
+  • Check for large history files
+
 ==============================================================================
-10. CONTRIBUTING                                   *devcontainer-contributing*
+11. CONTRIBUTING                                   *devcontainer-contributing*
 
 Contributions are welcome! Visit the GitHub repository:
 https://github.com/ksoichiro/devcontainer.nvim

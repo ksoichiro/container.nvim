@@ -6,7 +6,7 @@ A Neovim plugin that provides VSCode Dev Containers-like development experience.
 
 - **devcontainer.json Support**: Fully compatible with VSCode configuration files
 - **Automatic Image Building**: Automatic Docker image building and management
-- **Seamless Integration**: Complete integration with Neovim terminal
+- **Enhanced Terminal Integration**: Advanced in-container terminal with session management
 - **LSP Integration**: Automatic detection and configuration of LSP servers in containers
 - **Smart Port Forwarding**: Dynamic port allocation to prevent conflicts between projects
 - **Asynchronous Operations**: All Docker operations executed asynchronously
@@ -121,7 +121,20 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | Command | Description |
 |---------|-------------|
 | `:DevcontainerExec <command>` | Execute command in container |
-| `:DevcontainerShell [shell]` | Open shell in container |
+| `:DevcontainerShell [shell]` | Open shell in container (legacy) |
+
+### Enhanced Terminal Integration
+
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerTerminal [options]` | Open enhanced terminal with session management |
+| `:DevcontainerTerminalNew [name]` | Create new terminal session |
+| `:DevcontainerTerminalList` | List all terminal sessions |
+| `:DevcontainerTerminalClose [name]` | Close terminal session |
+| `:DevcontainerTerminalCloseAll` | Close all terminal sessions |
+| `:DevcontainerTerminalNext` | Switch to next terminal session |
+| `:DevcontainerTerminalPrev` | Switch to previous terminal session |
+| `:DevcontainerTerminalStatus` | Show terminal system status |
 
 ### Information Display
 
@@ -178,12 +191,35 @@ require('devcontainer').setup({
     },
   },
 
-  -- Terminal settings
+  -- Enhanced terminal settings
   terminal = {
-    shell = '/bin/bash',
-    height = 15,
-    direction = 'horizontal', -- 'horizontal', 'vertical', 'float'
-    close_on_exit = false,
+    default_shell = '/bin/bash',
+    auto_insert = true,              -- Auto enter insert mode
+    close_on_exit = false,          -- Keep buffer after process exit
+    persistent_history = true,       -- Save history across sessions
+    max_history_lines = 10000,      -- Max lines in history
+    default_position = 'split',     -- 'split', 'vsplit', 'tab', 'float'
+
+    -- Split configuration
+    split = {
+      height = 15,                  -- Lines for horizontal split
+      width = 80,                   -- Columns for vertical split
+    },
+
+    -- Float configuration
+    float = {
+      width = 0.8,                  -- Ratio of editor width
+      height = 0.6,                 -- Ratio of editor height
+      border = 'rounded',           -- Border style
+    },
+
+    -- Terminal keybindings
+    keymaps = {
+      close = '<C-q>',              -- Close terminal
+      escape = '<C-\\><C-n>',       -- Exit terminal mode
+      new_session = '<leader>tn',   -- Create new session
+      list_sessions = '<leader>tl', -- List sessions
+    },
   },
 
   -- Port forwarding with dynamic allocation
@@ -257,7 +293,13 @@ require('devcontainer').stop()
 
 -- Command execution
 require('devcontainer').exec('npm test')
-require('devcontainer').shell('/bin/zsh')
+require('devcontainer').shell('/bin/zsh')      -- Legacy shell function
+
+-- Enhanced terminal functions
+require('devcontainer').terminal({ name = 'dev', position = 'float' })
+require('devcontainer').terminal_new('build')
+require('devcontainer').terminal_list()
+require('devcontainer').terminal_close('dev')
 
 -- Information retrieval
 local status = require('devcontainer').status()
@@ -390,23 +432,25 @@ Use this command to check configuration and verify devcontainer.json syntax.
 
 ## Development Roadmap
 
-### v0.1.0 (Current)
+### v0.2.1 (Current)
 - ✅ Basic devcontainer operations
 - ✅ Docker integration
-- ✅ Basic commands
+- ✅ LSP server integration
+- ✅ Enhanced terminal integration with session management
+- ✅ Smart port forwarding with dynamic allocation
 
-### v0.2.0 (In Progress)
-- 🔄 LSP server integration
-- 🔄 Improved terminal integration
-- 🔄 Port forwarding
-
-### v0.3.0 (Planned)
+### v0.4.0 (Next)
+- 📋 Port forwarding UI improvements
 - 📋 Telescope integration
-- 📋 Enhanced status display
-- 📋 Configuration UI
+- 📋 External plugin integration (nvim-test, nvim-dap)
+
+### v0.5.0 (Planned)
+- 📋 Multi-container support
+- 📋 Docker Compose integration
+- 📋 Advanced networking features
 
 ### v1.0.0 (Goal)
-- 📋 Complete feature implementation
+- 📋 Complete VSCode compatibility
 - 📋 Comprehensive testing
 - 📋 Complete documentation
 
