@@ -231,6 +231,9 @@ function M.parse(file_path, context)
   if not config then
     return nil, parse_err
   end
+  
+  -- デバッグ: 解析直後のpostCreateCommand
+  log.debug("Raw config postCreateCommand: %s", tostring(config.postCreateCommand))
 
   -- ベースパスを設定
   local base_path = fs.dirname(file_path)
@@ -259,6 +262,9 @@ function M.parse(file_path, context)
   config.workspaceFolder = config.workspaceFolder or "/workspace"
   config.remoteUser = config.remoteUser or "root"
 
+  -- デバッグ: 最終的なpostCreateCommand
+  log.debug("Final config postCreateCommand: %s", tostring(config.postCreateCommand))
+  
   log.info("Successfully parsed devcontainer.json: %s", config.name)
   return config
 end

@@ -84,6 +84,14 @@ function M.open(path)
   state.current_config = normalized_config
 
   log.info("Successfully loaded devcontainer configuration: %s", normalized_config.name)
+  log.debug("Config has postCreateCommand: %s", tostring(normalized_config.postCreateCommand ~= nil))
+  log.debug("Config has post_create_command: %s", tostring(normalized_config.post_create_command ~= nil))
+  if normalized_config.postCreateCommand then
+    log.debug("postCreateCommand: %s", normalized_config.postCreateCommand)
+  end
+  if normalized_config.post_create_command then
+    log.debug("post_create_command: %s", normalized_config.post_create_command)
+  end
   return true
 end
 
@@ -198,27 +206,34 @@ function M._start_final_step(container_id)
         print("✓ Container started successfully!")
         log.info("Container is ready: %s", container_id)
 
-        -- LSP統合のセットアップ
-        if config.get_value('lsp.auto_setup') then
-          print("Step 5: Setting up LSP...")
-          lsp = lsp or require('devcontainer.lsp.init')
-          lsp.setup(config.get_value('lsp'))
-          lsp.set_container_id(container_id)
+        -- postCreateCommand の実行
+        M._run_post_create_command(container_id, function(post_create_success)
+          if not post_create_success then
+            print("⚠ Warning: postCreateCommand failed, but continuing...")
+          end
 
-          -- パスマッピングの設定
-          local lsp_path = require('devcontainer.lsp.path')
-          lsp_path.setup(
-            vim.fn.getcwd(),
-            state.current_config.workspace_mount or '/workspace',
-            state.current_config.mounts or {}
-          )
+          -- LSP統合のセットアップ
+          if config.get_value('lsp.auto_setup') then
+            print("Step 5: Setting up LSP...")
+            lsp = lsp or require('devcontainer.lsp.init')
+            lsp.setup(config.get_value('lsp'))
+            lsp.set_container_id(container_id)
 
-          -- LSPサーバーのセットアップ
-          lsp.setup_lsp_in_container()
-          print("✓ LSP setup complete!")
-        end
+            -- パスマッピングの設定
+            local lsp_path = require('devcontainer.lsp.path')
+            lsp_path.setup(
+              vim.fn.getcwd(),
+              state.current_config.workspace_mount or '/workspace',
+              state.current_config.mounts or {}
+            )
 
-        -- post-start コマンドの実行
+            -- LSPサーバーのセットアップ
+            lsp.setup_lsp_in_container()
+            print("✓ LSP setup complete!")
+          end
+        end) -- _run_post_create_command callback終了
+
+        -- post-start コマンドの実行（既存）
         if state.current_config.post_start_command then
           print("Step 6: Running post-start command...")
           M.exec(state.current_config.post_start_command)
@@ -1177,6 +1192,55 @@ function M.debug_exec()
   else
     print("Could not access run_docker_command function")
   end
+end
+
+-- postCreateCommand の実行
+function M._run_post_create_command(container_id, callback)
+  log.debug("Checking for postCreateCommand...")
+  log.debug("Current config exists: %s", tostring(state.current_config ~= nil))
+  
+  if state.current_config then
+    log.debug("Config keys: %s", vim.inspect(vim.tbl_keys(state.current_config)))
+    log.debug("postCreateCommand value: %s", tostring(state.current_config.postCreateCommand))
+    log.debug("post_create_command value: %s", tostring(state.current_config.post_create_command))
+  end
+  
+  if not state.current_config or not state.current_config.post_create_command then
+    print("No postCreateCommand found, skipping...")
+    log.debug("No postCreateCommand found, skipping")
+    callback(true)
+    return
+  end
+
+  local command = state.current_config.post_create_command
+  print("Step 4.5: Running postCreateCommand...")
+  log.info("Executing postCreateCommand: %s", command)
+
+  local docker = require('devcontainer.docker.init')
+  local exec_args = {
+    "exec", "-i", "--user", "vscode",
+    "-e", "PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/bin:/usr/bin:/bin",
+    container_id, "bash", "-c", command
+  }
+
+  docker.run_docker_command_async(exec_args, {}, function(result)
+    vim.schedule(function()
+      if result.success then
+        print("✓ postCreateCommand completed successfully")
+        log.info("postCreateCommand output: %s", result.stdout)
+        if result.stderr and result.stderr ~= "" then
+          log.debug("postCreateCommand stderr: %s", result.stderr)
+        end
+        callback(true)
+      else
+        print("✗ postCreateCommand failed")
+        log.error("postCreateCommand failed with code %d", result.code)
+        log.error("Error output: %s", result.stderr or "")
+        log.error("Stdout: %s", result.stdout or "")
+        callback(false)
+      end
+    end)
+  end)
 end
 
 return M
