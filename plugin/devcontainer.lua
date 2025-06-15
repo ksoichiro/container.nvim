@@ -111,6 +111,19 @@ local function create_commands()
     desc = 'Setup LSP servers in devcontainer',
   })
 
+  -- Port management commands
+  vim.api.nvim_create_user_command('DevcontainerPorts', function()
+    require('devcontainer').show_ports()
+  end, {
+    desc = 'Show detailed port forwarding information',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerPortStats', function()
+    require('devcontainer').show_port_stats()
+  end, {
+    desc = 'Show port allocation statistics',
+  })
+
   -- Utility commands
   vim.api.nvim_create_user_command('DevcontainerReconnect', function()
     require('devcontainer').reconnect()

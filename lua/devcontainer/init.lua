@@ -77,12 +77,28 @@ function M.open(path)
     return false
   end
 
+  -- Resolve dynamic ports before normalizing
+  local resolved_config, port_err = parser.resolve_dynamic_ports(devcontainer_config, config.get())
+  if not resolved_config then
+    log.error("Failed to resolve dynamic ports: %s", port_err)
+    return false
+  end
+
+  -- Validate resolved ports
+  local resolved_validation_errors = parser.validate_resolved_ports(resolved_config)
+  if #resolved_validation_errors > 0 then
+    for _, error in ipairs(resolved_validation_errors) do
+      log.error("Port resolution validation error: %s", error)
+    end
+    return false
+  end
+
   -- Normalize configuration for plugin use
-  local normalized_config = parser.normalize_for_plugin(devcontainer_config)
+  local normalized_config = parser.normalize_for_plugin(resolved_config)
   normalized_config.base_path = path  -- Add base path for container name generation
 
   -- Merge with plugin configuration
-  parser.merge_with_plugin_config(devcontainer_config, config.get())
+  parser.merge_with_plugin_config(resolved_config, config.get())
 
   state.current_config = normalized_config
 
@@ -396,6 +412,12 @@ function M.stop()
     lsp.stop_all()
   end
 
+  -- Clean up port allocations
+  if state.current_config and state.current_config.project_id then
+    local port_utils = require('devcontainer.utils.port')
+    port_utils.release_project_ports(state.current_config.project_id)
+  end
+
   log.info("Stopping container: %s", state.current_container)
   docker.stop_container(state.current_container)
 
@@ -495,13 +517,52 @@ function M.status()
     print("Image: " .. (info.Config.Image or "unknown"))
     print("Created: " .. (info.Created or "unknown"))
 
+    -- Show configured ports from devcontainer.json
+    if state.current_config and state.current_config.normalized_ports and #state.current_config.normalized_ports > 0 then
+      print("\nConfigured Ports (from devcontainer.json):")
+      for _, port_config in ipairs(state.current_config.normalized_ports) do
+        local port_desc = string.format("  Container:%d", port_config.container_port)
+        if port_config.type == 'fixed' and port_config.host_port then
+          port_desc = port_desc .. string.format(" -> Host:%d (fixed)", port_config.host_port)
+        elseif port_config.type == 'auto' then
+          port_desc = port_desc .. " -> Host:auto-allocated"
+        elseif port_config.type == 'range' then
+          port_desc = port_desc .. string.format(" -> Host:range(%d-%d)", port_config.range_start, port_config.range_end)
+        end
+        if port_config.protocol and port_config.protocol ~= 'tcp' then
+          port_desc = port_desc .. " (" .. port_config.protocol .. ")"
+        end
+        print(port_desc)
+      end
+    end
+
+    -- Show active port mappings from Docker
     if info.NetworkSettings and info.NetworkSettings.Ports then
-      print("Ports:")
+      print("\nActive Port Mappings (Docker):")
+      local has_active_ports = false
       for container_port, host_bindings in pairs(info.NetworkSettings.Ports) do
-        if host_bindings then
+        if host_bindings and #host_bindings > 0 then
           for _, binding in ipairs(host_bindings) do
             print(string.format("  %s -> %s:%s", container_port, binding.HostIp, binding.HostPort))
+            has_active_ports = true
           end
+        end
+      end
+      if not has_active_ports then
+        print("  (no active port mappings)")
+      end
+    end
+
+    -- Show project port allocations
+    if state.current_config and state.current_config.project_id then
+      local port_utils = require('devcontainer.utils.port')
+      local project_ports = port_utils.get_project_ports(state.current_config.project_id)
+
+      if next(project_ports) then
+        print("\nAllocated Ports (Project: " .. state.current_config.project_id .. "):")
+        for port, allocation_info in pairs(project_ports) do
+          local time_str = os.date("%Y-%m-%d %H:%M:%S", allocation_info.allocated_at)
+          print(string.format("  Host:%d (%s, allocated: %s)", port, allocation_info.purpose, time_str))
         end
       end
     end
@@ -511,6 +572,8 @@ function M.status()
     container_id = state.current_container,
     status = status,
     info = info,
+    configured_ports = state.current_config and state.current_config.normalized_ports or {},
+    project_id = state.current_config and state.current_config.project_id or nil,
   }
 end
 
@@ -546,6 +609,111 @@ function M.reset()
   state.current_container = nil
   state.current_config = nil
   log.info("Plugin state reset")
+end
+
+-- Show detailed port information
+function M.show_ports()
+  log = log or require('devcontainer.utils.log')
+
+  if not state.current_config then
+    print("No active devcontainer configuration")
+    return
+  end
+
+  print("=== DevContainer Port Information ===")
+  print("Project: " .. (state.current_config.name or "unknown"))
+  print("Project ID: " .. (state.current_config.project_id or "unknown"))
+  print()
+
+  -- Show configured ports
+  if state.current_config.ports and #state.current_config.ports > 0 then
+    print("Configured Ports:")
+    for i, port in ipairs(state.current_config.ports) do
+      local type_info = ""
+      if port.type == "auto" then
+        type_info = " (auto-allocated)"
+      elseif port.type == "range" then
+        type_info = string.format(" (range: %d-%d)", port.range_start or 0, port.range_end or 0)
+      elseif port.type == "fixed" then
+        type_info = " (fixed)"
+      end
+
+      local protocol = port.protocol ~= "tcp" and "/" .. port.protocol or ""
+      print(string.format("  %d. Container:%d -> Host:%s%s%s",
+        i, port.container_port, tostring(port.host_port), protocol, type_info))
+      if port.original_spec then
+        print(string.format("     Original spec: %s", vim.inspect(port.original_spec)))
+      end
+    end
+    print()
+  else
+    print("No ports configured")
+    print()
+  end
+
+  -- Show port allocation statistics
+  local port_utils = require('devcontainer.utils.port')
+  local allocated_ports = port_utils.get_project_ports(state.current_config.project_id or "unknown")
+
+  if next(allocated_ports) then
+    print("Allocated Ports for this Project:")
+    for port, info in pairs(allocated_ports) do
+      local allocated_time = os.date("%Y-%m-%d %H:%M:%S", info.allocated_at)
+      print(string.format("  Port %d: %s (allocated: %s)", port, info.purpose, allocated_time))
+    end
+    print()
+  end
+
+  -- Show Docker port mappings if container is running
+  if state.current_container then
+    docker = docker or require('devcontainer.docker')
+    local port_mappings = docker.get_port_mappings(state.current_container)
+
+    if port_mappings and next(port_mappings) then
+      print("Active Docker Port Mappings:")
+      for container_port, host_info in pairs(port_mappings) do
+        print(string.format("  %s -> %s", container_port, host_info))
+      end
+    else
+      print("No active Docker port mappings")
+    end
+  else
+    print("Container not running - no active port mappings")
+  end
+end
+
+-- Show port allocation statistics
+function M.show_port_stats()
+  local port_utils = require('devcontainer.utils.port')
+  local stats = port_utils.get_port_statistics()
+
+  print("=== Port Allocation Statistics ===")
+  print("Total allocated ports: " .. stats.total_allocated)
+  print()
+
+  if next(stats.by_project) then
+    print("Allocation by Project:")
+    for project_id, count in pairs(stats.by_project) do
+      print(string.format("  %s: %d ports", project_id, count))
+    end
+    print()
+  end
+
+  if next(stats.by_purpose) then
+    print("Allocation by Purpose:")
+    for purpose, count in pairs(stats.by_purpose) do
+      print(string.format("  %s: %d ports", purpose, count))
+    end
+    print()
+  end
+
+  print("Dynamic Port Range Usage:")
+  print(string.format("  Range: %d - %d", stats.port_range_usage.start, stats.port_range_usage.end_port))
+  print(string.format("  Allocated in range: %d", stats.port_range_usage.allocated_in_range))
+
+  local total_range = stats.port_range_usage.end_port - stats.port_range_usage.start + 1
+  local usage_percent = math.floor((stats.port_range_usage.allocated_in_range / total_range) * 100)
+  print(string.format("  Range utilization: %d%%", usage_percent))
 end
 
 -- Get LSP status

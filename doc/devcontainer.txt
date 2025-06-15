@@ -163,6 +163,17 @@ LSP Integration~
     Manually setup LSP servers in the container. Usually this happens
     automatically.
 
+Port Management~
+                                                         *:DevcontainerPorts*
+:DevcontainerPorts
+    Show detailed port forwarding information including configured ports,
+    dynamic allocations, and active Docker port mappings.
+
+                                                     *:DevcontainerPortStats*
+:DevcontainerPortStats
+    Show port allocation statistics including usage by project, purpose,
+    and dynamic range utilization.
+
 Management~
                                                          *:DevcontainerReset*
 :DevcontainerReset
@@ -251,11 +262,27 @@ port_forwarding                            *devcontainer-config-port_forwarding*
     Port forwarding configuration:
 >lua
     port_forwarding = {
-      auto_forward = true,
-      notification = true,
-      common_ports = {3000, 8080, 5000, 3001},
+      auto_forward = true,                   -- Auto-forward common ports
+      notification = true,                   -- Show port forwarding notifications
+      bind_address = '127.0.0.1',          -- Bind address for port forwarding
+      common_ports = {3000, 8080, 5000, 3001}, -- Common ports to auto-forward
+
+      -- Dynamic port allocation settings
+      enable_dynamic_ports = true,          -- Enable dynamic port allocation
+      port_range_start = 10000,             -- Start of dynamic port range
+      port_range_end = 20000,               -- End of dynamic port range
+      conflict_resolution = 'auto',         -- Port conflict resolution strategy
     }
 <
+
+Dynamic Port Options:
+  • enable_dynamic_ports   - Enable/disable dynamic port allocation
+  • port_range_start       - Starting port number for dynamic allocation
+  • port_range_end         - Ending port number for dynamic allocation
+  • conflict_resolution    - How to handle port conflicts:
+                             'auto' - automatically find alternative ports
+                             'prompt' - ask user for resolution
+                             'error' - fail with error message
 
 workspace                                        *devcontainer-config-workspace*
     Type: |table|
@@ -365,6 +392,8 @@ With Features~
 <
 
 Port Forwarding~
+
+Basic port forwarding:
 >json
     {
       "name": "Web App",
@@ -377,6 +406,46 @@ Port Forwarding~
         }
       }
     }
+<
+
+Dynamic Port Allocation (Advanced)~
+
+The plugin supports dynamic port allocation to avoid conflicts between
+projects. Three port specification formats are available:
+
+>json
+    {
+      "name": "Multi-Project Safe",
+      "image": "node:18",
+      "forwardPorts": [
+        3000,                    // Fixed port (traditional)
+        "auto:3001",            // Auto-allocate available port
+        "range:8000-8010:3002", // Allocate from specific range
+        "8080:3003"             // Host:container mapping
+      ]
+    }
+<
+
+Port Format Specifications:
+  • `3000`                     - Fixed port on both host and container
+  • `"8080:3000"`             - Map host port 8080 to container port 3000
+  • `"auto:3001"`             - Auto-allocate available host port for container port 3001
+  • `"range:8000-8010:3002"`  - Allocate host port from range 8000-8010 for container port 3002
+
+Dynamic ports are allocated from the configured range (default: 10000-20000)
+and tracked per project to avoid conflicts. Use |:DevcontainerPorts| to view
+current port allocations.
+
+Configuration example for dynamic ports:
+>lua
+    require('devcontainer').setup({
+      port_forwarding = {
+        enable_dynamic_ports = true,     -- Enable dynamic allocation
+        port_range_start = 10000,        -- Start of dynamic range
+        port_range_end = 20000,          -- End of dynamic range
+        conflict_resolution = 'auto',    -- 'auto', 'prompt', 'error'
+      }
+    })
 <
 
 Environment Variables~
@@ -444,6 +513,33 @@ LSP not working:
 <
   3. Verify language server is installed in container
 
+Port Forwarding Issues~
+
+Port conflicts between projects:
+  • Use dynamic port allocation: >json
+        "forwardPorts": ["auto:3000", "range:8000-8010:3001"]
+<
+  • Check port status: >vim
+        :DevcontainerPorts
+<
+  • View port statistics: >vim
+        :DevcontainerPortStats
+<
+
+Port allocation errors:
+  1. Check if dynamic ports are enabled in configuration
+  2. Verify port range is not exhausted: >vim
+        :DevcontainerPortStats
+<
+  3. Manually clean up old allocations by restarting containers
+
+Service not accessible on forwarded port:
+  1. Check if service is bound to 0.0.0.0 (not just localhost)
+  2. Verify port is correctly mapped: >vim
+        :DevcontainerPorts
+<
+  3. Check firewall settings on host machine
+
 Performance Issues~
 
 Slow file operations:
@@ -470,6 +566,16 @@ Common Error Messages~
 "LSP client not found":
   • Ensure nvim-lspconfig is installed
   • Check that language server is in container PATH
+
+"Port resolution failed":
+  • Check if dynamic port range is exhausted
+  • Verify conflict_resolution setting in configuration
+  • Try expanding port range or cleaning up old allocations
+
+"No available port found":
+  • Increase port range size in configuration
+  • Check for port conflicts with other applications
+  • Use :DevcontainerPortStats to monitor usage
 
 ==============================================================================
 10. CONTRIBUTING                                   *devcontainer-contributing*

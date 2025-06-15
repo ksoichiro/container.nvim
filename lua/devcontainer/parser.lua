@@ -53,6 +53,68 @@ local function expand_variables(str, context)
   return str
 end
 
+-- Generate project ID based on project path
+function M.generate_project_id(project_path)
+  project_path = project_path or vim.fn.getcwd()
+  -- Use project directory name and path hash for uniqueness
+  local project_name = fs.basename(project_path)
+  local path_hash = vim.fn.sha256(project_path):sub(1, 8)
+  return string.format("%s-%s", project_name, path_hash)
+end
+
+-- Resolve dynamic ports to actual port numbers
+function M.resolve_dynamic_ports(config, plugin_config)
+  if not config.normalized_ports or #config.normalized_ports == 0 then
+    return config
+  end
+
+  local port_utils = require('devcontainer.utils.port')
+  local project_id = config.project_id
+
+  -- Check if dynamic ports are enabled
+  if not plugin_config.port_forwarding.enable_dynamic_ports then
+    log.debug("Dynamic ports disabled, using only fixed ports")
+    return config
+  end
+
+  local port_specs = {}
+  for _, port_entry in ipairs(config.normalized_ports) do
+    if port_entry.type == 'auto' then
+      table.insert(port_specs, string.format("auto:%d", port_entry.container_port))
+    elseif port_entry.type == 'range' then
+      table.insert(port_specs, string.format("range:%d-%d:%d",
+        port_entry.range_start, port_entry.range_end, port_entry.container_port))
+    else
+      -- Fixed ports remain as-is
+      table.insert(port_specs, port_entry.original_spec)
+    end
+  end
+
+  local resolved_ports, errors = port_utils.resolve_dynamic_ports(port_specs, project_id, {
+    port_range_start = plugin_config.port_forwarding.port_range_start,
+    port_range_end = plugin_config.port_forwarding.port_range_end
+  })
+
+  if errors and #errors > 0 then
+    log.warn("Port resolution errors for project %s:", project_id)
+    for _, error in ipairs(errors) do
+      log.warn("  %s", error)
+    end
+
+    if plugin_config.port_forwarding.conflict_resolution == 'error' then
+      return nil, "Port resolution failed: " .. table.concat(errors, "; ")
+    end
+  end
+
+  -- Replace normalized_ports with resolved ports
+  config.normalized_ports = resolved_ports or {}
+  config.port_resolution_errors = errors or {}
+
+  log.info("Resolved %d ports for project %s", #config.normalized_ports, project_id)
+
+  return config
+end
+
 -- Variable expansion for all string fields in configuration
 local function expand_config_variables(config, context)
   if type(config) ~= 'table' then
@@ -123,7 +185,7 @@ local function resolve_compose_file_path(config, base_path)
   return fs.resolve_path(compose_path)
 end
 
--- Normalize port settings
+-- Normalize port settings with dynamic port support
 local function normalize_ports(ports)
   if not ports then
     return {}
@@ -131,38 +193,72 @@ local function normalize_ports(ports)
 
   local normalized = {}
 
-  for _, port in ipairs(ports) do
+  for i, port in ipairs(ports) do
+    local port_entry = {
+      protocol = 'tcp',
+      original_spec = port,
+      index = i
+    }
+
     if type(port) == 'number' then
-      table.insert(normalized, {
-        host_port = port,
-        container_port = port,
-        protocol = 'tcp',
-      })
+      port_entry.type = 'fixed'
+      port_entry.host_port = port
+      port_entry.container_port = port
+
     elseif type(port) == 'string' then
-      local host_port, container_port = port:match('(%d+):(%d+)')
-      if host_port and container_port then
-        table.insert(normalized, {
-          host_port = tonumber(host_port),
-          container_port = tonumber(container_port),
-          protocol = 'tcp',
-        })
+      -- Check for auto allocation: "auto:3000"
+      local auto_container_port = port:match('^auto:(%d+)$')
+      if auto_container_port then
+        port_entry.type = 'auto'
+        port_entry.container_port = tonumber(auto_container_port)
+        -- host_port will be assigned during resolution
+
       else
-        local single_port = tonumber(port)
-        if single_port then
-          table.insert(normalized, {
-            host_port = single_port,
-            container_port = single_port,
-            protocol = 'tcp',
-          })
+        -- Check for range allocation: "range:8000-8010:3000"
+        local range_start, range_end, container_port = port:match('^range:(%d+)-(%d+):(%d+)$')
+        if range_start and range_end and container_port then
+          port_entry.type = 'range'
+          port_entry.range_start = tonumber(range_start)
+          port_entry.range_end = tonumber(range_end)
+          port_entry.container_port = tonumber(container_port)
+          -- host_port will be assigned during resolution
+
+        else
+          -- Check for host:container mapping: "8080:3000"
+          local host_port, container_port_2 = port:match('(%d+):(%d+)')
+          if host_port and container_port_2 then
+            port_entry.type = 'fixed'
+            port_entry.host_port = tonumber(host_port)
+            port_entry.container_port = tonumber(container_port_2)
+
+          else
+            -- Single port as string: "3000"
+            local single_port = tonumber(port)
+            if single_port then
+              port_entry.type = 'fixed'
+              port_entry.host_port = single_port
+              port_entry.container_port = single_port
+            else
+              log.warn("Invalid port specification at index %d: %s", i, tostring(port))
+              goto continue
+            end
+          end
         end
       end
+
     elseif type(port) == 'table' then
-      table.insert(normalized, {
-        host_port = port.hostPort or port.containerPort,
-        container_port = port.containerPort,
-        protocol = port.protocol or 'tcp',
-      })
+      port_entry.type = 'fixed'
+      port_entry.host_port = port.hostPort or port.containerPort
+      port_entry.container_port = port.containerPort
+      port_entry.protocol = port.protocol or 'tcp'
+
+    else
+      log.warn("Unsupported port specification type at index %d: %s", i, type(port))
+      goto continue
     end
+
+    table.insert(normalized, port_entry)
+    ::continue::
   end
 
   return normalized
@@ -254,6 +350,9 @@ function M.parse(file_path, context)
   -- Normalize port settings
   config.normalized_ports = normalize_ports(config.forwardPorts)
 
+  -- Generate project ID for port allocation
+  config.project_id = M.generate_project_id(context.workspace_folder or vim.fn.getcwd())
+
   -- Normalize mount settings
   config.normalized_mounts = normalize_mounts(config.mounts, context)
 
@@ -299,8 +398,21 @@ function M.validate(config)
       if not port.container_port or port.container_port <= 0 or port.container_port > 65535 then
         table.insert(errors, "Invalid container port: " .. tostring(port.container_port))
       end
-      if not port.host_port or port.host_port <= 0 or port.host_port > 65535 then
-        table.insert(errors, "Invalid host port: " .. tostring(port.host_port))
+
+      -- Only validate host_port for fixed ports (auto/range ports don't have host_port yet)
+      if port.type == "fixed" then
+        if not port.host_port or port.host_port <= 0 or port.host_port > 65535 then
+          table.insert(errors, "Invalid host port: " .. tostring(port.host_port))
+        end
+      elseif port.type == "range" then
+        -- Validate range boundaries
+        if not port.range_start or not port.range_end then
+          table.insert(errors, "Range port missing start or end boundary")
+        elseif port.range_start >= port.range_end then
+          table.insert(errors, "Range port start must be less than end")
+        elseif port.range_start <= 0 or port.range_end > 65535 then
+          table.insert(errors, "Range port boundaries must be 1-65535")
+        end
       end
     end
   end
@@ -313,6 +425,26 @@ function M.validate(config)
       end
       if not mount.target or mount.target == "" then
         table.insert(errors, "Mount target cannot be empty")
+      end
+    end
+  end
+
+  return errors
+end
+
+-- Validate resolved port configuration (after dynamic port resolution)
+function M.validate_resolved_ports(config)
+  local errors = {}
+
+  if config.normalized_ports then
+    for _, port in ipairs(config.normalized_ports) do
+      if not port.container_port or port.container_port <= 0 or port.container_port > 65535 then
+        table.insert(errors, "Invalid container port: " .. tostring(port.container_port))
+      end
+
+      -- All ports should have host_port after resolution
+      if not port.host_port or port.host_port <= 0 or port.host_port > 65535 then
+        table.insert(errors, "Invalid or missing host port after resolution: " .. tostring(port.host_port))
       end
     end
   end
@@ -389,5 +521,8 @@ function M.merge_with_plugin_config(devcontainer_config, plugin_config)
 
   return devcontainer_config
 end
+
+-- Expose normalize_ports for testing
+M.normalize_ports = normalize_ports
 
 return M

@@ -60,6 +60,11 @@ M.defaults = {
     notification = true,
     bind_address = '127.0.0.1',
     common_ports = {3000, 8080, 5000, 3001},
+    -- Dynamic port allocation settings
+    enable_dynamic_ports = true,
+    port_range_start = 10000,
+    port_range_end = 20000,
+    conflict_resolution = 'auto', -- 'auto', 'prompt', 'error'
   },
 
   -- Docker settings

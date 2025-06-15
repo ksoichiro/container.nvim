@@ -8,7 +8,7 @@ A Neovim plugin that provides VSCode Dev Containers-like development experience.
 - **Automatic Image Building**: Automatic Docker image building and management
 - **Seamless Integration**: Complete integration with Neovim terminal
 - **LSP Integration**: Automatic detection and configuration of LSP servers in containers
-- **Port Forwarding**: Automatic port forwarding and port management
+- **Smart Port Forwarding**: Dynamic port allocation to prevent conflicts between projects
 - **Asynchronous Operations**: All Docker operations executed asynchronously
 
 ## Requirements
@@ -66,7 +66,7 @@ Create a `.devcontainer/devcontainer.json` file in your project root:
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind"
   ],
-  "forwardPorts": [3000, 8080],
+  "forwardPorts": [3000, "auto:8080"],
   "postCreateCommand": "npm install",
   "postStartCommand": "npm run dev",
   "remoteUser": "node"
@@ -138,6 +138,13 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | `:DevcontainerLspStatus` | Show LSP server status |
 | `:DevcontainerLspSetup` | Setup LSP servers in container |
 
+### Port Management
+
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerPorts` | Show detailed port forwarding information |
+| `:DevcontainerPortStats` | Show port allocation statistics |
+
 ### Management
 
 | Command | Description |
@@ -179,11 +186,16 @@ require('devcontainer').setup({
     close_on_exit = false,
   },
 
-  -- Port forwarding
+  -- Port forwarding with dynamic allocation
   port_forwarding = {
     auto_forward = true,
     notification = true,
     common_ports = {3000, 8080, 5000, 3001},
+    -- Dynamic port allocation settings
+    enable_dynamic_ports = true,
+    port_range_start = 10000,
+    port_range_end = 20000,
+    conflict_resolution = 'auto', -- 'auto', 'prompt', 'error'
   },
 
   -- Workspace settings
@@ -194,6 +206,43 @@ require('devcontainer').setup({
   },
 })
 ```
+
+## Dynamic Port Allocation
+
+The plugin supports advanced port forwarding with dynamic allocation to prevent conflicts between multiple projects.
+
+### Port Specification Formats
+
+```json
+{
+  "forwardPorts": [
+    3000,                    // Fixed port (traditional)
+    "auto:3001",            // Auto-allocate available port
+    "range:8000-8010:3002", // Allocate from specific range
+    "8080:3003"             // Host:container mapping
+  ]
+}
+```
+
+### Benefits
+
+- **Conflict Prevention**: Multiple projects can run simultaneously without port conflicts
+- **Automatic Allocation**: No need to manually manage port assignments
+- **Project Isolation**: Each project gets its own port allocation space
+- **Easy Monitoring**: Use `:DevcontainerPorts` and `:DevcontainerPortStats` to monitor usage
+
+### Usage Examples
+
+Multi-project development:
+```json
+// Project A
+{ "forwardPorts": ["auto:3000", "auto:8080"] }
+
+// Project B  
+{ "forwardPorts": ["auto:3000", "auto:8080"] }
+```
+
+Both projects can run simultaneously with automatically assigned unique ports.
 
 ## Lua API
 
@@ -229,7 +278,7 @@ local container_id = require('devcontainer').get_container_id()
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
   ],
-  "forwardPorts": [3000, 8080, 9229],
+  "forwardPorts": [3000, "auto:8080", "range:9000-9100:9229"],
   "portsAttributes": {
     "3000": {
       "label": "Frontend",
