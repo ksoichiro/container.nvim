@@ -658,3 +658,337 @@ require('devcontainer').setup({
 
 この設計により、VSCodeのdevcontainer機能と同等またはそれ以上の開発体験をNeovimで実現できます。段階的な実装により、基本機能から高度な機能まで順次追加していくことが可能です。
 
+## プラグイン統合アーキテクチャ
+
+### アーキテクチャの選択
+
+devcontainer.nvimにおけるプラグイン統合の深い実装を実現するため、複数のアプローチを検討した結果、**ハイブリッドアプローチ**を採用します。
+
+#### 検討したアプローチ
+
+1. **VSCode型アプローチ（コンテナ内サーバー）**
+   - コンテナ内にNeovimサーバーを配置
+   - ホストのNeovimはクライアントとして動作
+   - 利点：完全な分離、VSCodeとの完全な互換性
+   - 欠点：実装の複雑性、パフォーマンスオーバーヘッド
+
+2. **コマンドフォワーディング（現在の拡張）**
+   - ホスト側にNeovimを保持
+   - 特定のコマンドをコンテナに転送
+   - 利点：シンプルな実装、既存プラグインとの互換性
+   - 欠点：統合の制限、プラグインごとの対応が必要
+
+3. **リモートプラグインアーキテクチャ**
+   - Neovimのリモートプラグイン機能を活用
+   - コンテナ内でプラグインをリモートプラグインとして実行
+   - 利点：既存のNeovimアーキテクチャを活用
+   - 欠点：すべてのプラグインがリモート実行に対応していない
+
+4. **ハイブリッドアプローチ（採用）**
+   - コマンドフォワーディングを基盤とする
+   - 複雑なプラグインにはリモートプラグインアーキテクチャを使用
+   - プラグインごとに最適な統合方法を選択
+   - 利点：柔軟性、段階的な実装、良好なパフォーマンス
+   - 欠点：中程度の実装複雑性
+
+### ハイブリッドアーキテクチャの設計
+
+#### 1. プラグイン統合フレームワーク
+
+```lua
+-- lua/devcontainer/plugin_integration/init.lua
+local M = {}
+
+-- プラグイン統合レジストリ
+local integrations = {}
+
+-- 統合方法の定義
+M.integration_types = {
+  COMMAND_FORWARD = "command_forward",    -- コマンドをコンテナに転送
+  REMOTE_PLUGIN = "remote_plugin",        -- リモートプラグインとして実行
+  HYBRID = "hybrid",                      -- 両方の組み合わせ
+  NATIVE = "native"                       -- ホスト側で実行（統合不要）
+}
+
+-- プラグイン統合の登録
+function M.register_integration(plugin_name, config)
+  integrations[plugin_name] = {
+    type = config.type or M.integration_types.COMMAND_FORWARD,
+    patterns = config.patterns or {},
+    setup = config.setup,
+    teardown = config.teardown,
+    handlers = config.handlers or {}
+  }
+end
+
+-- 統合の自動検出
+function M.auto_detect_integrations()
+  -- インストール済みプラグインを検出
+  -- 既知のプラグインに対して自動統合を設定
+  local known_integrations = require('devcontainer.plugin_integration.registry')
+  
+  for plugin_name, integration_config in pairs(known_integrations) do
+    if M.is_plugin_available(plugin_name) then
+      M.register_integration(plugin_name, integration_config)
+    end
+  end
+end
+```
+
+#### 2. コマンドフォワーディング拡張
+
+```lua
+-- lua/devcontainer/plugin_integration/command_forward.lua
+local M = {}
+
+-- コマンドラッパーの作成
+function M.create_wrapper(original_cmd, container_id)
+  return function(...)
+    local args = {...}
+    local docker = require('devcontainer.docker')
+    
+    -- コマンドをコンテナ内で実行するように変換
+    local container_cmd = M.transform_command(original_cmd, args)
+    
+    -- 実行と結果の取得
+    local result = docker.exec_command(container_id, container_cmd)
+    
+    -- 結果をNeovimの形式に変換
+    return M.transform_result(result)
+  end
+end
+
+-- 汎用的なコマンド変換
+function M.wrap_plugin_commands(plugin_name, command_patterns)
+  local original_commands = {}
+  
+  for _, pattern in ipairs(command_patterns) do
+    -- 元のコマンドを保存
+    original_commands[pattern] = vim.api.nvim_get_commands({})[pattern]
+    
+    -- ラッパーで置き換え
+    vim.api.nvim_create_user_command(pattern, function(opts)
+      M.execute_in_container(pattern, opts)
+    end, { nargs = '*', complete = 'file' })
+  end
+  
+  return original_commands
+end
+```
+
+#### 3. リモートプラグインホスト
+
+```lua
+-- lua/devcontainer/plugin_integration/remote_host.lua
+local M = {}
+
+-- コンテナ内でリモートプラグインホストを起動
+function M.start_remote_host(container_id)
+  local docker = require('devcontainer.docker')
+  
+  -- リモートプラグインホストのセットアップスクリプト
+  local setup_script = [[
+    # Neovim remote plugin host setup
+    pip install pynvim
+    npm install -g neovim
+    
+    # Start the remote plugin host
+    nvim --headless --cmd "let g:devcontainer_mode='remote'" \
+         --cmd "call remote#host#Start()" &
+  ]]
+  
+  docker.exec_command(container_id, setup_script, { detach = true })
+  
+  -- RPCチャンネルの確立
+  local channel = M.establish_rpc_channel(container_id)
+  
+  return channel
+end
+
+-- プラグインのリモート実行
+function M.register_remote_plugin(plugin_path, channel)
+  -- リモートプラグインとして登録
+  vim.fn.remote#host#RegisterPlugin(
+    'devcontainer_' .. plugin_path,
+    channel
+  )
+end
+```
+
+#### 4. 統合テンプレート
+
+##### vim-test統合の例
+
+```lua
+-- lua/devcontainer/plugin_integration/plugins/vim_test.lua
+local M = {}
+
+M.config = {
+  type = "command_forward",
+  patterns = {
+    "Test*",
+    "VimTest*"
+  },
+  
+  setup = function(container_id)
+    -- vim-testのカスタムストラテジーを設定
+    vim.g['test#custom_strategies'] = {
+      devcontainer = function(cmd)
+        local docker = require('devcontainer.docker')
+        return docker.exec_command(container_id, cmd, {
+          interactive = true,
+          stream = true
+        })
+      end
+    }
+    
+    -- デフォルトストラテジーをdevcontainerに設定
+    vim.g['test#strategy'] = 'devcontainer'
+  end,
+  
+  teardown = function()
+    -- クリーンアップ
+    vim.g['test#strategy'] = nil
+    vim.g['test#custom_strategies'] = nil
+  end
+}
+
+return M
+```
+
+##### nvim-dap統合の例
+
+```lua
+-- lua/devcontainer/plugin_integration/plugins/nvim_dap.lua
+local M = {}
+
+M.config = {
+  type = "hybrid",  -- コマンドフォワーディングとポート転送の組み合わせ
+  
+  setup = function(container_id)
+    local dap = require('dap')
+    local docker = require('devcontainer.docker')
+    
+    -- デバッグアダプターの設定を変更
+    for lang, configs in pairs(dap.configurations) do
+      for i, config in ipairs(configs) do
+        -- デバッガーをコンテナ内で起動
+        if config.type == "executable" then
+          config.program = M.wrap_debugger_command(config.program, container_id)
+        end
+        
+        -- ポート転送の設定
+        if config.port then
+          config.port = M.forward_debug_port(config.port, container_id)
+        end
+      end
+    end
+  end,
+  
+  handlers = {
+    -- デバッグセッション開始時の処理
+    before_start = function(config, container_id)
+      -- 必要なポートをフォワード
+      M.setup_debug_ports(config, container_id)
+    end,
+    
+    -- パスマッピング
+    resolve_path = function(path, container_id)
+      return M.map_path_to_container(path, container_id)
+    end
+  }
+}
+
+return M
+```
+
+### 実装ロードマップ
+
+#### フェーズ1：拡張コマンドフォワーディング（2-3週間）
+
+1. **プラグイン統合フレームワークの基盤実装**
+   - 統合レジストリ
+   - 自動検出システム
+   - 基本的なコマンドラッパー
+
+2. **主要プラグインの統合テンプレート作成**
+   - vim-test / nvim-test
+   - vim-fugitive (Git操作)
+   - telescope.nvim (ファイル検索)
+
+3. **統合APIの公開**
+   - サードパーティプラグイン開発者向けAPI
+   - 統合ガイドラインドキュメント
+
+#### フェーズ2：リモートプラグインサポート（3-4週間）
+
+1. **リモートプラグインホストの実装**
+   - コンテナ内でのホスト起動
+   - RPCチャンネル管理
+   - エラーハンドリング
+
+2. **複雑なプラグインの統合**
+   - nvim-dap (デバッガー)
+   - nvim-lspconfig (既存の改良)
+   - nvim-treesitter (構文解析)
+
+3. **パフォーマンス最適化**
+   - 通信の効率化
+   - キャッシング戦略
+   - 遅延読み込み
+
+#### フェーズ3：スマート統合システム（2-3週間）
+
+1. **統合方法の自動選択**
+   - プラグインの特性を分析
+   - 最適な統合方法を自動選択
+   - フォールバック機構
+
+2. **統合のカスタマイズ**
+   - ユーザー定義の統合ルール
+   - プラグイン別の設定
+   - 統合の有効/無効切り替え
+
+3. **開発者ツール**
+   - 統合のデバッグツール
+   - パフォーマンスプロファイリング
+   - 統合テストフレームワーク
+
+### パフォーマンスとセキュリティの考慮
+
+#### パフォーマンス最適化
+
+1. **通信の最小化**
+   - バッチ処理
+   - 結果のキャッシング
+   - 非同期実行
+
+2. **リソース管理**
+   - 接続プーリング
+   - メモリ使用量の監視
+   - 不要なプロセスの自動終了
+
+#### セキュリティ
+
+1. **権限管理**
+   - コンテナ内実行の権限制限
+   - ファイルアクセスの制御
+   - ネットワークアクセスの監視
+
+2. **データ保護**
+   - 機密情報のフィルタリング
+   - 通信の暗号化（必要に応じて）
+   - ログのサニタイゼーション
+
+### まとめ
+
+このハイブリッドアーキテクチャにより、以下を実現します：
+
+1. **段階的な実装** - 既存の機能を壊すことなく、徐々に高度な統合を追加
+2. **柔軟性** - プラグインごとに最適な統合方法を選択
+3. **パフォーマンス** - 必要に応じて最適な通信方法を使用
+4. **互換性** - 既存のプラグインエコシステムとの高い互換性
+5. **拡張性** - 新しいプラグインや統合方法を容易に追加可能
+
+この設計により、VSCodeのRemote Development拡張機能と同等の機能を、Neovimのエコシステムに適した形で実現できます。
+
