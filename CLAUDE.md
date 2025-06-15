@@ -23,6 +23,13 @@ Currently no formal test framework is implemented. Test manually by:
 3. Check debug info: `:DevcontainerDebug`
 4. View logs: `:DevcontainerLogs`
 
+### TODO Management
+When identifying future improvements or tasks during development:
+1. **DO NOT** use session memory (TodoWrite tool) for persistent tasks
+2. **DO** add items directly to `TODO.md` file under appropriate priority sections
+3. **COMMIT** TODO.md changes to ensure tasks are tracked in git history
+4. **ORGANIZE** items by priority: 🔴 High Priority, 🟡 Medium Priority, 🟢 Low Priority
+
 ### Development Workflow
 
 #### Code Quality Requirements
@@ -53,6 +60,7 @@ make install-dev
 3. **Error Handling**: Add proper error handling and parameter validation
 4. **Documentation**: Keep comments clear and concise in English
 5. **Manual Checks**: Use `make lint` and `make test` for manual verification when needed
+6. **TODO Management**: Add future tasks and improvements to `TODO.md` file, NOT session memory
 
 #### Available Make Targets
 - `make install-hooks` - Install pre-commit hooks (one-time setup)
