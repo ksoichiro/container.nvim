@@ -152,46 +152,60 @@ function M.create_lsp_client(name, server_config)
 
   log.debug("Setting up LSP client with lspconfig")
 
-  -- Instead of creating a new server, directly start the client with custom configuration
-  -- This bypasses lspconfig's setup and creates the client directly
-  local client_id = vim.lsp.start_client(lsp_config)
+  -- Use lspconfig to properly register the server configuration
+  lspconfig[name].setup(lsp_config)
 
-  if client_id then
-    log.info("LSP client started with ID: %s", client_id)
+  -- For lspconfig to work properly with :LspInfo, we need to let it manage the client
+  -- But we can trigger it to start by attaching to a buffer of the right filetype
+  local bufnr = vim.api.nvim_get_current_buf()
+  local ft = vim.api.nvim_buf_get_option(bufnr, 'filetype')
 
-    -- Attach to current buffer if it matches the filetype
-    local bufnr = vim.api.nvim_get_current_buf()
-    local ft = vim.api.nvim_buf_get_option(bufnr, 'filetype')
+  -- Check if this filetype should trigger the LSP
+  local supported_filetypes = server_config.filetypes or server_config.languages or {}
+  local should_attach = vim.tbl_contains(supported_filetypes, ft)
 
-    -- Attach to current buffer if it matches the supported filetypes
-    local supported_filetypes = server_config.filetypes or server_config.languages or {}
-    if vim.tbl_contains(supported_filetypes, ft) then
-      vim.lsp.buf_attach_client(bufnr, client_id)
-      log.info("Attached LSP client %s to buffer %s (filetype: %s)", name, bufnr, ft)
-    else
-      log.debug("Filetype %s not supported by %s (supported: %s)", ft, name, vim.inspect(supported_filetypes))
-    end
-
-    -- Store the client ID and configuration for later reference
-    state.clients[name] = {
-      client_id = client_id,
-      config = lsp_config,
-      server_config = server_config
-    }
-
-    -- Setup autocommand for automatic attachment to new buffers
-    M._setup_auto_attach(name, server_config, client_id)
-  else
-    log.error("Failed to start LSP client for %s", name)
-    return
+  if should_attach then
+    -- Trigger lspconfig by simulating a buffer attach
+    vim.cmd('doautocmd FileType')
   end
 
-  -- Attach to existing loaded buffers with matching filetypes
-  vim.schedule(function()
-    M._attach_to_existing_buffers(name, server_config, client_id)
-  end)
+  -- Store the server configuration for state tracking
+  state.clients[name] = {
+    client_id = nil, -- Will be set when client actually starts
+    config = lsp_config,
+    server_config = server_config
+  }
 
-  log.info('LSP: Successfully set up %s', name)
+  -- Wait a moment for the client to start, then set up additional functionality
+  vim.defer_fn(function()
+    local clients = vim.lsp.get_active_clients({name = name})
+    local client_id = nil
+    for _, client in ipairs(clients) do
+      if client.name == name then
+        client_id = client.id
+        log.info("LSP client started via lspconfig with ID: %s", client_id)
+
+        -- Update state with actual client ID
+        if state.clients[name] then
+          state.clients[name].client_id = client_id
+        end
+
+        -- Setup autocommand for automatic attachment to new buffers
+        M._setup_auto_attach(name, server_config, client_id)
+
+        -- Attach to existing loaded buffers with matching filetypes
+        M._attach_to_existing_buffers(name, server_config, client_id)
+
+        break
+      end
+    end
+
+    if not client_id then
+      log.warn("LSP client for %s not found after lspconfig setup", name)
+    end
+  end, 500) -- Increase delay to allow lspconfig to start the client
+
+  log.info('LSP: Successfully configured %s via lspconfig', name)
 end
 
 -- Prepare LSP configuration for a server

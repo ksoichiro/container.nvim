@@ -22,13 +22,12 @@ This file records future improvements and plans after the completion of v0.2.0 L
    - Impact: Multiple projects with same devcontainer name can coexist
    - Testing: Comprehensive test suite added (test/test_container_naming.lua)
 
-### 🔴 High Priority
-
-2. **LSP Info Client Display Issue**
-   - Current: devcontainer pylsp client not shown in `:LspInfo`
-   - Impact: Difficult to verify status during debugging (though functionality works normally)
-   - Priority: Medium (minimal practical impact)
-   - Fix: Improve integration with lspconfig
+2. **LSP Info Client Display Issue** ✅
+   - Fixed: Modified LSP client creation to use lspconfig.setup() instead of vim.lsp.start_client()
+   - Implementation: Proper integration with lspconfig management system
+   - Result: LSP clients now appear in `:LspInfo` as expected
+   - Testing: Added test_lspinfo_integration.lua to verify functionality
+   - Impact: Better debugging experience and standard Neovim LSP integration
 
 3. **Error Log Cleanup** ✅
    - Fixed: Changed all DEBUG prints to log.debug()
