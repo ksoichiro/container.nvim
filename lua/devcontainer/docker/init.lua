@@ -78,7 +78,20 @@ function M.run_docker_command(args, opts)
     cmd = 'cd ' .. vim.fn.shellescape(opts.cwd) .. ' && ' .. cmd
   end
 
-  log.debug('Executing (sync): %s', cmd)
+  -- Determine if this is a lightweight status check command
+  local is_lightweight_command = false
+  if #args > 0 then
+    local first_arg = args[1]
+    -- Commands that are frequently called for status checks
+    if first_arg == 'inspect' or first_arg == 'images' or first_arg == 'ps' then
+      is_lightweight_command = true
+    end
+  end
+
+  -- Only log important commands, suppress frequent status checks
+  if not is_lightweight_command or (opts and opts.verbose) then
+    log.debug('Executing (sync): %s', cmd)
+  end
 
   local stdout = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
@@ -100,7 +113,20 @@ function M.run_docker_command_async(args, opts, callback)
     table.insert(cmd_args, arg)
   end
 
-  log.debug('Executing (async): %s', table.concat(cmd_args, ' '))
+  -- Determine if this is a lightweight status check command
+  local is_lightweight_command = false
+  if #args > 0 then
+    local first_arg = args[1]
+    -- Commands that are frequently called for status checks
+    if first_arg == 'inspect' or first_arg == 'images' or first_arg == 'ps' then
+      is_lightweight_command = true
+    end
+  end
+
+  -- Only log important commands, suppress frequent status checks
+  if not is_lightweight_command or (opts and opts.verbose) then
+    log.debug('Executing (async): %s', table.concat(cmd_args, ' '))
+  end
 
   local stdout_lines = {}
   local stderr_lines = {}
