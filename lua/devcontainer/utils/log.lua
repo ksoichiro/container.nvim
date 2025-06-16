@@ -51,12 +51,13 @@ local function log(level, msg, ...)
 
   -- Console output
   if M.config.console then
+    local notify = require('devcontainer.utils.notify')
     if level >= log_levels.ERROR then
-      vim.notify(formatted_msg, vim.log.levels.ERROR, { title = 'devcontainer.nvim' })
+      notify.critical(formatted_msg)
     elseif level >= log_levels.WARN then
-      vim.notify(formatted_msg, vim.log.levels.WARN, { title = 'devcontainer.nvim' })
+      notify.status(formatted_msg, { level = 'warn' })
     elseif level >= log_levels.INFO then
-      vim.notify(formatted_msg, vim.log.levels.INFO, { title = 'devcontainer.nvim' })
+      notify.status(formatted_msg)
     else
       print(log_line)
     end

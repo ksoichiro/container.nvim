@@ -3,6 +3,7 @@
 
 local M = {}
 local log = require('devcontainer.utils.log')
+local notify = require('devcontainer.utils.notify')
 
 -- Lazy load submodules
 local session_manager = nil
@@ -30,7 +31,7 @@ function M.terminal(opts)
   local container_id = devcontainer.get_container_id()
 
   if not container_id then
-    vim.notify('No active devcontainer. Start container first with :DevcontainerStart', vim.log.levels.ERROR)
+    notify.critical('No active devcontainer. Start container first with :DevcontainerStart')
     return false
   end
 
@@ -61,7 +62,7 @@ function M.terminal(opts)
   session, err = session_manager.create_session(session_name, container_id, config.terminal)
 
   if not session then
-    vim.notify(string.format('Failed to create terminal session: %s', err), vim.log.levels.ERROR)
+    notify.critical(string.format('Failed to create terminal session: %s', err))
     return false
   end
 
@@ -71,7 +72,7 @@ function M.terminal(opts)
 
   if not buf_id then
     session_manager.close_session(session_name)
-    vim.notify(string.format('Failed to create terminal: %s', create_err), vim.log.levels.ERROR)
+    notify.critical(string.format('Failed to create terminal: %s', create_err))
     return false
   end
 
@@ -127,7 +128,7 @@ function M.terminal(opts)
 
   if job_id <= 0 then
     session_manager.close_session(session_name)
-    vim.notify('Failed to start terminal process', vim.log.levels.ERROR)
+    notify.critical('Failed to start terminal process')
     return false
   end
 
@@ -159,7 +160,7 @@ function M.list_sessions()
   local sessions = session_manager.list_sessions()
 
   if #sessions == 0 then
-    vim.notify('No active terminal sessions', vim.log.levels.INFO)
+    notify.status('No active terminal sessions')
     return
   end
 
@@ -205,16 +206,16 @@ end
 function M.next_session()
   local current_session = session_manager.get_active_session()
   if not current_session then
-    vim.notify('No active terminal session', vim.log.levels.WARN)
+    notify.status('No active terminal session', 'warn')
     return
   end
 
   local next_session = session_manager.get_next_session(current_session.name)
   if next_session then
     display.switch_to_session(next_session)
-    vim.notify(string.format('Switched to session: %s', next_session.name), vim.log.levels.INFO)
+    notify.terminal(string.format('Switched to session: %s', next_session.name))
   else
-    vim.notify('No other terminal sessions', vim.log.levels.INFO)
+    notify.status('No other terminal sessions')
   end
 end
 
@@ -222,16 +223,16 @@ end
 function M.prev_session()
   local current_session = session_manager.get_active_session()
   if not current_session then
-    vim.notify('No active terminal session', vim.log.levels.WARN)
+    notify.status('No active terminal session', 'warn')
     return
   end
 
   local prev_session = session_manager.get_prev_session(current_session.name)
   if prev_session then
     display.switch_to_session(prev_session)
-    vim.notify(string.format('Switched to session: %s', prev_session.name), vim.log.levels.INFO)
+    notify.terminal(string.format('Switched to session: %s', prev_session.name))
   else
-    vim.notify('No other terminal sessions', vim.log.levels.INFO)
+    notify.status('No other terminal sessions')
   end
 end
 
@@ -242,7 +243,7 @@ function M.close_session(name)
     if current_session then
       name = current_session.name
     else
-      vim.notify('No active terminal session to close', vim.log.levels.WARN)
+      notify.status('No active terminal session to close', 'warn')
       return
     end
   end
@@ -250,16 +251,16 @@ function M.close_session(name)
   -- Force close buffer when manually closing session
   local success, err = session_manager.close_session(name, true)
   if success then
-    vim.notify(string.format('Closed terminal session: %s', name), vim.log.levels.INFO)
+    notify.terminal(string.format('Closed terminal session: %s', name))
   else
-    vim.notify(string.format('Failed to close session: %s', err), vim.log.levels.ERROR)
+    notify.critical(string.format('Failed to close session: %s', err))
   end
 end
 
 -- Close all terminal sessions
 function M.close_all_sessions()
   local count = session_manager.close_all_sessions(true)
-  vim.notify(string.format('Closed %d terminal sessions', count), vim.log.levels.INFO)
+  notify.terminal(string.format('Closed %d terminal sessions', count))
 end
 
 -- Rename terminal session
@@ -269,7 +270,7 @@ function M.rename_session(old_name, new_name)
     if current_session then
       old_name = current_session.name
     else
-      vim.notify('No active terminal session to rename', vim.log.levels.WARN)
+      notify.status('No active terminal session to rename', 'warn')
       return
     end
   end
@@ -283,20 +284,20 @@ function M.rename_session(old_name, new_name)
 
   local session = session_manager.get_session(old_name)
   if not session then
-    vim.notify(string.format('Session "%s" not found', old_name), vim.log.levels.ERROR)
+    notify.critical(string.format('Session "%s" not found', old_name))
     return
   end
 
   -- Check if new name already exists
   if session_manager.get_session(new_name) then
-    vim.notify(string.format('Session "%s" already exists', new_name), vim.log.levels.ERROR)
+    notify.critical(string.format('Session "%s" already exists', new_name))
     return
   end
 
   -- Rename session (simple approach: create new, copy state, remove old)
   local success, err = session_manager.create_session(new_name, session.container_id, session.config)
   if not success then
-    vim.notify(string.format('Failed to create renamed session: %s', err), vim.log.levels.ERROR)
+    notify.critical(string.format('Failed to create renamed session: %s', err))
     return
   end
 
@@ -321,7 +322,7 @@ function M.rename_session(old_name, new_name)
     session_manager.set_active_session(new_session)
   end
 
-  vim.notify(string.format('Renamed session "%s" to "%s"', old_name, new_name), vim.log.levels.INFO)
+  notify.terminal(string.format('Renamed session "%s" to "%s"', old_name, new_name))
 end
 
 -- Get terminal status information
@@ -387,7 +388,7 @@ end
 function M.cleanup_history(days_to_keep)
   local config = require('devcontainer.config').get()
   local count = history.cleanup_old_history(config.terminal, days_to_keep)
-  vim.notify(string.format('Cleaned up %d old history files', count), vim.log.levels.INFO)
+  notify.terminal(string.format('Cleaned up %d old history files', count))
 end
 
 return M

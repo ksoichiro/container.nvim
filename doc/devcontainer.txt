@@ -12,11 +12,12 @@ CONTENTS                                                *devcontainer-contents*
     5. Commands ............................. |devcontainer-commands|
     6. Enhanced Terminal Integration ........ |devcontainer-terminal|
     7. Configuration ........................ |devcontainer-configuration|
-    8. API .................................. |devcontainer-api|
-    9. devcontainer.json .................... |devcontainer-json|
-    10. Troubleshooting ..................... |devcontainer-troubleshooting|
-    11. User Events ......................... |devcontainer-events|
-    12. Contributing ........................ |devcontainer-contributing|
+    8. Notification Levels .................. |devcontainer-notification-levels|
+    9. API .................................. |devcontainer-api|
+    10. devcontainer.json ................... |devcontainer-json|
+    11. Troubleshooting ..................... |devcontainer-troubleshooting|
+    12. User Events ......................... |devcontainer-events|
+    13. Contributing ........................ |devcontainer-contributing|
 
 ==============================================================================
 1. INTRODUCTION                                     *devcontainer-introduction*
@@ -521,9 +522,10 @@ ui                                                      *devcontainer-config-ui*
     UI configuration options:
 >lua
     ui = {
-      use_telescope = true,      -- Use telescope for pickers
-      show_notifications = true, -- Show notifications
-      status_line = true,       -- Show in statusline
+      use_telescope = true,           -- Use telescope for pickers
+      show_notifications = true,      -- Show notifications
+      notification_level = 'normal',  -- 'verbose', 'normal', 'minimal', 'silent'
+      status_line = true,             -- Show in statusline
       icons = {
         container = "🐳",
         running = "✅",
@@ -762,6 +764,72 @@ devcontainer.terminal_status()
                                       *devcontainer.terminal_cleanup_history()*
 devcontainer.terminal_cleanup_history([days])
     Clean up old terminal history files.
+
+==============================================================================
+NOTIFICATION LEVELS                            *devcontainer-notification-levels*
+
+The plugin provides a comprehensive notification system with configurable
+verbosity levels to reduce excessive notifications during development.
+
+Notification Levels~
+
+verbose                                *devcontainer-notification-level-verbose*
+    Show all notifications including debug information, operation details,
+    and status updates. Useful for debugging or when you want full visibility
+    into plugin operations.
+
+normal                                  *devcontainer-notification-level-normal*
+    Default level. Shows important notifications including critical operations,
+    container lifecycle events, and warnings. Routine operations are suppressed.
+
+minimal                                *devcontainer-notification-level-minimal*
+    Show only essential notifications: critical operations and container
+    lifecycle events. Terminal operations and UI feedback are suppressed.
+
+silent                                  *devcontainer-notification-level-silent*
+    Show only error messages. All other notifications are suppressed.
+
+Configuration~
+>lua
+    require('devcontainer').setup({
+      ui = {
+        notification_level = 'normal', -- Change to preferred level
+      }
+    })
+<
+
+Notification Categories~
+
+The plugin categorizes notifications into these types:
+
+• Critical: Fatal errors and important operations requiring user attention
+• Container: Container lifecycle events (start, stop, build, attach)
+• Terminal: Terminal session management notifications
+• UI: User interface feedback (confirmations, selections)
+• Status: Status information and routine operation feedback
+
+Examples~
+
+Quiet development (minimal notifications):
+>lua
+    require('devcontainer').setup({
+      ui = { notification_level = 'minimal' }
+    })
+<
+
+Debugging/development (verbose notifications):
+>lua
+    require('devcontainer').setup({
+      ui = { notification_level = 'verbose' }
+    })
+<
+
+Completely silent (errors only):
+>lua
+    require('devcontainer').setup({
+      ui = { notification_level = 'silent' }
+    })
+<
 
 Information~
                                                         *devcontainer.status()*

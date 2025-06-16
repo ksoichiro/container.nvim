@@ -208,7 +208,13 @@ function M.create_client_middleware()
               notify_level = vim.log.levels.DEBUG
             end
 
-            vim.notify(result.message, notify_level, { title = 'LSP' })
+            if notify_level == vim.log.levels.ERROR then
+              require('devcontainer.utils.notify').critical(result.message)
+            elseif notify_level == vim.log.levels.WARN then
+              require('devcontainer.utils.notify').container(result.message, { level = 'warn' })
+            else
+              require('devcontainer.utils.notify').container(result.message)
+            end
           end
         end
       end

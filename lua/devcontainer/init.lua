@@ -16,6 +16,7 @@ local parser = nil
 local docker = nil
 local log = nil
 local lsp = nil
+local notify = nil
 
 -- Internal state
 local state = {
@@ -40,6 +41,7 @@ end
 function M.setup(user_config)
   log = require('devcontainer.utils.log')
   config = require('devcontainer.config')
+  notify = require('devcontainer.utils.notify')
 
   local success = config.setup(user_config)
   if not success then
@@ -749,7 +751,7 @@ function M.attach(container_name)
       state.current_container = container_name
       clear_status_cache()
       log.info('Attached to container: %s', container_name)
-      vim.notify('Attached to container: ' .. container_name, vim.log.levels.INFO)
+      notify.container('Attached to container: ' .. container_name)
 
       -- Trigger DevcontainerOpened event for attach
       vim.api.nvim_exec_autocmds('User', {
@@ -761,7 +763,7 @@ function M.attach(container_name)
       })
     else
       log.error('Failed to attach to container: %s', error_msg)
-      vim.notify('Failed to attach: ' .. error_msg, vim.log.levels.ERROR)
+      notify.critical('Failed to attach: ' .. error_msg)
     end
   end)
 end
@@ -774,7 +776,7 @@ function M.start_container(container_name)
   docker.start_existing_container(container_name, function(success, error_msg)
     if success then
       log.info('Started container: %s', container_name)
-      vim.notify('Started container: ' .. container_name, vim.log.levels.INFO)
+      notify.container('Started container: ' .. container_name)
 
       -- Trigger DevcontainerStarted event
       vim.api.nvim_exec_autocmds('User', {
@@ -786,7 +788,7 @@ function M.start_container(container_name)
       })
     else
       log.error('Failed to start container: %s', error_msg)
-      vim.notify('Failed to start: ' .. error_msg, vim.log.levels.ERROR)
+      notify.critical('Failed to start: ' .. error_msg)
     end
   end)
 end
@@ -799,7 +801,7 @@ function M.stop_container(container_name)
   docker.stop_existing_container(container_name, function(success, error_msg)
     if success then
       log.info('Stopped container: %s', container_name)
-      vim.notify('Stopped container: ' .. container_name, vim.log.levels.INFO)
+      notify.container('Stopped container: ' .. container_name)
 
       -- Trigger DevcontainerStopped event
       vim.api.nvim_exec_autocmds('User', {
@@ -811,7 +813,7 @@ function M.stop_container(container_name)
       })
     else
       log.error('Failed to stop container: %s', error_msg)
-      vim.notify('Failed to stop: ' .. error_msg, vim.log.levels.ERROR)
+      notify.critical('Failed to stop: ' .. error_msg)
     end
   end)
 end
@@ -824,10 +826,10 @@ function M.restart_container(container_name)
   docker.restart_container(container_name, function(success, error_msg)
     if success then
       log.info('Restarted container: %s', container_name)
-      vim.notify('Restarted container: ' .. container_name, vim.log.levels.INFO)
+      notify.container('Restarted container: ' .. container_name)
     else
       log.error('Failed to restart container: %s', error_msg)
-      vim.notify('Failed to restart: ' .. error_msg, vim.log.levels.ERROR)
+      notify.critical('Failed to restart: ' .. error_msg)
     end
   end)
 end
@@ -842,7 +844,7 @@ function M.rebuild(project_path)
   end
 
   -- Force rebuild on next open
-  vim.notify('Container will be rebuilt on next open', vim.log.levels.INFO)
+  notify.status('Container will be rebuilt on next open')
 
   -- Open with force rebuild
   M.open(project_path, { force_rebuild = true })

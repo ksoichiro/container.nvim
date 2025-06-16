@@ -77,7 +77,7 @@ function M.containers(opts)
 
   -- If no entries, show empty message
   if #entries == 0 then
-    vim.notify('No devcontainers or projects found', vim.log.levels.INFO)
+    require('devcontainer.utils.notify').ui('No devcontainers or projects found')
     return
   end
 
@@ -201,7 +201,7 @@ function M.sessions(opts)
 
   -- If no sessions, show empty message
   if not sessions or #sessions == 0 then
-    vim.notify('No terminal sessions found', vim.log.levels.INFO)
+    require('devcontainer.utils.notify').ui('No terminal sessions found')
     return
   end
 
@@ -352,7 +352,7 @@ function M.ports(opts)
 
   -- If no valid ports, show empty message
   if #ports == 0 then
-    vim.notify('No valid forwarded ports found', vim.log.levels.INFO)
+    require('devcontainer.utils.notify').ui('No valid forwarded ports found')
     return
   end
 
@@ -460,7 +460,7 @@ function M.ports(opts)
             log.error('PortPicker action: CRITICAL - Invalid selection - not a port object')
             log.error('PortPicker action: port = %s', vim.inspect(port))
             log.error('PortPicker action: port.type = %s', tostring(port.type))
-            vim.notify('Invalid selection: not a port object', vim.log.levels.ERROR)
+            require('devcontainer.utils.notify').critical('Invalid selection: not a port object')
             return
           end
 
@@ -473,7 +473,7 @@ function M.ports(opts)
               tostring(local_port),
               vim.inspect(port)
             )
-            vim.notify('Invalid port number: ' .. tostring(local_port), vim.log.levels.ERROR)
+            require('devcontainer.utils.notify').critical('Invalid port number: ' .. tostring(local_port))
             return
           end
 
@@ -481,7 +481,7 @@ function M.ports(opts)
 
           -- Open in browser
           vim.fn.jobstart({ 'open', url }, { detach = true })
-          vim.notify('Opening ' .. url, vim.log.levels.INFO)
+          require('devcontainer.utils.notify').status('Opening ' .. url)
         end)
 
         -- Copy URL
@@ -499,7 +499,7 @@ function M.ports(opts)
           -- Validate that this is actually a port object
           if not port or port.type ~= 'port' then
             log.error('PortPicker copy action: Invalid selection - not a port object: %s', vim.inspect(port))
-            vim.notify('Invalid selection: not a port object', vim.log.levels.ERROR)
+            require('devcontainer.utils.notify').critical('Invalid selection: not a port object')
             return
           end
 
@@ -512,13 +512,13 @@ function M.ports(opts)
               tostring(local_port),
               vim.inspect(port)
             )
-            vim.notify('Invalid port number: ' .. tostring(local_port), vim.log.levels.ERROR)
+            require('devcontainer.utils.notify').critical('Invalid port number: ' .. tostring(local_port))
             return
           end
 
           local url = port.url or string.format('http://localhost:%d', local_port)
           vim.fn.setreg('+', url)
-          vim.notify('Copied: ' .. url, vim.log.levels.INFO)
+          require('devcontainer.utils.notify').status('Copied: ' .. url)
         end)
 
         -- Stop forwarding
@@ -532,13 +532,13 @@ function M.ports(opts)
 
           -- Validate that this is actually a port object
           if not port or port.type ~= 'port' then
-            vim.notify('Invalid selection: not a port object', vim.log.levels.ERROR)
+            require('devcontainer.utils.notify').critical('Invalid selection: not a port object')
             return
           end
 
           actions.close(prompt_bufnr)
           docker.stop_port_forward(port)
-          vim.notify('Stopped port forwarding', vim.log.levels.INFO)
+          require('devcontainer.utils.notify').status('Stopped port forwarding')
         end)
 
         return true
@@ -554,7 +554,7 @@ function M.history(opts)
 
   -- If no history, show empty message
   if not history or #history == 0 then
-    vim.notify('No command history found', vim.log.levels.INFO)
+    require('devcontainer.utils.notify').ui('No command history found')
     return
   end
 
@@ -640,7 +640,7 @@ function M.history(opts)
             return
           end
           vim.fn.setreg('+', selection.value.command)
-          vim.notify('Copied command to clipboard', vim.log.levels.INFO)
+          require('devcontainer.utils.notify').status('Copied command to clipboard')
         end)
 
         -- Edit and execute
@@ -677,7 +677,7 @@ function M.ports_simple()
   log.debug('Simple PortPicker: all_ports = %s', vim.inspect(all_ports))
 
   if not all_ports or #all_ports == 0 then
-    vim.notify('No forwarded ports found', vim.log.levels.INFO)
+    require('devcontainer.utils.notify').ui('No forwarded ports found')
     return
   end
 
@@ -696,7 +696,7 @@ function M.ports_simple()
   end
 
   if #choices == 0 then
-    vim.notify('No valid forwarded ports found', vim.log.levels.INFO)
+    require('devcontainer.utils.notify').ui('No valid forwarded ports found')
     return
   end
 
@@ -716,13 +716,13 @@ function M.ports_simple()
     log.debug('Simple PortPicker: Selected port = %s', vim.inspect(port))
 
     if not port or not port.local_port then
-      vim.notify('Invalid port selection', vim.log.levels.ERROR)
+      require('devcontainer.utils.notify').critical('Invalid port selection')
       return
     end
 
     local url = string.format('http://localhost:%d', port.local_port)
     vim.fn.jobstart({ 'open', url }, { detach = true })
-    vim.notify('Opening ' .. url, vim.log.levels.INFO)
+    require('devcontainer.utils.notify').status('Opening ' .. url)
   end)
 end
 

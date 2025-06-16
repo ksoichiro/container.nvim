@@ -232,12 +232,12 @@ local function create_commands()
       config.set_value('auto_start', mode ~= 'off')
       config.set_value('auto_start_mode', mode)
       if mode == 'off' then
-        vim.notify('Auto-start disabled', vim.log.levels.INFO, { title = 'devcontainer.nvim' })
+        require('devcontainer.utils.notify').status('Auto-start disabled')
       else
-        vim.notify('Auto-start mode set to: ' .. mode, vim.log.levels.INFO, { title = 'devcontainer.nvim' })
+        require('devcontainer.utils.notify').status('Auto-start mode set to: ' .. mode)
       end
     else
-      vim.notify('Invalid mode. Available: off, notify, prompt, immediate', vim.log.levels.ERROR)
+      require('devcontainer.utils.notify').critical('Invalid mode. Available: off, notify, prompt, immediate')
     end
   end, {
     nargs = '?',
@@ -302,10 +302,15 @@ local function create_commands()
         local pickers = require('devcontainer.ui.telescope.pickers')
         pickers.containers()
       else
-        vim.notify('Telescope is not installed. Please install nvim-telescope/telescope.nvim', vim.log.levels.ERROR)
+        require('devcontainer.utils.notify').critical(
+          'Telescope is not installed. Please install nvim-telescope/telescope.nvim'
+        )
       end
     else
-      vim.notify('Telescope integration is not enabled. Set ui.use_telescope = true in config', vim.log.levels.WARN)
+      require('devcontainer.utils.notify').ui(
+        'Telescope integration is not enabled. Set ui.use_telescope = true in config',
+        { level = 'warn' }
+      )
     end
   end, {
     desc = 'Open devcontainer picker',
@@ -320,10 +325,15 @@ local function create_commands()
         local pickers = require('devcontainer.ui.telescope.pickers')
         pickers.sessions()
       else
-        vim.notify('Telescope is not installed. Please install nvim-telescope/telescope.nvim', vim.log.levels.ERROR)
+        require('devcontainer.utils.notify').critical(
+          'Telescope is not installed. Please install nvim-telescope/telescope.nvim'
+        )
       end
     else
-      vim.notify('Telescope integration is not enabled. Set ui.use_telescope = true in config', vim.log.levels.WARN)
+      require('devcontainer.utils.notify').ui(
+        'Telescope integration is not enabled. Set ui.use_telescope = true in config',
+        { level = 'warn' }
+      )
     end
   end, {
     desc = 'Open terminal session picker',
@@ -338,10 +348,15 @@ local function create_commands()
         local pickers = require('devcontainer.ui.telescope.pickers')
         pickers.ports_simple()
       else
-        vim.notify('Telescope is not installed. Please install nvim-telescope/telescope.nvim', vim.log.levels.ERROR)
+        require('devcontainer.utils.notify').critical(
+          'Telescope is not installed. Please install nvim-telescope/telescope.nvim'
+        )
       end
     else
-      vim.notify('Telescope integration is not enabled. Set ui.use_telescope = true in config', vim.log.levels.WARN)
+      require('devcontainer.utils.notify').ui(
+        'Telescope integration is not enabled. Set ui.use_telescope = true in config',
+        { level = 'warn' }
+      )
     end
   end, {
     desc = 'Open port management picker',
@@ -356,10 +371,15 @@ local function create_commands()
         local pickers = require('devcontainer.ui.telescope.pickers')
         pickers.history()
       else
-        vim.notify('Telescope is not installed. Please install nvim-telescope/telescope.nvim', vim.log.levels.ERROR)
+        require('devcontainer.utils.notify').critical(
+          'Telescope is not installed. Please install nvim-telescope/telescope.nvim'
+        )
       end
     else
-      vim.notify('Telescope integration is not enabled. Set ui.use_telescope = true in config', vim.log.levels.WARN)
+      require('devcontainer.utils.notify').ui(
+        'Telescope integration is not enabled. Set ui.use_telescope = true in config',
+        { level = 'warn' }
+      )
     end
   end, {
     desc = 'Open command history picker',
@@ -374,11 +394,7 @@ vim.api.nvim_create_autocmd({ 'BufWritePost' }, {
   group = augroup,
   pattern = { 'devcontainer.json', '.devcontainer/devcontainer.json' },
   callback = function()
-    vim.notify(
-      'devcontainer.json updated. You may need to rebuild the container.',
-      vim.log.levels.INFO,
-      { title = 'devcontainer.nvim' }
-    )
+    require('devcontainer.utils.notify').status('devcontainer.json updated. You may need to rebuild the container.')
   end,
 })
 
@@ -394,11 +410,7 @@ vim.api.nvim_create_autocmd({ 'VimEnter', 'DirChanged' }, {
       if devcontainer_path then
         -- Handle different auto-start modes
         if config.auto_start_mode == 'notify' then
-          vim.notify(
-            'Found devcontainer.json. Use :DevcontainerOpen to start.',
-            vim.log.levels.INFO,
-            { title = 'devcontainer.nvim' }
-          )
+          require('devcontainer.utils.notify').status('Found devcontainer.json. Use :DevcontainerOpen to start.')
         elseif config.auto_start_mode == 'prompt' then
           vim.defer_fn(function()
             local choice =
@@ -407,10 +419,8 @@ vim.api.nvim_create_autocmd({ 'VimEnter', 'DirChanged' }, {
               require('devcontainer').open()
             elseif choice == 3 then
               require('devcontainer.config').set_value('auto_start_mode', 'immediate')
-              vim.notify(
-                'Auto-start mode changed to immediate. Restart Neovim to apply.',
-                vim.log.levels.INFO,
-                { title = 'devcontainer.nvim' }
+              require('devcontainer.utils.notify').status(
+                'Auto-start mode changed to immediate. Restart Neovim to apply.'
               )
             end
           end, 500)
@@ -420,7 +430,7 @@ vim.api.nvim_create_autocmd({ 'VimEnter', 'DirChanged' }, {
             local devcontainer = require('devcontainer')
             local state = devcontainer.get_state()
             if not state.current_container then
-              vim.notify('Auto-starting devcontainer...', vim.log.levels.INFO, { title = 'devcontainer.nvim' })
+              require('devcontainer.utils.notify').status('Auto-starting devcontainer...')
               devcontainer.open()
             end
           end, config.auto_start_delay or 2000)

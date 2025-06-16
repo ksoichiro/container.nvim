@@ -91,6 +91,7 @@ M.defaults = {
   ui = {
     use_telescope = true,
     show_notifications = true,
+    notification_level = 'normal', -- 'verbose', 'normal', 'minimal', 'silent'
     status_line = true,
     icons = {
       container = '🐳',

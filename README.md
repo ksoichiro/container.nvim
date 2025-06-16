@@ -194,6 +194,7 @@ require('devcontainer').setup({
   ui = {
     use_telescope = true,
     show_notifications = true,
+    notification_level = 'normal', -- 'verbose', 'normal', 'minimal', 'silent'
     status_line = true,
     icons = {
       container = "🐳",
@@ -446,6 +447,56 @@ Multi-project development:
 ```
 
 Both projects can run simultaneously with automatically assigned unique ports.
+
+## Notification Levels
+
+Control the verbosity of plugin notifications with the `notification_level` setting:
+
+### Available Levels
+
+- **`verbose`**: Show all notifications (debug, info, warnings, errors)
+- **`normal`** (default): Show important notifications (critical operations, container events, warnings)
+- **`minimal`**: Show only essential notifications (critical operations, container lifecycle)
+- **`silent`**: Show only error messages
+
+### Configuration
+
+```lua
+require('devcontainer').setup({
+  ui = {
+    notification_level = 'normal', -- Change to your preferred level
+  }
+})
+```
+
+### Notification Categories
+
+The plugin categorizes notifications into:
+
+- **Critical**: Fatal errors and important operations requiring user attention
+- **Container**: Container lifecycle events (start, stop, build)
+- **Terminal**: Terminal session management notifications
+- **UI**: User interface feedback (copy confirmations, selections)
+- **Status**: Status information and routine operation feedback
+
+### Examples
+
+```lua
+-- Minimal notifications (quiet development)
+require('devcontainer').setup({
+  ui = { notification_level = 'minimal' }
+})
+
+-- Verbose notifications (debugging/development)
+require('devcontainer').setup({
+  ui = { notification_level = 'verbose' }
+})
+
+-- Silent mode (errors only)
+require('devcontainer').setup({
+  ui = { notification_level = 'silent' }
+})
+```
 
 ## Lua API
 
