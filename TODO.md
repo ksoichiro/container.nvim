@@ -54,9 +54,9 @@ Priority: Focus on user experience and ecosystem integration
     - [x] Add notification levels (verbose, normal, minimal, silent) ✅ **COMPLETED**
     - [x] Make routine operations silent by default ✅ **COMPLETED**
     - [x] Only show critical errors and user-requested status updates ✅ **COMPLETED**
-  - [ ] Port forwarding UI improvements (visual indicators, click-to-open)
+  - [x] Port forwarding UI improvements (visual indicators, click-to-open) ✅ **COMPLETED**
   - [x] Add confirmation dialog for destructive commands (DevcontainerTerminate, DevcontainerKill) ✅ **COMPLETED**
-  - [ ] Add fzf-lua as alternative to telescope for picker integration
+  - [x] Add fzf-lua as alternative to telescope for picker integration ✅ **COMPLETED**
 
 #### Medium Priority - Configuration
 - [ ] **Environment-specific devcontainer.json Support** (Week 5-6)
