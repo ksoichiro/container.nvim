@@ -55,6 +55,22 @@ make install-dev
 - Security checks (private keys, large files)
 - Project structure validation (CLAUDE.md, Makefile targets)
 
+#### Committing Changes
+**IMPORTANT: Always run `make format` before committing to avoid pre-commit hook failures**
+```bash
+# Before committing, run automatic formatting
+make format
+
+# Then proceed with git commands
+git add .
+git commit -m "your commit message"
+```
+
+This prevents common issues with:
+- Trailing whitespace in documentation files
+- Inconsistent Lua code formatting
+- End-of-file newlines
+
 #### Development Rules
 1. **Pre-commit Hooks**: Set up once with `make install-hooks` - automatically enforces quality
 2. **Code Style**: Follow existing patterns (2-space indentation, clear module separation)
