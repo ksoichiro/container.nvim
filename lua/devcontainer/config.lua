@@ -89,7 +89,7 @@ M.defaults = {
 
   -- UI settings
   ui = {
-    use_telescope = true,
+    picker = 'telescope', -- 'telescope', 'fzf-lua', 'vim.ui.select'
     show_notifications = true,
     notification_level = 'normal', -- 'verbose', 'normal', 'minimal', 'silent'
     status_line = true,
@@ -220,6 +220,12 @@ local function validate_config(config)
   -- Validate port range
   if config.lsp.port_range[1] >= config.lsp.port_range[2] then
     table.insert(errors, 'Invalid LSP port_range: start port must be less than end port')
+  end
+
+  -- Validate picker
+  local valid_pickers = { 'telescope', 'fzf-lua', 'vim.ui.select' }
+  if not vim.tbl_contains(valid_pickers, config.ui.picker) then
+    table.insert(errors, 'Invalid ui.picker: ' .. config.ui.picker)
   end
 
   -- Validate paths

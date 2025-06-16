@@ -163,11 +163,11 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | `:DevcontainerPorts` | Show detailed port forwarding information |
 | `:DevcontainerPortStats` | Show port allocation statistics |
 
-### Telescope Integration
+### Picker Integration
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerPicker` | Open devcontainer picker |
+| `:DevcontainerPicker` | Open devcontainer picker (supports telescope, fzf-lua, vim.ui.select) |
 | `:DevcontainerSessionPicker` | Open terminal session picker |
 | `:DevcontainerPortPicker` | Open port management picker |
 | `:DevcontainerHistoryPicker` | Open command history picker |
@@ -194,7 +194,7 @@ require('devcontainer').setup({
 
   -- UI settings
   ui = {
-    use_telescope = true,
+    picker = 'telescope', -- 'telescope', 'fzf-lua', 'vim.ui.select'
     show_notifications = true,
     notification_level = 'normal', -- 'verbose', 'normal', 'minimal', 'silent'
     status_line = true,
@@ -449,6 +449,62 @@ Multi-project development:
 ```
 
 Both projects can run simultaneously with automatically assigned unique ports.
+
+## Picker Integration
+
+The plugin supports multiple picker backends for an enhanced UI experience:
+
+### Available Pickers
+
+- **`telescope`**: Full-featured picker with preview and advanced actions (requires `nvim-telescope/telescope.nvim`)
+- **`fzf-lua`**: Fast and lightweight picker with similar features (requires `ibhagwan/fzf-lua`)
+- **`vim.ui.select`**: Built-in Neovim picker (always available, basic functionality)
+
+### Configuration
+
+```lua
+require('devcontainer').setup({
+  ui = {
+    picker = 'telescope', -- Choose your preferred picker
+  }
+})
+```
+
+### Picker-Specific Features
+
+#### Telescope
+- Full preview functionality
+- Advanced filtering and sorting
+- Custom key bindings (e.g., `<C-d>` to delete sessions)
+
+#### fzf-lua
+- Extremely fast performance
+- Built-in preview
+- Key bindings: `<C-y>` (copy), `<C-x>` (delete), `<C-e>` (edit)
+
+#### vim.ui.select
+- No external dependencies
+- Basic selection functionality
+- Fallback when other pickers are unavailable
+
+### Examples
+
+```lua
+-- Use fzf-lua for faster performance
+require('devcontainer').setup({
+  ui = { picker = 'fzf-lua' }
+})
+
+-- Use vim.ui.select for minimal setup
+require('devcontainer').setup({
+  ui = { picker = 'vim.ui.select' }
+})
+
+-- Auto-fallback: telescope -> fzf-lua -> vim.ui.select
+require('devcontainer').setup({
+  ui = { picker = 'telescope' } -- Will fallback if telescope not available
+})
+```
 
 ## Notification Levels
 

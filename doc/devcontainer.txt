@@ -526,7 +526,7 @@ ui                                                      *devcontainer-config-ui*
     UI configuration options:
 >lua
     ui = {
-      use_telescope = true,           -- Use telescope for pickers
+      picker = 'telescope',           -- 'telescope', 'fzf-lua', 'vim.ui.select'
       show_notifications = true,      -- Show notifications
       notification_level = 'normal',  -- 'verbose', 'normal', 'minimal', 'silent'
       status_line = true,             -- Show in statusline
