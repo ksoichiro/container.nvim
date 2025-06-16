@@ -36,16 +36,42 @@ local function create_commands()
     desc = 'Stop devcontainer',
   })
 
-  vim.api.nvim_create_user_command('DevcontainerKill', function()
-    require('devcontainer').kill()
+  vim.api.nvim_create_user_command('DevcontainerKill', function(args)
+    if args.bang then
+      -- Skip confirmation with :DevcontainerKill!
+      require('devcontainer').kill()
+    else
+      local choice = vim.fn.confirm(
+        'Kill devcontainer? This will immediately terminate the container and may cause data loss.',
+        '&Yes\n&No',
+        2 -- Default to No
+      )
+      if choice == 1 then
+        require('devcontainer').kill()
+      end
+    end
   end, {
-    desc = 'Kill devcontainer (immediate termination)',
+    bang = true,
+    desc = 'Kill devcontainer (immediate termination). Use ! to skip confirmation.',
   })
 
-  vim.api.nvim_create_user_command('DevcontainerTerminate', function()
-    require('devcontainer').terminate()
+  vim.api.nvim_create_user_command('DevcontainerTerminate', function(args)
+    if args.bang then
+      -- Skip confirmation with :DevcontainerTerminate!
+      require('devcontainer').terminate()
+    else
+      local choice = vim.fn.confirm(
+        'Terminate devcontainer? This will immediately stop the container and may cause data loss.',
+        '&Yes\n&No',
+        2 -- Default to No
+      )
+      if choice == 1 then
+        require('devcontainer').terminate()
+      end
+    end
   end, {
-    desc = 'Terminate devcontainer (immediate termination)',
+    bang = true,
+    desc = 'Terminate devcontainer (immediate termination). Use ! to skip confirmation.',
   })
 
   vim.api.nvim_create_user_command('DevcontainerRestart', function()

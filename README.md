@@ -116,8 +116,8 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | `:DevcontainerBuild` | Build image |
 | `:DevcontainerStart` | Start container |
 | `:DevcontainerStop` | Stop container |
-| `:DevcontainerKill` | Kill container (immediate termination) |
-| `:DevcontainerTerminate` | Terminate container (immediate termination) |
+| `:DevcontainerKill[!]` | Kill container (immediate termination, requires confirmation unless `!` is used) |
+| `:DevcontainerTerminate[!]` | Terminate container (immediate termination, requires confirmation unless `!` is used) |
 | `:DevcontainerRestart` | Restart container |
 
 ### Execution & Access

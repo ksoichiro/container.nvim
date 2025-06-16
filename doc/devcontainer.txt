@@ -121,12 +121,16 @@ Basic Operations~
     Stop the running devcontainer.
 
                                                           *:DevcontainerKill*
-:DevcontainerKill
+:DevcontainerKill[!]
     Kill the devcontainer immediately without graceful shutdown.
+    Requires confirmation unless [!] is used to skip the prompt.
+    This may cause data loss.
 
                                                      *:DevcontainerTerminate*
-:DevcontainerTerminate
+:DevcontainerTerminate[!]
     Terminate the devcontainer immediately (alias for kill).
+    Requires confirmation unless [!] is used to skip the prompt.
+    This may cause data loss.
 
                                                        *:DevcontainerRestart*
 :DevcontainerRestart
