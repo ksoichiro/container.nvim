@@ -28,6 +28,7 @@ local state = {
     container_status = nil,
     last_update = 0,
     update_interval = 5000, -- Update container status every 5 seconds
+    updating = false, -- Flag to prevent concurrent updates
   },
 }
 
@@ -35,6 +36,7 @@ local state = {
 local function clear_status_cache()
   state.status_cache.container_status = nil
   state.status_cache.last_update = 0
+  state.status_cache.updating = false
 end
 
 -- Configuration setup
@@ -1216,12 +1218,20 @@ function M.get_state()
     if cache.container_status ~= nil and (now - cache.last_update) < cache.update_interval then
       container_status = cache.container_status
     else
-      -- Refresh container status
-      container_status = docker.get_container_status(state.current_container)
+      -- Use cached value while updating asynchronously
+      container_status = cache.container_status or 'unknown'
 
-      -- Cache the result
-      cache.container_status = container_status
-      cache.last_update = now
+      -- Trigger async update if not already in progress
+      if not cache.updating then
+        cache.updating = true
+        M._get_container_status_async(state.current_container, function(status)
+          if status then
+            cache.container_status = status
+            cache.last_update = vim.loop.now()
+          end
+          cache.updating = false
+        end)
+      end
     end
   end
 
