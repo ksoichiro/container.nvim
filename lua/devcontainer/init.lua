@@ -22,7 +22,19 @@ local state = {
   initialized = false,
   current_container = nil,
   current_config = nil,
+  -- Cache for container status to reduce frequent Docker calls
+  status_cache = {
+    container_status = nil,
+    last_update = 0,
+    update_interval = 2000, -- Update container status every 2 seconds
+  },
 }
+
+-- Clear status cache when state changes
+local function clear_status_cache()
+  state.status_cache.container_status = nil
+  state.status_cache.last_update = 0
+end
 
 -- Configuration setup
 function M.setup(user_config)
@@ -246,6 +258,7 @@ function M.start()
             log.info('Found existing container: %s', container_id)
             print('✓ Found existing container: ' .. container_id)
             state.current_container = container_id
+            clear_status_cache()
 
             -- Proceed to container startup
             M._start_final_step(container_id)
@@ -262,6 +275,7 @@ function M.start()
                 container_id = create_result
                 print('✓ Created container: ' .. container_id)
                 state.current_container = container_id
+                clear_status_cache()
 
                 -- Proceed to container startup
                 M._start_final_step(container_id)
@@ -543,6 +557,8 @@ function M.kill()
           },
         })
         state.current_container = nil
+        clear_status_cache()
+        clear_status_cache()
         state.current_config = nil
       else
         print('✗ Failed to kill container: ' .. (error_msg or 'unknown'))
@@ -589,6 +605,8 @@ function M.terminate()
           },
         })
         state.current_container = nil
+        clear_status_cache()
+        clear_status_cache()
         state.current_config = nil
       else
         print('✗ Failed to terminate container: ' .. (error_msg or 'unknown'))
@@ -729,6 +747,7 @@ function M.attach(container_name)
   docker.attach_to_container(container_name, function(success, error_msg)
     if success then
       state.current_container = container_name
+      clear_status_cache()
       log.info('Attached to container: %s', container_name)
       vim.notify('Attached to container: ' .. container_name, vim.log.levels.INFO)
 
@@ -957,6 +976,7 @@ function M.reset()
   end
 
   state.current_container = nil
+  clear_status_cache()
   state.current_config = nil
   log.info('Plugin state reset')
 end
@@ -1175,12 +1195,30 @@ end
 
 -- Get current plugin state
 function M.get_state()
+  local container_status = nil
+
+  if state.current_container and docker then
+    local now = vim.loop.now()
+    local cache = state.status_cache
+
+    -- Check if we have cached status and it's still valid
+    if cache.container_status ~= nil and (now - cache.last_update) < cache.update_interval then
+      container_status = cache.container_status
+    else
+      -- Refresh container status
+      container_status = docker.get_container_status(state.current_container)
+
+      -- Cache the result
+      cache.container_status = container_status
+      cache.last_update = now
+    end
+  end
+
   return {
     initialized = state.initialized,
     current_container = state.current_container,
     current_config = state.current_config,
-    container_status = state.current_container and (docker and docker.get_container_status(state.current_container))
-      or nil,
+    container_status = container_status,
   }
 end
 
@@ -1425,6 +1463,7 @@ function M._try_reconnect_existing_container()
 
         -- Restore state
         state.current_container = container.id
+        clear_status_cache()
         state.current_config = normalized_config
 
         print('✓ Reconnected to existing container: ' .. container.id:sub(1, 12))
@@ -1473,6 +1512,7 @@ end
 function M.reconnect()
   print('=== Reconnecting to Existing Container ===')
   state.current_container = nil
+  clear_status_cache()
   state.current_config = nil
   M._try_reconnect_existing_container()
 end
