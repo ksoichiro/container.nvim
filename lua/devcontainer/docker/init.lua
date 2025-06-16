@@ -1033,8 +1033,7 @@ end
 
 -- Get container status
 function M.get_container_status(container_id)
-  log.debug('Getting container status: %s', container_id)
-
+  -- Removed verbose debug log that was called every second
   local result = M.run_docker_command({ 'inspect', container_id, '--format', '{{.State.Status}}' })
 
   if result.success then
