@@ -114,6 +114,8 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | `:DevcontainerBuild` | Build image |
 | `:DevcontainerStart` | Start container |
 | `:DevcontainerStop` | Stop container |
+| `:DevcontainerKill` | Kill container (immediate termination) |
+| `:DevcontainerTerminate` | Terminate container (immediate termination) |
 | `:DevcontainerRestart` | Restart container |
 
 ### Execution & Access
@@ -131,9 +133,11 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | `:DevcontainerTerminalList` | List all terminal sessions |
 | `:DevcontainerTerminalClose [name]` | Close terminal session |
 | `:DevcontainerTerminalCloseAll` | Close all terminal sessions |
+| `:DevcontainerTerminalRename <old> <new>` | Rename terminal session |
 | `:DevcontainerTerminalNext` | Switch to next terminal session |
 | `:DevcontainerTerminalPrev` | Switch to previous terminal session |
 | `:DevcontainerTerminalStatus` | Show terminal system status |
+| `:DevcontainerTerminalCleanup [days]` | Clean up old terminal history files |
 
 ### Information Display
 
@@ -157,10 +161,20 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | `:DevcontainerPorts` | Show detailed port forwarding information |
 | `:DevcontainerPortStats` | Show port allocation statistics |
 
+### Telescope Integration
+
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerPicker` | Open devcontainer picker |
+| `:DevcontainerSessionPicker` | Open terminal session picker |
+| `:DevcontainerPortPicker` | Open port management picker |
+| `:DevcontainerHistoryPicker` | Open command history picker |
+
 ### Management
 
 | Command | Description |
 |---------|-------------|
+| `:DevcontainerAutoStart [mode]` | Configure auto-start behavior (off, notify, prompt, immediate) |
 | `:DevcontainerReset` | Reset plugin state |
 | `:DevcontainerDebug` | Show comprehensive debug information |
 | `:DevcontainerReconnect` | Reconnect to existing devcontainer |

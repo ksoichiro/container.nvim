@@ -118,6 +118,14 @@ Basic Operations~
 :DevcontainerStop
     Stop the running devcontainer.
 
+                                                          *:DevcontainerKill*
+:DevcontainerKill
+    Kill the devcontainer immediately without graceful shutdown.
+
+                                                     *:DevcontainerTerminate*
+:DevcontainerTerminate
+    Terminate the devcontainer immediately (alias for kill).
+
                                                        *:DevcontainerRestart*
 :DevcontainerRestart
     Stop and restart the devcontainer.
@@ -184,6 +192,19 @@ Management~
 :DevcontainerReconnect
     Attempt to reconnect to an existing devcontainer. Useful after restarting
     Neovim.
+
+                                                    *:DevcontainerAutoStart*
+:DevcontainerAutoStart [mode]
+    Configure auto-start behavior. Available modes:
+      off       - Disable auto-start
+      notify    - Show notification when devcontainer.json is found
+      prompt    - Prompt user to start container
+      immediate - Start container automatically
+
+    Without arguments, shows current configuration.
+    Example: >vim
+        :DevcontainerAutoStart prompt
+<
 
 Enhanced Terminal Commands~
                                                      *:DevcontainerTerminal*
@@ -253,6 +274,27 @@ Enhanced Terminal Commands~
     Example: >vim
         :DevcontainerTerminalCleanup 7
 <
+
+Telescope Integration~
+                                                       *:DevcontainerPicker*
+:DevcontainerPicker
+    Open Telescope picker to manage devcontainers. Requires Telescope and
+    ui.use_telescope = true in configuration.
+
+                                                *:DevcontainerSessionPicker*
+:DevcontainerSessionPicker
+    Open Telescope picker to manage terminal sessions. Requires Telescope
+    and ui.use_telescope = true in configuration.
+
+                                                   *:DevcontainerPortPicker*
+:DevcontainerPortPicker
+    Open Telescope picker to manage ports. Requires Telescope and
+    ui.use_telescope = true in configuration.
+
+                                                *:DevcontainerHistoryPicker*
+:DevcontainerHistoryPicker
+    Open Telescope picker to browse command history. Requires Telescope
+    and ui.use_telescope = true in configuration.
 
 ==============================================================================
 6. ENHANCED TERMINAL INTEGRATION                      *devcontainer-terminal*
