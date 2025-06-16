@@ -27,7 +27,7 @@ local state = {
   status_cache = {
     container_status = nil,
     last_update = 0,
-    update_interval = 2000, -- Update container status every 2 seconds
+    update_interval = 5000, -- Update container status every 5 seconds
   },
 }
 

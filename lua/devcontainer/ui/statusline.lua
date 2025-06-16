@@ -10,7 +10,7 @@ local log = require('devcontainer.utils.log')
 local cache = {
   status = nil,
   last_update = 0,
-  update_interval = 1000, -- Update every second
+  update_interval = 5000, -- Update every 5 seconds
   devcontainer_available = nil,
   devcontainer_check_time = 0,
   devcontainer_check_interval = 30000, -- Check devcontainer.json existence every 30 seconds
@@ -225,15 +225,8 @@ function M.setup()
     end,
   })
 
-  -- Also clear cache periodically for external changes (reduce frequency)
-  vim.api.nvim_create_autocmd('CursorHold', {
-    group = group,
-    callback = function()
-      -- Only clear status cache, not devcontainer availability cache
-      cache.status = nil
-      cache.last_update = 0
-    end,
-  })
+  -- Removed CursorHold autocmd as it was causing excessive updates
+  -- Status will update on a timer basis instead
 
   log.debug('StatusLine integration setup complete')
 end
