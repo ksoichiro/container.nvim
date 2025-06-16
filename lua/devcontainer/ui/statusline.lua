@@ -11,6 +11,9 @@ local cache = {
   status = nil,
   last_update = 0,
   update_interval = 1000, -- Update every second
+  devcontainer_available = nil,
+  devcontainer_check_time = 0,
+  devcontainer_check_interval = 30000, -- Check devcontainer.json existence every 30 seconds
 }
 
 -- Format status text using template
@@ -96,10 +99,27 @@ function M.get_status()
     local format_template = formats[format_key] or default_format
     status_text = format_status(format_template, icon, container_name, status, labels)
   else
-    -- No container
-    local parser = require('devcontainer.parser')
-    local devcontainer_path = parser.find_devcontainer_json()
-    if devcontainer_path then
+    -- No container - check if devcontainer.json exists
+    local devcontainer_available = false
+
+    -- Check cached result or refresh if needed
+    if
+      cache.devcontainer_available ~= nil
+      and (now - cache.devcontainer_check_time) < cache.devcontainer_check_interval
+    then
+      devcontainer_available = cache.devcontainer_available
+    else
+      -- Refresh devcontainer availability (this will trigger the debug message)
+      local parser = require('devcontainer.parser')
+      local devcontainer_path = parser.find_devcontainer_json()
+      devcontainer_available = devcontainer_path ~= nil
+
+      -- Cache the result
+      cache.devcontainer_available = devcontainer_available
+      cache.devcontainer_check_time = now
+    end
+
+    if devcontainer_available then
       -- devcontainer.json exists but no container
       local icon = icons.stopped or '⏹️'
       local container_name = labels.container_name or 'DevContainer'
@@ -167,6 +187,8 @@ end
 function M.clear_cache()
   cache.status = nil
   cache.last_update = 0
+  cache.devcontainer_available = nil
+  cache.devcontainer_check_time = 0
 end
 
 -- Setup autocommands to clear cache on state changes
@@ -194,11 +216,22 @@ function M.setup()
     end,
   })
 
-  -- Also clear cache periodically for external changes
+  -- Clear cache when devcontainer.json files are modified
+  vim.api.nvim_create_autocmd({ 'BufWritePost' }, {
+    group = group,
+    pattern = { 'devcontainer.json', '.devcontainer/devcontainer.json' },
+    callback = function()
+      M.clear_cache()
+    end,
+  })
+
+  -- Also clear cache periodically for external changes (reduce frequency)
   vim.api.nvim_create_autocmd('CursorHold', {
     group = group,
     callback = function()
-      M.clear_cache()
+      -- Only clear status cache, not devcontainer availability cache
+      cache.status = nil
+      cache.last_update = 0
     end,
   })
 
