@@ -2,6 +2,8 @@
 
 A Neovim plugin that provides VSCode Dev Containers-like development experience.
 
+> **⚠️ Development Status**: This plugin is under active development. Breaking changes may occur in future updates. Please check the documentation and release notes when upgrading.
+
 ## Features
 
 - **devcontainer.json Support**: Fully compatible with VSCode configuration files

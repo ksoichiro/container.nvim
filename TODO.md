@@ -47,14 +47,16 @@ Priority: Focus on user experience and ecosystem integration
   - [x] Port management picker (view/manage active ports) - Uses vim.ui.select due to telescope state issues
   - [x] Command history picker for DevcontainerExec
 
-- [ ] **UI/UX Improvements** (Week 3-4)  
-  - [ ] Status line integration (show container status)
-  - [ ] Enhanced notification system (progress indicators, success/error states)
-  - [ ] Reduce excessive notifications to essential ones only
-    - [ ] Add notification levels (verbose, normal, minimal)
-    - [ ] Make routine operations silent by default
-    - [ ] Only show critical errors and user-requested status updates
+- [x] **UI/UX Improvements** (Week 3-4) ✅ **COMPLETED**
+  - [x] Status line integration (show container status) ✅ **COMPLETED**
+  - [x] Enhanced notification system (progress indicators, success/error states) ✅ **COMPLETED**
+  - [x] Reduce excessive notifications to essential ones only ✅ **COMPLETED**
+    - [x] Add notification levels (verbose, normal, minimal, silent) ✅ **COMPLETED**
+    - [x] Make routine operations silent by default ✅ **COMPLETED**
+    - [x] Only show critical errors and user-requested status updates ✅ **COMPLETED**
   - [ ] Port forwarding UI improvements (visual indicators, click-to-open)
+  - [ ] Add confirmation dialog for destructive commands (DevcontainerTerminate, DevcontainerKill)
+  - [ ] Add fzf-lua as alternative to telescope for picker integration
 
 #### Medium Priority - Configuration
 - [ ] **Environment-specific devcontainer.json Support** (Week 5-6)
