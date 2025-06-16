@@ -187,7 +187,7 @@ function M.ports(opts)
   log.debug('FzfPicker: Starting ports picker')
 
   local docker = require('devcontainer.docker')
-  local all_ports = docker.get_all_forwarded_ports()
+  local all_ports = docker.get_forwarded_ports()
 
   if not all_ports or #all_ports == 0 then
     notify.ui('No forwarded ports found')
@@ -199,9 +199,9 @@ function M.ports(opts)
   local port_map = {}
 
   for _, port in ipairs(all_ports) do
-    if port.type == 'port' and port.local_port then
+    if port.local_port then
       local display =
-        string.format('%d -> %d (%s)', port.local_port, port.container_port or 0, port.purpose or 'unknown')
+        string.format('%d -> %d (%s)', port.local_port, port.container_port or 0, port.container_name or 'unknown')
 
       table.insert(entries, display)
       port_map[display] = port
@@ -220,14 +220,15 @@ function M.ports(opts)
     preview = function(selected)
       local port = port_map[selected[1]]
       if port then
-        local url = port.url or string.format('http://localhost:%d', port.local_port)
+        local url = string.format('http://localhost:%d', port.local_port)
         return string.format(
-          'Local Port: %d\nContainer Port: %d\nURL: %s\nPurpose: %s\nProject: %s',
+          'Local Port: %d\nContainer Port: %d\nURL: %s\nContainer: %s\nProtocol: %s\nBind Address: %s',
           port.local_port,
           port.container_port or 0,
           url,
-          port.purpose or 'unknown',
-          port.project_id or 'unknown'
+          port.container_name or 'unknown',
+          port.protocol or 'tcp',
+          port.bind_address or '0.0.0.0'
         )
       end
       return nil
@@ -244,7 +245,7 @@ function M.ports(opts)
       ['ctrl-y'] = function(selected)
         local port = port_map[selected[1]]
         if port and port.local_port then
-          local url = port.url or string.format('http://localhost:%d', port.local_port)
+          local url = string.format('http://localhost:%d', port.local_port)
           vim.fn.setreg('+', url)
           notify.status('Copied: ' .. url)
         end
@@ -270,25 +271,67 @@ function M.history(opts)
 
   log.debug('FzfPicker: Starting history picker')
 
-  -- For now, use telescope's history implementation as reference
-  local telescope_pickers = require('devcontainer.ui.telescope.pickers')
-  if not telescope_pickers then
-    notify.ui('Command history functionality not yet implemented for fzf-lua')
+  -- Try to get command history
+  local history_ok, history_module = pcall(require, 'devcontainer.history')
+  local history = nil
+
+  if history_ok then
+    history = history_module.get_exec_history()
+  end
+
+  if not history or #history == 0 then
+    notify.ui('No command history found')
     return
   end
 
-  -- TODO: Implement native fzf-lua history picker
-  -- For now, show a placeholder
-  local entries = { 'Command history for fzf-lua coming soon...' }
+  -- Build entries
+  local entries = {}
+  local history_map = {}
+
+  for _, entry in ipairs(history) do
+    local status_icon = entry.exit_code == 0 and '✅' or '❌'
+    local timestamp = entry.timestamp or os.date('%H:%M:%S')
+    local display = string.format('%s %s %s', status_icon, timestamp, entry.command or '')
+
+    table.insert(entries, display)
+    history_map[display] = entry
+  end
+
+  log.debug('FzfPicker: Found %d history entries', #entries)
 
   fzf_lua.fzf_exec(entries, {
     prompt = 'Command History> ',
     preview = function(selected)
-      return 'Command history functionality is being implemented for fzf-lua.\nFor now, please use telescope picker.'
+      local entry = history_map[selected[1]]
+      if entry then
+        local lines = {
+          'Command: ' .. (entry.command or 'N/A'),
+          'Container: ' .. (entry.container_name or 'unknown'),
+          'Timestamp: ' .. (entry.timestamp or 'N/A'),
+          'Exit Code: ' .. tostring(entry.exit_code or 'N/A'),
+          'Duration: ' .. (entry.duration and string.format('%.2fs', entry.duration) or 'N/A'),
+          '',
+          'Output:',
+          entry.output or 'No output',
+        }
+        return table.concat(lines, '\n')
+      end
+      return nil
     end,
     actions = {
       ['default'] = function(selected)
-        notify.ui('Command history for fzf-lua is under development. Please use telescope picker.')
+        local entry = history_map[selected[1]]
+        if entry and entry.command then
+          log.debug('FzfPicker: Re-executing command: %s', entry.command)
+          require('devcontainer').exec(entry.command)
+        end
+      end,
+      ['ctrl-y'] = function(selected)
+        local entry = history_map[selected[1]]
+        if entry and entry.command then
+          vim.fn.setreg('+', entry.command)
+          notify.status('Copied command to clipboard')
+        end
       end,
     },
   })

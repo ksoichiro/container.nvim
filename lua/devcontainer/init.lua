@@ -1047,15 +1047,24 @@ function M.show_ports()
   -- Show Docker port mappings if container is running
   if state.current_container then
     docker = docker or require('devcontainer.docker')
-    local port_mappings = docker.get_port_mappings(state.current_container)
+    local container_info = docker.get_container_info(state.current_container)
 
-    if port_mappings and next(port_mappings) then
-      print('Active Docker Port Mappings:')
-      for container_port, host_info in pairs(port_mappings) do
-        print(string.format('  %s -> %s', container_port, host_info))
+    if container_info and container_info.NetworkSettings and container_info.NetworkSettings.Ports then
+      local ports = container_info.NetworkSettings.Ports
+      if next(ports) then
+        print('Active Docker Port Mappings:')
+        for container_port, host_info in pairs(ports) do
+          if host_info and host_info[1] then
+            print(
+              string.format('  %s -> %s:%s', container_port, host_info[1].HostIp or '0.0.0.0', host_info[1].HostPort)
+            )
+          end
+        end
+      else
+        print('No active Docker port mappings')
       end
     else
-      print('No active Docker port mappings')
+      print('No port mapping information available')
     end
   else
     print('Container not running - no active port mappings')

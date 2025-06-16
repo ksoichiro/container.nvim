@@ -136,16 +136,18 @@ function M.ports(opts)
   else
     -- vim.ui.select fallback
     local docker = require('devcontainer.docker')
-    local all_ports = docker.get_all_forwarded_ports()
+    local all_ports = docker.get_forwarded_ports()
+
+    log.debug('vim.ui.select: get_forwarded_ports returned %d ports', all_ports and #all_ports or 0)
 
     if not all_ports or #all_ports == 0 then
-      notify.ui('No forwarded ports found')
+      notify.ui('No forwarded ports found. Make sure your container is running with port mappings.')
       return
     end
 
     local valid_ports = {}
     for _, port in ipairs(all_ports) do
-      if port.type == 'port' and port.local_port then
+      if port.local_port then
         table.insert(valid_ports, port)
       end
     end
@@ -158,7 +160,12 @@ function M.ports(opts)
     vim.ui.select(valid_ports, {
       prompt = 'Select Port:',
       format_item = function(port)
-        return string.format('%d -> %d (%s)', port.local_port, port.container_port or 0, port.purpose or 'unknown')
+        return string.format(
+          '%d -> %d (%s)',
+          port.local_port,
+          port.container_port or 0,
+          port.container_name or 'unknown'
+        )
       end,
     }, function(choice)
       if choice and choice.local_port then
