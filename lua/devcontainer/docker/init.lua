@@ -1135,4 +1135,182 @@ function M.get_logs(container_id, opts)
   end, 100)
 end
 
+-- List devcontainers (containers created by this plugin)
+function M.list_devcontainers()
+  log.debug('Listing devcontainers')
+
+  -- Filter for containers with "-devcontainer" suffix
+  local containers = M.list_containers()
+  local devcontainers = {}
+
+  for _, container in ipairs(containers) do
+    if container.name:match('-devcontainer$') then
+      -- Parse status to determine if running
+      local running = container.status:match('^Up') ~= nil
+
+      table.insert(devcontainers, {
+        id = container.id,
+        name = container.name,
+        status = container.status,
+        image = container.image,
+        running = running,
+      })
+    end
+  end
+
+  return devcontainers
+end
+
+-- Get container name for a project path
+function M.get_container_name(project_path)
+  local path_hash = vim.fn.sha256(project_path):sub(1, 8)
+  local project_name = vim.fn.fnamemodify(project_path, ':t')
+  return string.format('%s-%s-devcontainer', project_name:lower():gsub('[^a-z0-9_.-]', '-'), path_hash)
+end
+
+-- Get forwarded ports for all containers
+function M.get_forwarded_ports()
+  log.debug('Getting forwarded ports')
+
+  local ports = {}
+  local containers = M.list_devcontainers()
+
+  for _, container in ipairs(containers) do
+    if container.running then
+      local success, info = pcall(M.get_container_info, container.id)
+      if success and info and info.NetworkSettings and info.NetworkSettings.Ports then
+        log.debug('Container %s has NetworkSettings.Ports: %s', container.name, vim.inspect(info.NetworkSettings.Ports))
+
+        for container_port, bindings in pairs(info.NetworkSettings.Ports) do
+          log.debug('Processing container_port: %s, bindings: %s', container_port, vim.inspect(bindings))
+
+          if bindings and #bindings > 0 then
+            for _, binding in ipairs(bindings) do
+              log.debug('Processing binding: %s', vim.inspect(binding))
+
+              local port_num = container_port:match('(%d+)')
+              local host_port = binding.HostPort and tonumber(binding.HostPort)
+              local container_port_num = port_num and tonumber(port_num)
+
+              -- Only add if both ports are valid
+              if host_port and container_port_num and host_port > 0 and container_port_num > 0 then
+                table.insert(ports, {
+                  container_name = container.name,
+                  container_id = container.id,
+                  container_port = container_port_num,
+                  local_port = host_port,
+                  protocol = container_port:match('/(%w+)') or 'tcp',
+                  bind_address = binding.HostIp or '0.0.0.0',
+                })
+                log.debug('Added port mapping: %d->%d for container %s', host_port, container_port_num, container.name)
+              else
+                log.debug(
+                  'Skipping invalid port mapping: host_port=%s, container_port=%s',
+                  tostring(host_port),
+                  tostring(container_port_num)
+                )
+              end
+            end
+          elseif bindings == vim.NIL or (bindings and type(bindings) == 'table') then
+            -- Port is exposed but not bound to host
+            local port_num = container_port:match('(%d+)')
+            local container_port_num = port_num and tonumber(port_num)
+            if container_port_num then
+              log.debug('Port %s is exposed but not bound to host', container_port)
+            end
+          else
+            log.debug('No bindings or empty bindings for port %s', container_port)
+          end
+        end
+      elseif success then
+        log.debug('Container %s has no NetworkSettings.Ports or missing NetworkSettings', container.name)
+      else
+        log.warn('Failed to get container info for %s: %s', container.name, tostring(info))
+      end
+    else
+      log.debug('Container %s is not running', container.name)
+    end
+  end
+
+  log.debug('Total forwarded ports found: %d', #ports)
+  return ports
+end
+
+-- Stop port forwarding (requires recreating container)
+function M.stop_port_forward(port_info)
+  log.warn('Stopping individual port forwarding requires container recreation')
+  -- This would require complex container recreation logic
+  -- For now, just log a warning
+  return false, 'Individual port forwarding cannot be stopped without recreating the container'
+end
+
+-- Attach to existing container
+function M.attach_to_container(container_name, callback)
+  log.info('Attaching to container: %s', container_name)
+
+  -- First check if container exists
+  local containers = M.list_containers()
+  local found = false
+
+  for _, container in ipairs(containers) do
+    if container.name == container_name then
+      found = true
+      break
+    end
+  end
+
+  if not found then
+    if callback then
+      callback(false, 'Container not found')
+    end
+    return
+  end
+
+  -- Return the container name as we'll use it for operations
+  if callback then
+    callback(true, container_name)
+  end
+end
+
+-- Start existing container
+function M.start_existing_container(container_name, callback)
+  log.info('Starting existing container: %s', container_name)
+
+  M.start_container_async(container_name, function(success, error_msg)
+    if callback then
+      callback(success, error_msg)
+    end
+  end)
+end
+
+-- Stop existing container
+function M.stop_existing_container(container_name, callback)
+  log.info('Stopping container: %s', container_name)
+
+  local result = M.run_docker_command({ 'stop', container_name })
+
+  if callback then
+    callback(result.success, result.success and nil or result.stderr)
+  end
+end
+
+-- Restart container
+function M.restart_container(container_name, callback)
+  log.info('Restarting container: %s', container_name)
+
+  M.stop_existing_container(container_name, function(stop_success, stop_error)
+    if not stop_success then
+      if callback then
+        callback(false, stop_error)
+      end
+      return
+    end
+
+    -- Wait a bit before starting
+    vim.defer_fn(function()
+      M.start_existing_container(container_name, callback)
+    end, 1000)
+  end)
+end
+
 return M

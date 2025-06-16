@@ -41,11 +41,11 @@ The following roadmap focuses on advanced features and ecosystem integration.
 Priority: Focus on user experience and ecosystem integration
 
 #### High Priority - User Interface
-- [ ] **Telescope Integration** (Week 1-2)
-  - [ ] devcontainer picker (select/switch between projects)
-  - [ ] Terminal session picker with session management
-  - [ ] Port management picker (view/manage active ports)
-  - [ ] Command history picker for DevcontainerExec
+- [x] **Telescope Integration** (Week 1-2) ✅ **COMPLETED**
+  - [x] devcontainer picker (select/switch between projects)
+  - [x] Terminal session picker with session management
+  - [x] Port management picker (view/manage active ports) - Uses vim.ui.select due to telescope state issues
+  - [x] Command history picker for DevcontainerExec
 
 - [ ] **UI/UX Improvements** (Week 3-4)  
   - [ ] Status line integration (show container status)

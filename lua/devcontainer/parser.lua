@@ -518,6 +518,76 @@ function M.merge_with_plugin_config(devcontainer_config, plugin_config)
   return devcontainer_config
 end
 
+-- Find all devcontainer projects in a directory tree
+function M.find_devcontainer_projects(root_path, max_depth)
+  root_path = root_path or vim.fn.getcwd()
+  max_depth = max_depth or 3
+
+  local projects = {}
+  local visited = {}
+
+  local function scan_directory(path, depth)
+    if depth > max_depth then
+      return
+    end
+
+    -- Skip if already visited
+    local real_path = vim.fn.resolve(path)
+    if visited[real_path] then
+      return
+    end
+    visited[real_path] = true
+
+    -- Check for devcontainer.json in this directory
+    local devcontainer_paths = {
+      fs.join_path(path, '.devcontainer', 'devcontainer.json'),
+      fs.join_path(path, 'devcontainer.json'),
+    }
+
+    for _, devcontainer_path in ipairs(devcontainer_paths) do
+      if fs.is_file(devcontainer_path) then
+        local config, err = M.parse(devcontainer_path)
+        if config then
+          table.insert(projects, {
+            path = path,
+            name = fs.basename(path),
+            config = config,
+            devcontainer_path = devcontainer_path,
+          })
+        else
+          log.warn('Failed to parse %s: %s', devcontainer_path, err)
+        end
+        -- Don't scan subdirectories if we found a devcontainer here
+        return
+      end
+    end
+
+    -- Scan subdirectories
+    local entries = vim.fn.readdir(path)
+    if entries then
+      for _, entry in ipairs(entries) do
+        local entry_path = fs.join_path(path, entry)
+        -- Skip hidden directories, node_modules, etc.
+        if
+          not entry:match('^%.')
+          and entry ~= 'node_modules'
+          and entry ~= '__pycache__'
+          and entry ~= 'target'
+          and entry ~= 'build'
+          and entry ~= 'dist'
+          and fs.is_directory(entry_path)
+        then
+          scan_directory(entry_path, depth + 1)
+        end
+      end
+    end
+  end
+
+  scan_directory(root_path, 0)
+
+  return projects
+end
+
 -- Expose normalize_ports for testing
 M.normalize_ports = normalize_ports
 

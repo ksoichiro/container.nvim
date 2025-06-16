@@ -291,6 +291,79 @@ local function create_commands()
   end, {
     desc = 'Reconnect to existing devcontainer',
   })
+
+  -- Telescope integration commands (always create, check config at runtime)
+  vim.api.nvim_create_user_command('DevcontainerPicker', function()
+    local cfg = require('devcontainer.config').get()
+    if cfg and cfg.ui and cfg.ui.use_telescope then
+      local ok, telescope = pcall(require, 'telescope')
+      if ok then
+        -- Call the picker function directly to avoid extension conflicts
+        local pickers = require('devcontainer.ui.telescope.pickers')
+        pickers.containers()
+      else
+        vim.notify('Telescope is not installed. Please install nvim-telescope/telescope.nvim', vim.log.levels.ERROR)
+      end
+    else
+      vim.notify('Telescope integration is not enabled. Set ui.use_telescope = true in config', vim.log.levels.WARN)
+    end
+  end, {
+    desc = 'Open devcontainer picker',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerSessionPicker', function()
+    local cfg = require('devcontainer.config').get()
+    if cfg and cfg.ui and cfg.ui.use_telescope then
+      local ok, telescope = pcall(require, 'telescope')
+      if ok then
+        -- Call the picker function directly to avoid extension conflicts
+        local pickers = require('devcontainer.ui.telescope.pickers')
+        pickers.sessions()
+      else
+        vim.notify('Telescope is not installed. Please install nvim-telescope/telescope.nvim', vim.log.levels.ERROR)
+      end
+    else
+      vim.notify('Telescope integration is not enabled. Set ui.use_telescope = true in config', vim.log.levels.WARN)
+    end
+  end, {
+    desc = 'Open terminal session picker',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerPortPicker', function()
+    local cfg = require('devcontainer.config').get()
+    if cfg and cfg.ui and cfg.ui.use_telescope then
+      local ok, telescope = pcall(require, 'telescope')
+      if ok then
+        -- Use the simple non-telescope picker to avoid state contamination
+        local pickers = require('devcontainer.ui.telescope.pickers')
+        pickers.ports_simple()
+      else
+        vim.notify('Telescope is not installed. Please install nvim-telescope/telescope.nvim', vim.log.levels.ERROR)
+      end
+    else
+      vim.notify('Telescope integration is not enabled. Set ui.use_telescope = true in config', vim.log.levels.WARN)
+    end
+  end, {
+    desc = 'Open port management picker',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerHistoryPicker', function()
+    local cfg = require('devcontainer.config').get()
+    if cfg and cfg.ui and cfg.ui.use_telescope then
+      local ok, telescope = pcall(require, 'telescope')
+      if ok then
+        -- Call the picker function directly to avoid extension conflicts
+        local pickers = require('devcontainer.ui.telescope.pickers')
+        pickers.history()
+      else
+        vim.notify('Telescope is not installed. Please install nvim-telescope/telescope.nvim', vim.log.levels.ERROR)
+      end
+    else
+      vim.notify('Telescope integration is not enabled. Set ui.use_telescope = true in config', vim.log.levels.WARN)
+    end
+  end, {
+    desc = 'Open command history picker',
+  })
 end
 
 -- Create autocommand group

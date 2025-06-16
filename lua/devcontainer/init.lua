@@ -38,6 +38,18 @@ function M.setup(user_config)
     log.warn('Failed to initialize terminal system: %s', terminal_err)
   end
 
+  -- Initialize telescope integration if enabled
+  if config.get().ui.use_telescope then
+    local telescope_ok, telescope_err = pcall(function()
+      local telescope_integration = require('devcontainer.ui.telescope')
+      telescope_integration.setup()
+    end)
+
+    if not telescope_ok then
+      log.warn('Failed to initialize telescope integration: %s', telescope_err)
+    end
+  end
+
   state.initialized = true
   log.debug('devcontainer.nvim initialized successfully')
 
@@ -529,9 +541,18 @@ function M.exec(command, opts)
     print('  As user: ' .. opts.user)
   end
 
+  -- Track start time for duration
+  local start_time = vim.loop.hrtime()
+
   -- Add callback to display output
   opts.on_complete = function(result)
     vim.schedule(function()
+      local duration = (vim.loop.hrtime() - start_time) / 1e9
+
+      -- Add to history
+      local history = require('devcontainer.history')
+      history.add_exec_command(command, state.current_container, result.code or -1, result.stdout, duration)
+
       if result.success then
         if result.stdout and result.stdout ~= '' then
           print('=== Command Output ===')
@@ -617,6 +638,87 @@ end
 function M.terminal_cleanup_history(days)
   local terminal = require('devcontainer.terminal')
   return terminal.cleanup_history(days)
+end
+
+-- Attach to existing container
+function M.attach(container_name)
+  log = log or require('devcontainer.utils.log')
+  docker = docker or require('devcontainer.docker')
+
+  docker.attach_to_container(container_name, function(success, error_msg)
+    if success then
+      state.current_container = container_name
+      log.info('Attached to container: %s', container_name)
+      vim.notify('Attached to container: ' .. container_name, vim.log.levels.INFO)
+    else
+      log.error('Failed to attach to container: %s', error_msg)
+      vim.notify('Failed to attach: ' .. error_msg, vim.log.levels.ERROR)
+    end
+  end)
+end
+
+-- Start a specific container by name
+function M.start_container(container_name)
+  log = log or require('devcontainer.utils.log')
+  docker = docker or require('devcontainer.docker')
+
+  docker.start_existing_container(container_name, function(success, error_msg)
+    if success then
+      log.info('Started container: %s', container_name)
+      vim.notify('Started container: ' .. container_name, vim.log.levels.INFO)
+    else
+      log.error('Failed to start container: %s', error_msg)
+      vim.notify('Failed to start: ' .. error_msg, vim.log.levels.ERROR)
+    end
+  end)
+end
+
+-- Stop a specific container by name
+function M.stop_container(container_name)
+  log = log or require('devcontainer.utils.log')
+  docker = docker or require('devcontainer.docker')
+
+  docker.stop_existing_container(container_name, function(success, error_msg)
+    if success then
+      log.info('Stopped container: %s', container_name)
+      vim.notify('Stopped container: ' .. container_name, vim.log.levels.INFO)
+    else
+      log.error('Failed to stop container: %s', error_msg)
+      vim.notify('Failed to stop: ' .. error_msg, vim.log.levels.ERROR)
+    end
+  end)
+end
+
+-- Restart a specific container by name
+function M.restart_container(container_name)
+  log = log or require('devcontainer.utils.log')
+  docker = docker or require('devcontainer.docker')
+
+  docker.restart_container(container_name, function(success, error_msg)
+    if success then
+      log.info('Restarted container: %s', container_name)
+      vim.notify('Restarted container: ' .. container_name, vim.log.levels.INFO)
+    else
+      log.error('Failed to restart container: %s', error_msg)
+      vim.notify('Failed to restart: ' .. error_msg, vim.log.levels.ERROR)
+    end
+  end)
+end
+
+-- Rebuild container for a project
+function M.rebuild(project_path)
+  log = log or require('devcontainer.utils.log')
+
+  -- First stop existing container if any
+  if state.current_container then
+    M.stop()
+  end
+
+  -- Force rebuild on next open
+  vim.notify('Container will be rebuilt on next open', vim.log.levels.INFO)
+
+  -- Open with force rebuild
+  M.open(project_path, { force_rebuild = true })
 end
 
 -- Get container status
