@@ -275,6 +275,84 @@ require('devcontainer').setup({
       building = "🔨",
       error = "❌",
     },
+    statusline = {
+      -- Customize display format using {icon}, {name}, {status} variables
+      format = {
+        running = '{icon} {name}',                    -- Default: "✅ MyProject"
+        stopped = '{icon} {name}',                    -- Default: "⏹️ MyProject"
+        available = '{icon} {name} (available)',      -- Default: "⏹️ MyProject (available)"
+        building = '{icon} {name}',                   -- Default: "🔨 MyProject"
+        error = '{icon} {name}',                      -- Default: "❌ MyProject"
+      },
+      labels = {
+        container_name = 'DevContainer',   -- Fallback name when container name unavailable
+        available_suffix = 'available',    -- Text for "(available)" suffix
+      },
+      show_container_name = true,          -- Use actual container name vs generic label
+      default_format = '{icon} {name}',    -- Fallback format
+    },
+  },
+})
+```
+
+### Customization Examples
+
+#### Minimal Display (Icons Only)
+```lua
+require('devcontainer').setup({
+  ui = {
+    status_line = true,
+    statusline = {
+      format = {
+        running = '{icon}',
+        stopped = '{icon}',
+        available = '{icon}',
+        building = '{icon}',
+        error = '{icon}',
+      },
+    },
+  },
+})
+```
+
+#### Custom Text Labels
+```lua
+require('devcontainer').setup({
+  ui = {
+    status_line = true,
+    icons = {
+      running = "🟢",
+      stopped = "🔴",
+      building = "🟡",
+    },
+    statusline = {
+      format = {
+        running = '{icon} Container: {name}',
+        stopped = '{icon} Container: {name}',
+        available = '{icon} Available: {name}',
+      },
+      labels = {
+        container_name = 'Docker',
+        available_suffix = 'ready',
+      },
+    },
+  },
+})
+```
+
+#### Status-Based Display
+```lua
+require('devcontainer').setup({
+  ui = {
+    status_line = true,
+    statusline = {
+      format = {
+        running = '🚀 {name} ({status})',              -- "🚀 MyProject (running)"
+        stopped = '💤 {name} ({status})',              -- "💤 MyProject (stopped)"
+        available = '📦 {name} - ready to start',      -- "📦 MyProject - ready to start"
+        building = '⚙️ {name} ({status})',              -- "⚙️ MyProject (building)"
+      },
+    },
   },
 })
 ```

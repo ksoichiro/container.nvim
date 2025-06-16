@@ -99,6 +99,26 @@ M.defaults = {
       building = '🔨',
       error = '❌',
     },
+    statusline = {
+      -- Display format for statusline
+      -- Available variables: {icon}, {name}, {status}
+      format = {
+        running = '{icon} {name}',
+        stopped = '{icon} {name}',
+        available = '{icon} {name} (available)',
+        building = '{icon} {name}',
+        error = '{icon} {name}',
+      },
+      -- Text labels (can be customized or set to empty string)
+      labels = {
+        container_name = 'DevContainer', -- Default name when container name is not available
+        available_suffix = 'available', -- Text shown for available containers
+      },
+      -- Whether to show container name or use generic label
+      show_container_name = true,
+      -- Fallback when no specific format is defined
+      default_format = '{icon} {name}',
+    },
   },
 
   -- Port forwarding

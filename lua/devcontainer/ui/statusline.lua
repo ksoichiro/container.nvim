@@ -13,6 +13,25 @@ local cache = {
   update_interval = 1000, -- Update every second
 }
 
+-- Format status text using template
+local function format_status(template, icon, name, status, labels)
+  if not template then
+    return ''
+  end
+
+  local formatted = template
+  formatted = formatted:gsub('{icon}', icon or '')
+  formatted = formatted:gsub('{name}', name or '')
+  formatted = formatted:gsub('{status}', status or '')
+
+  -- Handle available suffix
+  if labels and labels.available_suffix then
+    formatted = formatted:gsub('%(available%)', '(' .. labels.available_suffix .. ')')
+  end
+
+  return formatted
+end
+
 -- Get container status for statusline display
 function M.get_status()
   local cfg = config.get()
@@ -37,27 +56,57 @@ function M.get_status()
   end
 
   local icons = cfg.ui.icons or {}
+  local statusline_config = cfg.ui.statusline or {}
+  local formats = statusline_config.format or {}
+  local labels = statusline_config.labels or {}
+  local show_container_name = statusline_config.show_container_name ~= false
+  local default_format = statusline_config.default_format or '{icon} {name}'
+
   local status_text = ''
 
   if state.current_container then
     -- Get container status
     local status = state.container_status
+    local icon = ''
+    local format_key = ''
+
     if status == 'running' then
-      status_text = string.format('%s %s', icons.running or '✅', 'DevContainer')
+      icon = icons.running or '✅'
+      format_key = 'running'
     elseif status == 'exited' or status == 'stopped' then
-      status_text = string.format('%s %s', icons.stopped or '⏹️', 'DevContainer')
+      icon = icons.stopped or '⏹️'
+      format_key = 'stopped'
     elseif status == 'created' then
-      status_text = string.format('%s %s', icons.building or '🔨', 'DevContainer')
+      icon = icons.building or '🔨'
+      format_key = 'building'
     else
-      status_text = string.format('%s %s', icons.container or '🐳', 'DevContainer')
+      icon = icons.container or '🐳'
+      format_key = 'error'
     end
+
+    -- Determine container name
+    local container_name = ''
+    if show_container_name and state.current_config and state.current_config.name then
+      container_name = state.current_config.name
+    else
+      container_name = labels.container_name or 'DevContainer'
+    end
+
+    -- Use format template
+    local format_template = formats[format_key] or default_format
+    status_text = format_status(format_template, icon, container_name, status, labels)
   else
     -- No container
     local parser = require('devcontainer.parser')
     local devcontainer_path = parser.find_devcontainer_json()
     if devcontainer_path then
       -- devcontainer.json exists but no container
-      status_text = string.format('%s %s', icons.stopped or '⏹️', 'DevContainer (available)')
+      local icon = icons.stopped or '⏹️'
+      local container_name = labels.container_name or 'DevContainer'
+
+      -- Use available format template
+      local format_template = formats.available or default_format
+      status_text = format_status(format_template, icon, container_name, 'available', labels)
     end
   end
 
