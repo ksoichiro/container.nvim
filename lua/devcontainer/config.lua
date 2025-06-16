@@ -44,7 +44,7 @@ M.defaults = {
     -- Session management
     persistent_history = true, -- Save terminal history across sessions
     max_history_lines = 10000, -- Maximum lines to keep in history
-    history_dir = vim.fn.stdpath('data') .. '/devcontainer/terminal_history',
+    history_dir = (vim.fn and vim.fn.stdpath('data') or '/tmp') .. '/devcontainer/terminal_history',
 
     -- Default positioning
     default_position = 'split', -- 'split', 'vsplit', 'tab', 'float'
