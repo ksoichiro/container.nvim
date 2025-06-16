@@ -256,6 +256,82 @@ require('devcontainer').setup({
 })
 ```
 
+## StatusLine Integration
+
+The plugin provides built-in statusline integration to display devcontainer status in your Neovim statusline.
+
+### Configuration
+
+Enable statusline integration in your configuration:
+
+```lua
+require('devcontainer').setup({
+  ui = {
+    status_line = true,  -- Enable statusline integration
+    icons = {
+      container = "🐳",
+      running = "✅",
+      stopped = "⏹️",
+      building = "🔨",
+      error = "❌",
+    },
+  },
+})
+```
+
+### Usage Examples
+
+#### Manual StatusLine Configuration
+
+```lua
+-- In your statusline configuration
+local function devcontainer_status()
+  return require('devcontainer').statusline()
+end
+
+-- Example with vim.o.statusline
+vim.o.statusline = '%f %{luaeval("require(\"devcontainer\").statusline()")} %='
+```
+
+#### Lualine Integration
+
+```lua
+require('lualine').setup({
+  sections = {
+    lualine_c = {
+      'filename',
+      require('devcontainer').statusline_component(),
+    }
+  }
+})
+```
+
+#### Lightline Integration
+
+```vim
+let g:lightline = {
+  \ 'active': {
+  \   'left': [ [ 'mode', 'paste' ],
+  \           [ 'readonly', 'filename', 'modified', 'devcontainer' ] ]
+  \ },
+  \ 'component_function': {
+  \   'devcontainer': 'DevcontainerStatus'
+  \ },
+  \ }
+
+function! DevcontainerStatus()
+  return luaeval('require("devcontainer.ui.statusline").lightline_component()')
+endfunction
+```
+
+### Status Display
+
+The statusline shows:
+- **✅ DevContainer** - Running container
+- **⏹️ DevContainer** - Stopped container  
+- **⏹️ DevContainer (available)** - devcontainer.json exists but no container
+- Empty - No devcontainer configuration
+
 ## Dynamic Port Allocation
 
 The plugin supports advanced port forwarding with dynamic allocation to prevent conflicts between multiple projects.

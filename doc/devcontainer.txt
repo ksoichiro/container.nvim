@@ -15,7 +15,8 @@ CONTENTS                                                *devcontainer-contents*
     8. API .................................. |devcontainer-api|
     9. devcontainer.json .................... |devcontainer-json|
     10. Troubleshooting ..................... |devcontainer-troubleshooting|
-    11. Contributing ........................ |devcontainer-contributing|
+    11. User Events ......................... |devcontainer-events|
+    12. Contributing ........................ |devcontainer-contributing|
 
 ==============================================================================
 1. INTRODUCTION                                     *devcontainer-introduction*
@@ -1038,7 +1039,89 @@ Terminal Issues~
   • Check for large history files
 
 ==============================================================================
-11. CONTRIBUTING                                   *devcontainer-contributing*
+11. USER EVENTS                                         *devcontainer-events*
+
+The plugin triggers User autocmd events during devcontainer lifecycle changes.
+These can be used to update statuslines, run custom commands, or integrate
+with other plugins.
+
+Available Events~
+
+                                                  *DevcontainerOpened*
+DevcontainerOpened
+    Triggered when a devcontainer configuration is successfully loaded.
+
+    Event data:
+      • container_name (string): Name of the devcontainer
+      • config_path (string): Path to devcontainer.json
+      • reconnected (boolean): True if reconnecting to existing container
+      • attached (boolean): True if attaching to external container
+
+                                                  *DevcontainerBuilt*
+DevcontainerBuilt
+    Triggered when a container image is built or prepared.
+
+    Event data:
+      • container_name (string): Name of the devcontainer
+      • image (string): Docker image name
+
+                                                  *DevcontainerStarted*
+DevcontainerStarted
+    Triggered when a container starts successfully.
+
+    Event data:
+      • container_id (string): Docker container ID
+      • container_name (string): Name of the devcontainer
+
+                                                  *DevcontainerStopped*
+DevcontainerStopped
+    Triggered when a container stops or is killed.
+
+    Event data:
+      • container_id (string): Docker container ID
+      • container_name (string): Name of the devcontainer
+
+                                                  *DevcontainerClosed*
+DevcontainerClosed
+    Triggered when the devcontainer is closed or reset.
+
+    Event data:
+      • container_id (string): Docker container ID (may be nil)
+      • container_name (string): Name of the devcontainer
+
+Usage Examples~
+
+Basic event listener:
+>lua
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'DevcontainerStarted',
+      callback = function(args)
+        local data = args.data or {}
+        print('Container started: ' .. (data.container_name or 'unknown'))
+      end,
+    })
+<
+
+Statusline integration:
+>lua
+    local augroup = vim.api.nvim_create_augroup('DevcontainerStatusline', { clear = true })
+
+    vim.api.nvim_create_autocmd('User', {
+      pattern = { 'DevcontainerStarted', 'DevcontainerStopped', 'DevcontainerClosed' },
+      group = augroup,
+      callback = function(args)
+        vim.g.devcontainer_status = args.match:gsub('Devcontainer', ''):lower()
+        vim.g.devcontainer_name = args.data and args.data.container_name
+        -- Trigger statusline refresh
+        vim.cmd('redrawstatus')
+      end,
+    })
+<
+
+See |examples/statusline_events.lua| for a complete statusline implementation.
+
+==============================================================================
+12. CONTRIBUTING                                   *devcontainer-contributing*
 
 Contributions are welcome! Visit the GitHub repository:
 https://github.com/ksoichiro/devcontainer.nvim

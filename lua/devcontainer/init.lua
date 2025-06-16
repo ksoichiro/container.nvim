@@ -1,5 +1,12 @@
 -- lua/devcontainer/init.lua
 -- devcontainer.nvim main entry point
+--
+-- This module triggers the following User autocmd events:
+-- - DevcontainerOpened: When devcontainer config is loaded
+-- - DevcontainerBuilt: When container image is built/prepared
+-- - DevcontainerStarted: When container starts successfully
+-- - DevcontainerStopped: When container stops or is killed
+-- - DevcontainerClosed: When devcontainer is closed/reset
 
 local M = {}
 
@@ -47,6 +54,18 @@ function M.setup(user_config)
 
     if not telescope_ok then
       log.warn('Failed to initialize telescope integration: %s', telescope_err)
+    end
+  end
+
+  -- Initialize statusline integration if enabled
+  if config.get().ui.status_line then
+    local statusline_ok, statusline_err = pcall(function()
+      local statusline = require('devcontainer.ui.statusline')
+      statusline.setup()
+    end)
+
+    if not statusline_ok then
+      log.warn('Failed to initialize statusline integration: %s', statusline_err)
     end
   end
 
@@ -133,6 +152,16 @@ function M.open(path)
   if normalized_config.post_create_command then
     log.debug('post_create_command: %s', normalized_config.post_create_command)
   end
+
+  -- Trigger DevcontainerOpened event
+  vim.api.nvim_exec_autocmds('User', {
+    pattern = 'DevcontainerOpened',
+    data = {
+      container_name = normalized_config.name,
+      config_path = path,
+    },
+  })
+
   return true
 end
 
@@ -155,6 +184,14 @@ function M.build()
   end, function(success, result)
     if success then
       log.info('Successfully prepared devcontainer image')
+      -- Trigger DevcontainerBuilt event
+      vim.api.nvim_exec_autocmds('User', {
+        pattern = 'DevcontainerBuilt',
+        data = {
+          container_name = state.current_config and state.current_config.name or 'unknown',
+          image = state.current_config and state.current_config.image or 'unknown',
+        },
+      })
     else
       log.error('Failed to prepare devcontainer image: %s', result.stderr or 'unknown error')
     end
@@ -250,6 +287,15 @@ function M._start_final_step(container_id)
       if success then
         print('✓ Container started successfully!')
         log.info('Container is ready: %s', container_id)
+
+        -- Trigger DevcontainerStarted event
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'DevcontainerStarted',
+          data = {
+            container_id = container_id,
+            container_name = state.current_config and state.current_config.name or 'unknown',
+          },
+        })
 
         -- Execute postCreateCommand
         M._run_post_create_command(container_id, function(post_create_success)
@@ -348,6 +394,16 @@ function M._pull_and_create_container(config, callback)
       if success then
         print('✓ Image pull completed successfully!')
         print('   Now proceeding to create container...')
+
+        -- Trigger DevcontainerBuilt event after successful pull
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'DevcontainerBuilt',
+          data = {
+            container_name = config.name or 'unknown',
+            image = config.image,
+          },
+        })
+
         -- Image pull successful, create container
         M._create_container_direct(config, callback)
       else
@@ -439,6 +495,15 @@ function M.stop()
   log.info('Stopping container: %s', state.current_container)
   docker.stop_container(state.current_container)
 
+  -- Trigger DevcontainerStopped event
+  vim.api.nvim_exec_autocmds('User', {
+    pattern = 'DevcontainerStopped',
+    data = {
+      container_id = state.current_container,
+      container_name = state.current_config and state.current_config.name or 'unknown',
+    },
+  })
+
   return true
 end
 
@@ -469,6 +534,14 @@ function M.kill()
     vim.schedule(function()
       if success then
         print('✓ Container killed successfully')
+        -- Trigger DevcontainerStopped event before clearing state
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'DevcontainerStopped',
+          data = {
+            container_id = state.current_container,
+            container_name = state.current_config and state.current_config.name or 'unknown',
+          },
+        })
         state.current_container = nil
         state.current_config = nil
       else
@@ -507,6 +580,14 @@ function M.terminate()
     vim.schedule(function()
       if success then
         print('✓ Container terminated successfully')
+        -- Trigger DevcontainerStopped event before clearing state
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'DevcontainerStopped',
+          data = {
+            container_id = state.current_container,
+            container_name = state.current_config and state.current_config.name or 'unknown',
+          },
+        })
         state.current_container = nil
         state.current_config = nil
       else
@@ -650,6 +731,15 @@ function M.attach(container_name)
       state.current_container = container_name
       log.info('Attached to container: %s', container_name)
       vim.notify('Attached to container: ' .. container_name, vim.log.levels.INFO)
+
+      -- Trigger DevcontainerOpened event for attach
+      vim.api.nvim_exec_autocmds('User', {
+        pattern = 'DevcontainerOpened',
+        data = {
+          container_name = container_name,
+          attached = true,
+        },
+      })
     else
       log.error('Failed to attach to container: %s', error_msg)
       vim.notify('Failed to attach: ' .. error_msg, vim.log.levels.ERROR)
@@ -666,6 +756,15 @@ function M.start_container(container_name)
     if success then
       log.info('Started container: %s', container_name)
       vim.notify('Started container: ' .. container_name, vim.log.levels.INFO)
+
+      -- Trigger DevcontainerStarted event
+      vim.api.nvim_exec_autocmds('User', {
+        pattern = 'DevcontainerStarted',
+        data = {
+          container_id = container_name,
+          container_name = container_name,
+        },
+      })
     else
       log.error('Failed to start container: %s', error_msg)
       vim.notify('Failed to start: ' .. error_msg, vim.log.levels.ERROR)
@@ -682,6 +781,15 @@ function M.stop_container(container_name)
     if success then
       log.info('Stopped container: %s', container_name)
       vim.notify('Stopped container: ' .. container_name, vim.log.levels.INFO)
+
+      -- Trigger DevcontainerStopped event
+      vim.api.nvim_exec_autocmds('User', {
+        pattern = 'DevcontainerStopped',
+        data = {
+          container_id = container_name,
+          container_name = container_name,
+        },
+      })
     else
       log.error('Failed to stop container: %s', error_msg)
       vim.notify('Failed to stop: ' .. error_msg, vim.log.levels.ERROR)
@@ -836,6 +944,17 @@ end
 -- Reset plugin state
 function M.reset()
   log = log or require('devcontainer.utils.log')
+
+  -- Trigger DevcontainerClosed event before clearing state
+  if state.current_container or state.current_config then
+    vim.api.nvim_exec_autocmds('User', {
+      pattern = 'DevcontainerClosed',
+      data = {
+        container_id = state.current_container,
+        container_name = state.current_config and state.current_config.name or 'unknown',
+      },
+    })
+  end
 
   state.current_container = nil
   state.current_config = nil
@@ -1125,6 +1244,15 @@ function M._start_container_step4(container_id)
         print('✓ Container started successfully and is ready!')
         print('=== Container Ready ===')
 
+        -- Trigger DevcontainerStarted event
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'DevcontainerStarted',
+          data = {
+            container_id = container_id,
+            container_name = state.current_config and state.current_config.name or 'unknown',
+          },
+        })
+
         -- Setup LSP integration
         if config.get_value('lsp.auto_setup') then
           print('Setting up LSP...')
@@ -1303,6 +1431,16 @@ function M._try_reconnect_existing_container()
         print('  Status: ' .. container.status)
         print('  Use :DevcontainerStatus for details')
 
+        -- Trigger DevcontainerOpened event for reconnection
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'DevcontainerOpened',
+          data = {
+            container_name = normalized_config.name,
+            config_path = cwd,
+            reconnected = true,
+          },
+        })
+
         -- Auto-setup LSP (if configured)
         if config and config.get_value('lsp.auto_setup') and container.status == 'running' then
           print('  Setting up LSP...')
@@ -1399,6 +1537,27 @@ function M._run_post_create_command(container_id, callback)
       end
     end)
   end)
+end
+
+-- StatusLine integration API
+function M.statusline()
+  if not state.initialized then
+    return ''
+  end
+
+  local statusline = require('devcontainer.ui.statusline')
+  return statusline.get_status()
+end
+
+function M.statusline_component()
+  if not state.initialized then
+    return function()
+      return ''
+    end
+  end
+
+  local statusline = require('devcontainer.ui.statusline')
+  return statusline.lualine_component()
 end
 
 return M
