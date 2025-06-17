@@ -108,6 +108,14 @@ Priority: Seamless integration with popular Neovim development plugins
   - [ ] Network timeout handling and retry mechanisms
   - [ ] Graceful degradation for partial failures
 
+#### Low Priority - Compliance & Standards
+- [ ] **Dev Containers Specification Compliance Review**
+  - [ ] Review custom configuration items in devcontainer.json parsing
+  - [ ] Evaluate non-standard settings: `languagePreset`, context-specific environments
+  - [ ] Assess dynamic port allocation syntax (`"auto:3000"`, `"range:8000-8010:3000"`)
+  - [ ] Consider migration to fully compliant standard settings
+  - [ ] Document compatibility implications with VSCode Dev Containers
+
 ### v0.6.0 (Multi-container & Advanced Features) - 10-12 weeks
 
 Priority: Complex multi-service development environments
