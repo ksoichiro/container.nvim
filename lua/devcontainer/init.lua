@@ -1274,44 +1274,46 @@ function M._list_containers_async(filter, callback)
     table.insert(args, filter)
   end
 
-  vim.fn.jobstart(vim.list_extend({ 'docker' }, args), {
-    on_stdout = function(_, data, _)
-      local containers = {}
-      if data then
-        for _, line in ipairs(data) do
-          if line and line ~= '' then
-            local parts = vim.split(line, '\t')
-            if #parts >= 4 then
-              table.insert(containers, {
-                id = parts[1],
-                name = parts[2],
-                status = parts[3],
-                image = parts[4],
-              })
-            end
+  local docker = require('devcontainer.docker.init')
+  docker.run_docker_command_async(args, {}, function(result)
+    local containers = {}
+
+    if result.success and result.stdout then
+      for line in result.stdout:gmatch('[^\n]+') do
+        if line and line ~= '' then
+          local parts = vim.split(line, '\t')
+          if #parts >= 4 then
+            table.insert(containers, {
+              id = parts[1],
+              name = parts[2],
+              status = parts[3],
+              image = parts[4],
+            })
           end
         end
       end
-      callback(containers)
-    end,
-    stdout_buffered = true,
-    stderr_buffered = true,
-  })
+    else
+      log.warn('Failed to list containers: %s', result.stderr or 'unknown error')
+    end
+
+    callback(containers)
+  end)
 end
 
 -- Get container status asynchronously
 function M._get_container_status_async(container_id, callback)
-  vim.fn.jobstart({ 'docker', 'inspect', container_id, '--format', '{{.State.Status}}' }, {
-    on_stdout = function(_, data, _)
-      local status = nil
-      if data and data[1] then
-        status = vim.trim(data[1])
-      end
-      callback(status)
-    end,
-    stdout_buffered = true,
-    stderr_buffered = true,
-  })
+  local docker = require('devcontainer.docker.init')
+  docker.run_docker_command_async({ 'inspect', container_id, '--format', '{{.State.Status}}' }, {}, function(result)
+    local status = nil
+
+    if result.success and result.stdout then
+      status = vim.trim(result.stdout)
+    else
+      log.debug('Failed to get container status: %s', result.stderr or 'unknown error')
+    end
+
+    callback(status)
+  end)
 end
 
 -- Step 4: Container startup process

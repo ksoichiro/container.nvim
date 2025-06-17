@@ -423,7 +423,7 @@ vim.api.nvim_create_autocmd({ 'VimEnter', 'DirChanged' }, {
         elseif config.auto_start_mode == 'prompt' then
           vim.defer_fn(function()
             local choice =
-              vim.fn.confirm('Found devcontainer.json. Start devcontainer?', '&Yes\n&No\n&Always (change config)', 1)
+              vim.fn.confirm('Found devcontainer.json. Open devcontainer?', '&Yes\n&No\n&Always (change config)', 1)
             if choice == 1 then
               require('devcontainer').open()
             elseif choice == 3 then
