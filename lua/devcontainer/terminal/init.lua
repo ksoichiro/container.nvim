@@ -391,4 +391,24 @@ function M.cleanup_history(days_to_keep)
   notify.terminal(string.format('Cleaned up %d old history files', count))
 end
 
+-- Setup automatic cleanup when container stops
+local function setup_container_event_handlers()
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'DevcontainerStopped',
+    callback = function()
+      local config = require('devcontainer.config').get()
+      if config.terminal.close_on_container_stop then
+        -- Close all terminal sessions when container stops
+        local count = session_manager.close_all_sessions(true)
+        if count > 0 then
+          notify.terminal(string.format('Auto-closed %d terminal sessions (container stopped)', count))
+        end
+      end
+    end,
+  })
+end
+
+-- Initialize event handlers
+setup_container_event_handlers()
+
 return M
