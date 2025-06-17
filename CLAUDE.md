@@ -23,6 +23,13 @@ Currently no formal test framework is implemented. Test manually by:
 3. Check debug info: `:DevcontainerDebug`
 4. View logs: `:DevcontainerLogs`
 
+**Important**: When using `nvim --headless` for automated testing, always include the `-u NONE` option to prevent loading user configuration files from `~/.config/nvim`. This ensures consistent test environments.
+
+Example:
+```bash
+nvim --headless -u NONE -c "lua require('devcontainer').setup()" -c "qa"
+```
+
 ### TODO Management
 When identifying future improvements or tasks during development:
 1. **DO NOT** use session memory (TodoWrite tool) for persistent tasks
@@ -56,10 +63,10 @@ make install-dev
 - Project structure validation (CLAUDE.md, Makefile targets)
 
 #### Committing Changes
-**IMPORTANT: Always run `make format` before committing to avoid pre-commit hook failures**
+**IMPORTANT: Always use pre-commit instead of manually running make format**
 ```bash
-# Before committing, run automatic formatting
-make format
+# Before committing, ensure pre-commit hooks are set up
+pre-commit run --all-files  # Optional: run pre-commit manually
 
 # Then proceed with git commands
 git add .
