@@ -11,6 +11,7 @@ A Neovim plugin that provides VSCode Dev Containers-like development experience.
 - **Enhanced Terminal Integration**: Advanced in-container terminal with session management
 - **LSP Integration**: Automatic detection and configuration of LSP servers in containers
 - **Smart Port Forwarding**: Dynamic port allocation to prevent conflicts between projects
+- **Test Integration**: Run tests in containers with vim-test, nvim-test, and neotest. Supports both buffer and terminal output modes
 - **Asynchronous Operations**: All Docker operations executed asynchronously
 
 ## Requirements
@@ -172,6 +173,33 @@ For detailed command documentation, use `:help devcontainer-commands` in Neovim.
 | `:DevcontainerPortPicker` | Open port management picker |
 | `:DevcontainerHistoryPicker` | Open command history picker |
 
+### Test Integration
+
+devcontainer.nvim supports running tests in containers with two output modes:
+
+#### Buffer Mode (Default Commands)
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerTestNearest` | Run nearest test in container (output in buffer) |
+| `:DevcontainerTestFile` | Run all tests in current file in container (output in buffer) |
+| `:DevcontainerTestSuite` | Run entire test suite in container (output in buffer) |
+
+#### Terminal Mode (Interactive Commands)
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerTestNearestTerminal` | Run nearest test in container terminal |
+| `:DevcontainerTestFileTerminal` | Run all tests in current file in container terminal |
+| `:DevcontainerTestSuiteTerminal` | Run entire test suite in container terminal |
+
+#### Setup & Integration
+| Command | Description |
+|---------|-------------|
+| `:DevcontainerTestSetup` | Setup test plugin integrations |
+
+**Output Modes:**
+- **Buffer Mode**: Tests run asynchronously with output displayed in Neovim's message area. Shows container indicators (🐳) and completion status.
+- **Terminal Mode**: Tests run interactively in a dedicated terminal window. Silent execution with all output appearing in the terminal. Reuses the same terminal session for repeated runs.
+
 ### Management
 
 | Command | Description |
@@ -255,6 +283,13 @@ require('devcontainer').setup({
     auto_mount = true,
     mount_point = '/workspace',
     exclude_patterns = { '.git', 'node_modules', '.next' },
+  },
+
+  -- Test integration settings
+  test_integration = {
+    enabled = true,           -- Enable test plugin integration
+    auto_setup = true,        -- Auto-setup when container starts
+    output_mode = 'buffer',   -- Default output mode: 'buffer' or 'terminal'
   },
 })
 ```

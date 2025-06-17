@@ -346,6 +346,53 @@ local function create_commands()
   end, {
     desc = 'Open command history picker',
   })
+
+  -- Test runner commands
+  vim.api.nvim_create_user_command('DevcontainerTestNearest', function()
+    require('devcontainer.test_runner').run_nearest_test()
+  end, {
+    desc = 'Run nearest test in devcontainer',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTestFile', function()
+    require('devcontainer.test_runner').run_file_tests()
+  end, {
+    desc = 'Run all tests in current file in devcontainer',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTestSuite', function()
+    require('devcontainer.test_runner').run_suite_tests()
+  end, {
+    desc = 'Run entire test suite in devcontainer',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTestSetup', function()
+    require('devcontainer.test_runner').setup()
+  end, {
+    desc = 'Setup test plugin integrations',
+  })
+
+  -- Terminal-based test commands
+  vim.api.nvim_create_user_command('DevcontainerTestNearestTerminal', function()
+    local test_runner = require('devcontainer.test_runner')
+    test_runner.run_nearest_test({ output_mode = 'terminal' })
+  end, {
+    desc = 'Run nearest test in container terminal',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTestFileTerminal', function()
+    local test_runner = require('devcontainer.test_runner')
+    test_runner.run_file_tests({ output_mode = 'terminal' })
+  end, {
+    desc = 'Run file tests in container terminal',
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerTestSuiteTerminal', function()
+    local test_runner = require('devcontainer.test_runner')
+    test_runner.run_suite_tests({ output_mode = 'terminal' })
+  end, {
+    desc = 'Run test suite in container terminal',
+  })
 end
 
 -- Create autocommand group

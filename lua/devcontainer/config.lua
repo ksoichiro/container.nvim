@@ -144,6 +144,13 @@ M.defaults = {
     remove_orphans = true,
   },
 
+  -- Test integration settings
+  test_integration = {
+    enabled = true, -- Enable automatic test plugin integration
+    auto_setup = true, -- Automatically setup when container starts
+    output_mode = 'buffer', -- 'buffer' (default), 'terminal', 'quickfix'
+  },
+
   -- Development settings
   dev = {
     reload_on_change = true,

@@ -346,6 +346,22 @@ function M._start_final_step(container_id)
           end
         end) -- _run_post_create_command callback end
 
+        -- Setup test integration
+        local test_config = config.get()
+        if
+          test_config.test_integration
+          and test_config.test_integration.enabled
+          and test_config.test_integration.auto_setup
+        then
+          log.debug('Setting up test integration...')
+          vim.defer_fn(function()
+            local test_runner = require('devcontainer.test_runner')
+            if test_runner.setup() then
+              log.info('Test integration setup complete')
+            end
+          end, 500) -- Small delay to ensure everything is loaded
+        end
+
         -- Execute post-start command (existing)
         if state.current_config.post_start_command then
           print('Step 6: Running post-start command...')

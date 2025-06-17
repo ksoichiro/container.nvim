@@ -1,0 +1,20 @@
+{
+  "customizations": {
+    "devcontainer.nvim": {
+      "languagePreset": "go",
+      "postCreateEnvironment": {
+        "GOPATH": "/go",
+        "GOROOT": "/usr/local/go",
+        "PATH": "/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:$PATH"
+      }
+    }
+  },
+  "forwardPorts": [
+    8080
+  ],
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
+  "name": "Go Test Integration Example",
+  "postCreateCommand": "go install golang.org/x/tools/gopls@latest && go mod tidy",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace"
+}

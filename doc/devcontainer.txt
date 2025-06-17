@@ -15,9 +15,10 @@ CONTENTS                                                *devcontainer-contents*
     8. Notification Levels .................. |devcontainer-notification-levels|
     9. API .................................. |devcontainer-api|
     10. devcontainer.json ................... |devcontainer-json|
-    11. Troubleshooting ..................... |devcontainer-troubleshooting|
-    12. User Events ......................... |devcontainer-events|
-    13. Contributing ........................ |devcontainer-contributing|
+    11. Test Integration .................... |devcontainer-test-integration|
+    12. Troubleshooting ..................... |devcontainer-troubleshooting|
+    13. User Events ......................... |devcontainer-events|
+    14. Contributing ........................ |devcontainer-contributing|
 
 ==============================================================================
 1. INTRODUCTION                                     *devcontainer-introduction*
@@ -30,6 +31,7 @@ Key features:
   • Full devcontainer.json compatibility
   • Automatic LSP server detection and configuration
   • Enhanced terminal integration with session management
+  • Test integration with buffer and terminal output modes
   • Asynchronous Docker operations
   • Smart port forwarding with dynamic allocation
   • Project-specific container isolation
@@ -1159,7 +1161,128 @@ Terminal Issues~
   • Check for large history files
 
 ==============================================================================
-11. USER EVENTS                                         *devcontainer-events*
+11. TEST INTEGRATION                            *devcontainer-test-integration*
+
+devcontainer.nvim integrates with popular test runner plugins to execute tests
+within containers, ensuring consistent test environments. The plugin supports
+two output modes: buffer mode and terminal mode.
+
+SUPPORTED PLUGINS~
+
+• vim-test/vim-test - Classic test runner
+• klen/nvim-test - Neovim-specific test runner
+• nvim-neotest/neotest - Modern test framework
+
+SETUP~
+
+Test integration is automatically configured when a container starts if enabled
+in the configuration:
+
+>lua
+    require('devcontainer').setup({
+      test_integration = {
+        enabled = true,           -- Enable test integration
+        auto_setup = true,        -- Auto-setup on container start
+        output_mode = 'buffer',   -- Default output mode: 'buffer' or 'terminal'
+      }
+    })
+<
+
+Manual setup:
+>vim
+    :DevcontainerTestSetup
+<
+
+OUTPUT MODES~
+
+Buffer Mode (Default)~
+Tests run asynchronously with output displayed in Neovim's message area.
+Shows container indicators (🐳) and completion status. Non-interactive but
+integrated with Neovim's UI.
+
+Terminal Mode~
+Tests run interactively in a dedicated terminal window. Silent execution with
+all output appearing in the terminal. Reuses the same terminal session for
+repeated runs. Useful for debugging and interactive testing.
+
+BUFFER MODE COMMANDS~
+
+                                            *:DevcontainerTestNearest*
+:DevcontainerTestNearest        Run the test nearest to the cursor in container
+                                (output in buffer)
+
+                                            *:DevcontainerTestFile*
+:DevcontainerTestFile           Run all tests in current file in container
+                                (output in buffer)
+
+                                            *:DevcontainerTestSuite*
+:DevcontainerTestSuite          Run entire test suite in container
+                                (output in buffer)
+
+TERMINAL MODE COMMANDS~
+
+                                            *:DevcontainerTestNearestTerminal*
+:DevcontainerTestNearestTerminal
+                                Run the test nearest to the cursor in container
+                                terminal
+
+                                            *:DevcontainerTestFileTerminal*
+:DevcontainerTestFileTerminal   Run all tests in current file in container
+                                terminal
+
+                                            *:DevcontainerTestSuiteTerminal*
+:DevcontainerTestSuiteTerminal  Run entire test suite in container terminal
+
+SETUP COMMANDS~
+
+                                            *:DevcontainerTestSetup*
+:DevcontainerTestSetup          Manually setup test plugin integrations
+
+INTEGRATION WITH VIM-TEST~
+
+When vim-test is detected, devcontainer.nvim automatically overrides the test
+strategy to run tests in the container:
+
+>vim
+    " These commands will automatically run in container:
+    :TestNearest
+    :TestFile
+    :TestSuite
+    :TestLast
+    :TestVisit
+<
+
+INTEGRATION WITH NEOTEST~
+
+For neotest users, the plugin wraps test execution to run within containers:
+
+>lua
+    require('neotest').run.run()  -- Runs in container if active
+<
+
+SUPPORTED LANGUAGES~
+
+Built-in test command patterns for:
+• Go: `go test`
+• Python: `pytest`
+• JavaScript/TypeScript: `npm test`
+• Rust: `cargo test`
+
+CUSTOM TEST COMMANDS~
+
+You can add custom test patterns for other languages:
+
+>lua
+    local test_runner = require('devcontainer.test_runner')
+    test_runner.wrapper_config.ruby = {
+      test_nearest = 'bundle exec rspec %s:%d',
+      test_file = 'bundle exec rspec %s',
+      test_suite = 'bundle exec rspec',
+    }
+<
+
+==============================================================================
+12. USER EVENTS                                         *devcontainer-events*
 
 The plugin triggers User autocmd events during devcontainer lifecycle changes.
 These can be used to update statuslines, run custom commands, or integrate
@@ -1241,7 +1364,7 @@ Statusline integration:
 See |examples/statusline_events.lua| for a complete statusline implementation.
 
 ==============================================================================
-12. CONTRIBUTING                                   *devcontainer-contributing*
+14. CONTRIBUTING                                   *devcontainer-contributing*
 
 Contributions are welcome! Visit the GitHub repository:
 https://github.com/ksoichiro/devcontainer.nvim
