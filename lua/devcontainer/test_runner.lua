@@ -10,8 +10,19 @@ local test_plugins = {
   -- vim-test/vim-test
   vim_test = {
     name = 'vim-test',
+    package_names = { 'vim-test', 'vim-test/vim-test' },
     available = function()
       return vim.fn.exists(':TestNearest') == 2
+    end,
+    lazy_available = function()
+      -- Check if plugin is installed but not yet loaded
+      local installed_plugins = M._get_installed_plugins()
+      for _, pkg in ipairs({ 'vim-test', 'vim-test/vim-test' }) do
+        if installed_plugins[pkg] then
+          return true
+        end
+      end
+      return false
     end,
     commands = {
       'TestNearest',
@@ -24,8 +35,18 @@ local test_plugins = {
   -- klen/nvim-test
   nvim_test = {
     name = 'nvim-test',
+    package_names = { 'nvim-test', 'klen/nvim-test' },
     available = function()
       return vim.fn.exists(':TestNearest') == 2 and vim.g.test_runner ~= nil
+    end,
+    lazy_available = function()
+      local installed_plugins = M._get_installed_plugins()
+      for _, pkg in ipairs({ 'nvim-test', 'klen/nvim-test' }) do
+        if installed_plugins[pkg] then
+          return true
+        end
+      end
+      return false
     end,
     commands = {
       'TestNearest',
@@ -39,9 +60,19 @@ local test_plugins = {
   -- nvim-neotest/neotest
   neotest = {
     name = 'neotest',
+    package_names = { 'neotest', 'nvim-neotest/neotest' },
     available = function()
       local ok = pcall(require, 'neotest')
       return ok
+    end,
+    lazy_available = function()
+      local installed_plugins = M._get_installed_plugins()
+      for _, pkg in ipairs({ 'neotest', 'nvim-neotest/neotest' }) do
+        if installed_plugins[pkg] then
+          return true
+        end
+      end
+      return false
     end,
     commands = {}, -- Neotest uses Lua API rather than commands
   },
@@ -76,6 +107,69 @@ M.wrapper_config = {
     test_suite = 'cargo test',
   },
 }
+
+-- Get installed plugins from various plugin managers
+function M._get_installed_plugins()
+  local installed = {}
+
+  -- Check for lazy.nvim
+  if pcall(require, 'lazy') then
+    local lazy = require('lazy')
+    local plugins = lazy.plugins()
+    for _, plugin in pairs(plugins) do
+      -- Add plugin name variations
+      if plugin.name then
+        installed[plugin.name] = true
+      end
+      if plugin.url then
+        -- Extract repo name from URL (e.g., "nvim-neotest/neotest" from git URL)
+        local repo_name = plugin.url:match('([^/]+/[^/]+)%.git$') or plugin.url:match('([^/]+/[^/]+)$')
+        if repo_name then
+          installed[repo_name] = true
+        end
+      end
+      -- Also add the plugin spec name if different
+      if plugin[1] then
+        installed[plugin[1]] = true
+      end
+    end
+  end
+
+  -- Check for packer.nvim
+  if _G.packer_plugins then
+    for plugin_name, _ in pairs(_G.packer_plugins) do
+      installed[plugin_name] = true
+    end
+  end
+
+  -- Check for vim-plug (basic check)
+  if vim.fn.exists('*plug#begin') == 1 then
+    -- vim-plug doesn't expose plugin list easily, fall back to directory checks
+    local plugin_dirs = vim.fn.globpath(vim.fn.stdpath('data') .. '/plugged', '*', 0, 1)
+    for _, dir in ipairs(plugin_dirs) do
+      local plugin_name = vim.fn.fnamemodify(dir, ':t')
+      installed[plugin_name] = true
+    end
+  end
+
+  return installed
+end
+
+-- Check if any test plugin is available (loaded or installed)
+function M._check_test_plugins_availability()
+  local available_plugins = {}
+  local installable_plugins = {}
+
+  for key, plugin_config in pairs(test_plugins) do
+    if plugin_config.available() then
+      table.insert(available_plugins, plugin_config.name)
+    elseif plugin_config.lazy_available and plugin_config.lazy_available() then
+      table.insert(installable_plugins, plugin_config.name)
+    end
+  end
+
+  return available_plugins, installable_plugins
+end
 
 -- Get the current container and configuration
 local function get_container_info()
@@ -236,15 +330,26 @@ function M.run_test_in_container(test_command, opts)
   end)
 end
 
--- Hook into vim-test commands
+-- Hook into vim-test commands (no plugin loading required)
 function M.setup_vim_test()
-  if not test_plugins.vim_test.available() then
+  -- Check if vim-test is installed (not necessarily loaded)
+  local installed_plugins = M._get_installed_plugins()
+  local has_vim_test = false
+  for _, pkg in ipairs(test_plugins.vim_test.package_names) do
+    if installed_plugins[pkg] then
+      has_vim_test = true
+      break
+    end
+  end
+
+  if not has_vim_test then
     return false
   end
 
-  log.info('Setting up vim-test integration')
+  log.info('Setting up vim-test integration (lazy-compatible)')
 
-  -- Override test strategies
+  -- Set up strategy without requiring plugin to be loaded
+  -- These global variables will be used when vim-test loads
   vim.g.test_strategy = 'custom'
   vim.g['test#custom_strategies'] = vim.g['test#custom_strategies'] or {}
   vim.g['test#custom_strategies']['devcontainer'] = function(cmd)
@@ -257,15 +362,25 @@ function M.setup_vim_test()
   return true
 end
 
--- Hook into nvim-test commands
+-- Hook into nvim-test commands (no plugin loading required)
 function M.setup_nvim_test()
-  if not test_plugins.nvim_test.available() then
+  -- Check if nvim-test is installed (not necessarily loaded)
+  local installed_plugins = M._get_installed_plugins()
+  local has_nvim_test = false
+  for _, pkg in ipairs(test_plugins.nvim_test.package_names) do
+    if installed_plugins[pkg] then
+      has_nvim_test = true
+      break
+    end
+  end
+
+  if not has_nvim_test then
     return false
   end
 
-  log.info('Setting up nvim-test integration')
+  log.info('Setting up nvim-test integration (lazy-compatible)')
 
-  -- nvim-test uses similar strategy system
+  -- Set up strategy without requiring plugin to be loaded
   vim.g.test_strategy = 'custom'
   vim.g.test_custom_strategies = vim.g.test_custom_strategies or {}
   vim.g.test_custom_strategies.devcontainer = function(cmd)
@@ -275,10 +390,28 @@ function M.setup_nvim_test()
   return true
 end
 
--- Hook into neotest
+-- Hook into neotest (requires plugin to be loaded)
 function M.setup_neotest()
+  -- First check if neotest is installed
+  local installed_plugins = M._get_installed_plugins()
+  local has_neotest = false
+  for _, pkg in ipairs(test_plugins.neotest.package_names) do
+    if installed_plugins[pkg] then
+      has_neotest = true
+      break
+    end
+  end
+
+  if not has_neotest then
+    return false
+  end
+
+  -- Try to require neotest (this actually needs the plugin to be loaded)
   local ok, neotest = pcall(require, 'neotest')
   if not ok then
+    log.info('neotest is installed but not loaded yet - will integrate when loaded')
+    -- Set up a deferred integration for when neotest loads
+    M._setup_neotest_deferred()
     return false
   end
 
@@ -334,8 +467,29 @@ function M.setup_neotest()
   return true
 end
 
+-- Set up deferred neotest integration for lazy loading
+function M._setup_neotest_deferred()
+  -- Create an autocmd to integrate when neotest is loaded
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'LazyLoad',
+    callback = function(event)
+      if event.data and event.data.name == 'neotest' then
+        -- Try to set up neotest integration now that it's loaded
+        M.setup_neotest()
+      end
+    end,
+  })
+end
+
 -- Setup all available test integrations
 function M.setup()
+  -- Simply set up integrations based on what's installed
+  -- No need to actively load plugins - just set up global variables
+  return M._setup_loaded_plugins()
+end
+
+-- Setup plugins that are currently loaded
+function M._setup_loaded_plugins()
   local integrations = {
     { name = 'vim-test', setup = M.setup_vim_test },
     { name = 'nvim-test', setup = M.setup_nvim_test },
@@ -350,8 +504,15 @@ function M.setup()
     end
   end
 
+  local available_plugins, installable_plugins = M._check_test_plugins_availability()
+
   if setup_count == 0 then
-    log.debug('No test plugins found to integrate with')
+    if #installable_plugins > 0 then
+      log.info('Found test plugins installed but not loaded: %s', table.concat(installable_plugins, ', '))
+      log.info('Consider adding devcontainer.nvim as a dependency or loading test plugins before container start')
+    else
+      log.debug('No test plugins found to integrate with')
+    end
   else
     log.info('Set up %d test plugin integration(s)', setup_count)
   end

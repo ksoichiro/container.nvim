@@ -41,6 +41,33 @@ A Neovim plugin that provides VSCode Dev Containers-like development experience.
 }
 ```
 
+#### With Test Plugin Integration
+
+Test plugins can be installed independently and will be automatically detected:
+
+```lua
+{
+  'ksoichiro/devcontainer.nvim',
+  dependencies = { 'nvim-lua/plenary.nvim' },
+  config = function()
+    require('devcontainer').setup({
+      test_integration = { enabled = true },
+    })
+  end,
+},
+{
+  'vim-test/vim-test',
+  lazy = true, -- Works with lazy loading
+},
+{
+  'nvim-neotest/neotest',
+  lazy = true, -- Deferred integration for lazy loading
+  dependencies = {
+    'nvim-neotest/neotest-go', -- Add adapters as needed
+  },
+}
+```
+
 ### packer.nvim
 
 ```lua
@@ -199,6 +226,12 @@ devcontainer.nvim supports running tests in containers with two output modes:
 **Output Modes:**
 - **Buffer Mode**: Tests run asynchronously with output displayed in Neovim's message area. Shows container indicators (🐳) and completion status.
 - **Terminal Mode**: Tests run interactively in a dedicated terminal window. Silent execution with all output appearing in the terminal. Reuses the same terminal session for repeated runs.
+
+**Plugin Detection:**
+devcontainer.nvim automatically detects installed test plugins without requiring them to be loaded:
+- **vim-test/nvim-test**: Only installation required - integration works with lazy loading
+- **neotest**: Requires loading for full integration, but provides deferred setup for lazy loading
+- **Fallback**: Manual test commands work independently of any test plugin
 
 ### Management
 

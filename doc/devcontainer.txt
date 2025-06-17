@@ -1193,6 +1193,42 @@ Manual setup:
     :DevcontainerTestSetup
 <
 
+PLUGIN DETECTION~
+
+devcontainer.nvim automatically detects and integrates with test plugins:
+
+• Already loaded plugins are detected immediately
+• Installed but not loaded plugins (lazy.nvim) are loaded on-demand
+• Manual fallback commands work without any test plugin
+
+For lazy.nvim users, test plugins can be loaded on-demand:
+>lua
+    -- Test plugins can be lazy-loaded
+    {
+      'vim-test/vim-test',
+      lazy = true, -- devcontainer.nvim will load when needed
+    }
+<
+
+For optimal integration, ensure test plugins are available:
+>lua
+    -- Option 1: Load eagerly as dependencies
+    {
+      'ksoichiro/devcontainer.nvim',
+      dependencies = { 'vim-test/vim-test' },
+    }
+
+    -- Option 2: Let devcontainer.nvim load on-demand (lazy.nvim only)
+    {
+      'ksoichiro/devcontainer.nvim',
+      config = function() require('devcontainer').setup() end,
+    },
+    {
+      'vim-test/vim-test',
+      lazy = true,
+    }
+<
+
 OUTPUT MODES~
 
 Buffer Mode (Default)~
