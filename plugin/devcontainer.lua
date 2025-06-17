@@ -348,50 +348,52 @@ local function create_commands()
   })
 
   -- Test runner commands
-  vim.api.nvim_create_user_command('DevcontainerTestNearest', function()
-    require('devcontainer.test_runner').run_nearest_test()
+  vim.api.nvim_create_user_command('DevcontainerTestNearest', function(args)
+    local opts = {}
+    if args.args and args.args ~= '' then
+      opts.output_mode = args.args
+    end
+    require('devcontainer.test_runner').run_nearest_test(opts)
   end, {
     desc = 'Run nearest test in devcontainer',
+    nargs = '?',
+    complete = function()
+      return { 'buffer', 'terminal' }
+    end,
   })
 
-  vim.api.nvim_create_user_command('DevcontainerTestFile', function()
-    require('devcontainer.test_runner').run_file_tests()
+  vim.api.nvim_create_user_command('DevcontainerTestFile', function(args)
+    local opts = {}
+    if args.args and args.args ~= '' then
+      opts.output_mode = args.args
+    end
+    require('devcontainer.test_runner').run_file_tests(opts)
   end, {
     desc = 'Run all tests in current file in devcontainer',
+    nargs = '?',
+    complete = function()
+      return { 'buffer', 'terminal' }
+    end,
   })
 
-  vim.api.nvim_create_user_command('DevcontainerTestSuite', function()
-    require('devcontainer.test_runner').run_suite_tests()
+  vim.api.nvim_create_user_command('DevcontainerTestSuite', function(args)
+    local opts = {}
+    if args.args and args.args ~= '' then
+      opts.output_mode = args.args
+    end
+    require('devcontainer.test_runner').run_suite_tests(opts)
   end, {
     desc = 'Run entire test suite in devcontainer',
+    nargs = '?',
+    complete = function()
+      return { 'buffer', 'terminal' }
+    end,
   })
 
   vim.api.nvim_create_user_command('DevcontainerTestSetup', function()
     require('devcontainer.test_runner').setup()
   end, {
     desc = 'Setup test plugin integrations',
-  })
-
-  -- Terminal-based test commands
-  vim.api.nvim_create_user_command('DevcontainerTestNearestTerminal', function()
-    local test_runner = require('devcontainer.test_runner')
-    test_runner.run_nearest_test({ output_mode = 'terminal' })
-  end, {
-    desc = 'Run nearest test in container terminal',
-  })
-
-  vim.api.nvim_create_user_command('DevcontainerTestFileTerminal', function()
-    local test_runner = require('devcontainer.test_runner')
-    test_runner.run_file_tests({ output_mode = 'terminal' })
-  end, {
-    desc = 'Run file tests in container terminal',
-  })
-
-  vim.api.nvim_create_user_command('DevcontainerTestSuiteTerminal', function()
-    local test_runner = require('devcontainer.test_runner')
-    test_runner.run_suite_tests({ output_mode = 'terminal' })
-  end, {
-    desc = 'Run test suite in container terminal',
   })
 end
 

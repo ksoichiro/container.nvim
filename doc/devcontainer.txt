@@ -1184,6 +1184,7 @@ in the configuration:
         enabled = true,           -- Enable test integration
         auto_setup = true,        -- Auto-setup on container start
         output_mode = 'buffer',   -- Default output mode: 'buffer' or 'terminal'
+                                  -- Can be overridden with command arguments
       }
     })
 <
@@ -1241,33 +1242,43 @@ Tests run interactively in a dedicated terminal window. Silent execution with
 all output appearing in the terminal. Reuses the same terminal session for
 repeated runs. Useful for debugging and interactive testing.
 
-BUFFER MODE COMMANDS~
+TEST COMMANDS~
 
                                             *:DevcontainerTestNearest*
-:DevcontainerTestNearest        Run the test nearest to the cursor in container
-                                (output in buffer)
+:DevcontainerTestNearest [{output_mode}]
+                                Run the test nearest to the cursor in container.
+                                {output_mode} can be 'buffer' or 'terminal'.
+                                If omitted, uses test_integration.output_mode
+                                setting (default: 'buffer').
 
                                             *:DevcontainerTestFile*
-:DevcontainerTestFile           Run all tests in current file in container
-                                (output in buffer)
+:DevcontainerTestFile [{output_mode}]
+                                Run all tests in current file in container.
+                                {output_mode} can be 'buffer' or 'terminal'.
+                                If omitted, uses test_integration.output_mode
+                                setting (default: 'buffer').
 
                                             *:DevcontainerTestSuite*
-:DevcontainerTestSuite          Run entire test suite in container
-                                (output in buffer)
+:DevcontainerTestSuite [{output_mode}]
+                                Run entire test suite in container.
+                                {output_mode} can be 'buffer' or 'terminal'.
+                                If omitted, uses test_integration.output_mode
+                                setting (default: 'buffer').
 
-TERMINAL MODE COMMANDS~
+Examples:
+>vim
+    " Use default output mode (from config)
+    :DevcontainerTestNearest
 
-                                            *:DevcontainerTestNearestTerminal*
-:DevcontainerTestNearestTerminal
-                                Run the test nearest to the cursor in container
-                                terminal
+    " Force buffer output
+    :DevcontainerTestNearest buffer
 
-                                            *:DevcontainerTestFileTerminal*
-:DevcontainerTestFileTerminal   Run all tests in current file in container
-                                terminal
+    " Force terminal output
+    :DevcontainerTestNearest terminal
 
-                                            *:DevcontainerTestSuiteTerminal*
-:DevcontainerTestSuiteTerminal  Run entire test suite in container terminal
+    " Run file tests in terminal
+    :DevcontainerTestFile terminal
+<
 
 SETUP COMMANDS~
 
