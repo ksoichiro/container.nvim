@@ -48,16 +48,12 @@ M.defaults = {
     history_dir = (vim.fn and vim.fn.stdpath('data') or '/tmp') .. '/devcontainer/terminal_history',
 
     -- Default positioning
-    default_position = 'split', -- 'split', 'vsplit', 'tab', 'float'
+    default_position = 'split', -- 'split', 'tab', 'float'
 
-    -- Size configuration
-    split_size = 0.3, -- Size ratio for splits (0.1 to 0.9)
-
-    -- Split configuration
-    split = {
-      height = 15, -- Lines for horizontal split
-      width = 80, -- Columns for vertical split
-    },
+    -- Custom split command for positioning and sizing
+    -- Examples: 'botright', 'topleft', 'rightbelow', 'leftabove'
+    -- Can include size: 'botright 20', 'vertical rightbelow 80'
+    split_command = 'belowright', -- Default: open splits below/right
 
     -- Float configuration
     float = {
@@ -214,7 +210,7 @@ local function validate_config(config)
   end
 
   -- Validate terminal default_position
-  local valid_positions = { 'split', 'vsplit', 'tab', 'float' }
+  local valid_positions = { 'split', 'tab', 'float' }
   if not vim.tbl_contains(valid_positions, config.terminal.default_position) then
     table.insert(errors, 'Invalid terminal default_position: ' .. config.terminal.default_position)
   end

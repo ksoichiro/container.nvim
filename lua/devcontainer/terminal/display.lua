@@ -17,8 +17,6 @@ function M.create_terminal_buffer(session, position, opts)
 
   if position == 'split' then
     buf_id, win_id = M._create_split_terminal(session, opts)
-  elseif position == 'vsplit' then
-    buf_id, win_id = M._create_vsplit_terminal(session, opts)
   elseif position == 'tab' then
     buf_id, win_id = M._create_tab_terminal(session, opts)
   elseif position == 'float' then
@@ -41,54 +39,27 @@ function M.create_terminal_buffer(session, position, opts)
   return buf_id, win_id, nil
 end
 
--- Create horizontal split terminal
+-- Create split terminal (handles both horizontal and vertical)
 function M._create_split_terminal(session, opts)
   local config = session.config
-  local height = opts.height or config.split.height or 15
 
-  -- Calculate height if it's a ratio
-  if height and height <= 1 then
-    height = math.floor(vim.o.lines * height)
+  -- Create buffer first
+  local buf_id = vim.api.nvim_create_buf(false, true)
+
+  -- Use split_command directly or fallback to default
+  local cmd = config.split_command or 'belowright 15'
+
+  -- If split_command doesn't include 'new', add it
+  if not cmd:match('new$') then
+    cmd = cmd .. ' new'
   end
 
-  -- Create split
-  vim.cmd('split')
+  -- Execute split command
+  vim.cmd(cmd)
   local win_id = vim.api.nvim_get_current_win()
 
-  -- Create a new buffer for the terminal (unlisted, scratch buffer)
-  local buf_id = vim.api.nvim_create_buf(false, true)
+  -- Set buffer to the new window
   vim.api.nvim_win_set_buf(win_id, buf_id)
-
-  -- Resize window
-  if height then
-    vim.api.nvim_win_set_height(win_id, height)
-  end
-
-  return buf_id, win_id
-end
-
--- Create vertical split terminal
-function M._create_vsplit_terminal(session, opts)
-  local config = session.config
-  local width = opts.width or config.split.width or 80
-
-  -- Calculate width if it's a ratio
-  if width and width <= 1 then
-    width = math.floor(vim.o.columns * width)
-  end
-
-  -- Create split
-  vim.cmd('vsplit')
-  local win_id = vim.api.nvim_get_current_win()
-
-  -- Create a new buffer for the terminal (unlisted, scratch buffer)
-  local buf_id = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_win_set_buf(win_id, buf_id)
-
-  -- Resize window
-  if width then
-    vim.api.nvim_win_set_width(win_id, width)
-  end
 
   return buf_id, win_id
 end
@@ -267,8 +238,12 @@ function M.switch_to_session(session)
     -- Focus existing window
     vim.api.nvim_set_current_win(win_id)
   else
-    -- Create new window for existing buffer
-    vim.cmd('split')
+    -- Create new window for existing buffer with positioning
+    local cmd = session.config.split_command or 'belowright 15'
+    if not cmd:match('new$') then
+      cmd = cmd .. ' new'
+    end
+    vim.cmd(cmd)
     vim.api.nvim_win_set_buf(vim.api.nvim_get_current_win(), buf_id)
   end
 

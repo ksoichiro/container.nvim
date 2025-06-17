@@ -275,13 +275,21 @@ require('devcontainer').setup({
     close_on_exit = false,          -- Keep buffer after process exit
     persistent_history = true,       -- Save history across sessions
     max_history_lines = 10000,      -- Max lines in history
-    default_position = 'split',     -- 'split', 'vsplit', 'tab', 'float'
 
-    -- Split configuration
-    split = {
-      height = 15,                  -- Lines for horizontal split
-      width = 80,                   -- Columns for vertical split
-    },
+    -- Terminal positioning
+    default_position = 'split',      -- 'split', 'tab', 'float'
+
+    -- Split command for positioning and sizing
+    -- Controls both horizontal/vertical positioning and window size
+    split_command = 'belowright',    -- Default: open splits below current window
+
+    -- Common examples:
+    -- 'botright 20'               - Bottom right with 20 lines height
+    -- 'topleft 15'                - Top left with 15 lines height  
+    -- 'vertical rightbelow 80'    - Vertical split right with 80 columns
+    -- 'vertical leftabove'        - Vertical split left
+    -- 'rightbelow'                - Below current window
+    -- 'leftabove'                 - Above current window
 
     -- Float configuration
     float = {
