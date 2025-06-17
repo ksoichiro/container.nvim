@@ -73,14 +73,20 @@ function M.detect_language_servers()
     -- Use synchronous execution to check if server exists
     local args = {
       'exec',
-      '--user',
-      'vscode',
-      '-e',
-      'PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/go/bin:/go/bin:/usr/local/bin:/usr/bin:/bin',
-      state.container_id,
-      'which',
-      server.cmd,
     }
+
+    -- Add environment-specific args (includes user and env vars)
+    local environment = require('devcontainer.environment')
+    local config = require('devcontainer').get_state().current_config
+    local env_args = environment.build_lsp_args(config)
+    for _, arg in ipairs(env_args) do
+      table.insert(args, arg)
+    end
+
+    -- Add container and command
+    table.insert(args, state.container_id)
+    table.insert(args, 'which')
+    table.insert(args, server.cmd)
     local result = docker.run_docker_command(args)
 
     if result and result.success then

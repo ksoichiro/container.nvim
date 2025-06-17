@@ -885,6 +885,54 @@ With Features~
     }
 <
 
+Environment Customization~
+
+Environment variables and language-specific settings can be customized using the
+`devcontainer.nvim` customizations section:
+
+Language presets:
+>json
+    {
+      "name": "Go Project",
+      "image": "mcr.microsoft.com/devcontainers/go:1-1.23-bookworm",
+      "postCreateCommand": "go install golang.org/x/tools/gopls@latest",
+      "customizations": {
+        "devcontainer.nvim": {
+          "languagePreset": "go"
+        }
+      }
+    }
+<
+
+Custom environment variables:
+>json
+    {
+      "name": "Python Project",
+      "image": "mcr.microsoft.com/devcontainers/python:3.11",
+      "customizations": {
+        "devcontainer.nvim": {
+          "languagePreset": "python",
+          "postCreateEnvironment": {
+            "PATH": "/custom/bin:$PATH",
+            "PYTHONPATH": "/workspace/src"
+          },
+          "execEnvironment": {
+            "DEBUG": "true"
+          },
+          "lspEnvironment": {
+            "PYTHON_LSP_SERVER": "pylsp"
+          }
+        }
+      }
+    }
+<
+
+Available language presets: go, python, node, rust, default
+Environment contexts:
+  • postCreateEnvironment: For postCreateCommand execution
+  • execEnvironment: For DevcontainerExec commands
+  • lspEnvironment: For LSP server detection and startup
+
 Port Forwarding~
 
 Basic port forwarding:

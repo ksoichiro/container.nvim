@@ -639,6 +639,12 @@ function M.exec(command, opts)
     opts.user = state.current_config.remote_user
   end
 
+  -- Set environment variables from configuration
+  if state.current_config then
+    local environment = require('devcontainer.environment')
+    opts.env = environment.get_exec_environment(state.current_config)
+  end
+
   print('Executing in container: ' .. command)
   if opts.user then
     print('  As user: ' .. opts.user)
@@ -1563,22 +1569,30 @@ function M._run_post_create_command(container_id, callback)
   log.info('Executing postCreateCommand: %s', command)
 
   local docker = require('devcontainer.docker.init')
+  local environment = require('devcontainer.environment')
+
+  -- Build exec args with environment-specific settings
   local exec_args = {
     'exec',
     '-i',
-    '--user',
-    'vscode',
-    '-e',
-    'PATH=/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:/usr/local/python/current/bin:/usr/local/bin:/usr/bin:/bin',
-    '-e',
-    'GOPATH=/go',
-    '-e',
-    'GOROOT=/usr/local/go',
-    container_id,
-    'bash',
-    '-c',
-    command,
   }
+
+  -- Add environment-specific args (includes user and env vars)
+  local env_args = environment.build_postcreate_args(state.current_config)
+  for _, arg in ipairs(env_args) do
+    table.insert(exec_args, arg)
+  end
+
+  -- Set working directory to workspace
+  local workspace_folder = state.current_config.workspaceFolder or '/workspace'
+  table.insert(exec_args, '-w')
+  table.insert(exec_args, workspace_folder)
+
+  -- Add container and command
+  table.insert(exec_args, container_id)
+  table.insert(exec_args, 'bash')
+  table.insert(exec_args, '-c')
+  table.insert(exec_args, command)
 
   docker.run_docker_command_async(exec_args, {}, function(result)
     vim.schedule(function()

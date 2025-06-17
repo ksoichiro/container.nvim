@@ -1,5 +1,11 @@
 {
   "customizations": {
+    "devcontainer.nvim": {
+      "languagePreset": "node",
+      "postCreateEnvironment": {
+        "PATH": "/home/node/.local/bin:/usr/local/nodejs/bin:/usr/local/bin:$PATH"
+      }
+    },
     "vscode": {
       "extensions": [
         "ms-vscode.vscode-typescript-next",
@@ -16,7 +22,7 @@
   ],
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-18-bullseye",
   "name": "Node.js LSP Example",
-  "postCreateCommand": "npm install -g typescript-language-server typescript eslint",
+  "postCreateCommand": "npm install typescript-language-server typescript eslint",
   "remoteUser": "node",
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"

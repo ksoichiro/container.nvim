@@ -425,6 +425,15 @@ function M.validate(config)
     end
   end
 
+  -- Validate environment customizations
+  if config.customizations then
+    local environment = require('devcontainer.environment')
+    local env_errors = environment.validate_environment(config)
+    for _, err in ipairs(env_errors) do
+      table.insert(errors, err)
+    end
+  end
+
   return errors
 end
 

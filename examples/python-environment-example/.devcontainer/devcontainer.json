@@ -1,0 +1,14 @@
+{
+  "customizations": {
+    "devcontainer.nvim": {
+      "additionalEnvironment": {
+        "DEBUG": "true",
+        "PYTHONPATH": "/workspace/src"
+      },
+      "languagePreset": "python"
+    }
+  },
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "name": "Python Project with Language Preset",
+  "postCreateCommand": "pip install python-lsp-server black flake8"
+}

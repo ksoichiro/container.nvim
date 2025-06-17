@@ -274,13 +274,19 @@ function M.get_client_cmd(server_name, server_config, container_id)
     'docker',
     'exec',
     '-i',
-    '--user',
-    'vscode',
-    '-e',
-    'PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/go/bin:/go/bin:/usr/local/bin:/usr/bin:/bin',
-    container_id,
-    server_config.cmd or server_config.path or server_name,
   }
+
+  -- Add environment-specific args (includes user and env vars)
+  local environment = require('devcontainer.environment')
+  local config = require('devcontainer').get_state().current_config
+  local env_args = environment.build_lsp_args(config)
+  for _, arg in ipairs(env_args) do
+    table.insert(cmd, arg)
+  end
+
+  -- Add container and LSP server command
+  table.insert(cmd, container_id)
+  table.insert(cmd, server_config.cmd or server_config.path or server_name)
 
   log.info('Forwarding: Creating LSP command for ' .. server_name .. ': ' .. table.concat(cmd, ' '))
 

@@ -1,5 +1,8 @@
 {
   "customizations": {
+    "devcontainer.nvim": {
+      "languagePreset": "go"
+    },
     "vscode": {
       "extensions": [
         "golang.go",
@@ -14,7 +17,7 @@
     8080,
     2345
   ],
-  "image": "mcr.microsoft.com/devcontainers/go:1-1.23-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
   "name": "Go LSP Example",
   "postCreateCommand": "which go && go version && go install golang.org/x/tools/gopls@latest && go install github.com/go-delve/delve/cmd/dlv@latest && go mod tidy",
   "remoteUser": "vscode",

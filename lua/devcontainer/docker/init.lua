@@ -990,10 +990,6 @@ function M.exec_command(container_id, command, opts)
     end
   end
 
-  -- Clear environment variables and use container's default environment (including user's local bin)
-  table.insert(args, '-e')
-  table.insert(args, 'PATH=/home/vscode/.local/bin:/usr/local/python/current/bin:/usr/local/bin:/usr/bin:/bin')
-
   table.insert(args, container_id)
 
   -- Split command
