@@ -4,7 +4,7 @@
 local M = {}
 
 -- Environment variable prefix
-local ENV_PREFIX = 'DEVCONTAINER_'
+local ENV_PREFIX = 'CONTAINER_'
 
 -- Type conversion functions
 local converters = {
@@ -224,7 +224,7 @@ function M.generate_docs()
     '# Environment Variable Configuration',
     '',
     'You can override container.nvim settings using environment variables.',
-    'All environment variables use the prefix `DEVCONTAINER_`.',
+    'All environment variables use the prefix `CONTAINER_`.',
     '',
     '## Supported Variables',
     '',
@@ -240,16 +240,16 @@ function M.generate_docs()
   table.insert(lines, '')
   table.insert(lines, '```bash')
   table.insert(lines, '# Enable auto-start')
-  table.insert(lines, 'export DEVCONTAINER_AUTO_START=true')
+  table.insert(lines, 'export CONTAINER_AUTO_START=true')
   table.insert(lines, '')
   table.insert(lines, '# Set log level to debug')
-  table.insert(lines, 'export DEVCONTAINER_LOG_LEVEL=debug')
+  table.insert(lines, 'export CONTAINER_LOG_LEVEL=debug')
   table.insert(lines, '')
   table.insert(lines, '# Configure common ports')
-  table.insert(lines, 'export DEVCONTAINER_PORT_COMMON=3000,8080,5000')
+  table.insert(lines, 'export CONTAINER_PORT_COMMON=3000,8080,5000')
   table.insert(lines, '')
   table.insert(lines, '# Use podman instead of docker')
-  table.insert(lines, 'export DEVCONTAINER_CONTAINER_RUNTIME=podman')
+  table.insert(lines, 'export CONTAINER_CONTAINER_RUNTIME=podman')
   table.insert(lines, '```')
 
   return table.concat(lines, '\n')

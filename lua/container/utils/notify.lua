@@ -7,7 +7,7 @@ local M = {}
 local config = nil
 local function get_config()
   if not config then
-    local ok, c = pcall(require, 'devcontainer.config')
+    local ok, c = pcall(require, 'container.config')
     if ok then
       config = c
     end

@@ -443,7 +443,7 @@ Configuration changes can be applied without restarting Neovim:
 
 - Manual reload: `:ContainerConfig reload`
 - Automatic reload: `:ContainerConfig watch` monitors `.container.nvim.lua`
-- Event-based: Other modules react to `DevcontainerConfigReloaded` event
+- Event-based: Other modules react to `ContainerConfigReloaded` event
 
 ## StatusLine Integration
 

@@ -27,11 +27,11 @@ function M.terminal(opts)
   opts = opts or {}
 
   -- Get current container
-  local devcontainer = require('container')
-  local container_id = devcontainer.get_container_id()
+  local container = require('container')
+  local container_id = container.get_container_id()
 
   if not container_id then
-    notify.critical('No active devcontainer. Start container first with :DevcontainerStart')
+    notify.critical('No active container. Start container first with :ContainerStart')
     return false
   end
 

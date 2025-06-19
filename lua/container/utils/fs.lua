@@ -310,7 +310,7 @@ end
 
 -- Generate temporary file path
 function M.temp_file(prefix, suffix)
-  prefix = prefix or 'devcontainer'
+  prefix = prefix or 'container'
   suffix = suffix or ''
   return M.join_path(M.get_temp_dir(), prefix .. '_' .. os.time() .. suffix)
 end

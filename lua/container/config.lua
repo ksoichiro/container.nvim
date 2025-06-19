@@ -63,7 +63,7 @@ M.defaults = {
     -- Session management
     persistent_history = true, -- Save terminal history across sessions
     max_history_lines = 10000, -- Maximum lines to keep in history
-    history_dir = (vim.fn and vim.fn.stdpath('data') or '/tmp') .. '/devcontainer/terminal_history',
+    history_dir = (vim.fn and vim.fn.stdpath('data') or '/tmp') .. '/container/terminal_history',
 
     -- Default positioning
     default_position = 'split', -- 'split', 'tab', 'float'
@@ -78,7 +78,7 @@ M.defaults = {
       width = 0.8, -- Ratio of editor width
       height = 0.6, -- Ratio of editor height
       border = 'rounded', -- 'single', 'double', 'rounded', 'solid', 'shadow'
-      title = 'DevContainer Terminal',
+      title = 'Container Terminal',
       title_pos = 'center', -- 'left', 'center', 'right'
     },
 
@@ -127,7 +127,7 @@ M.defaults = {
       },
       -- Text labels (can be customized or set to empty string)
       labels = {
-        container_name = 'DevContainer', -- Default name when container name is not available
+        container_name = 'Container', -- Default name when container name is not available
         available_suffix = 'available', -- Text shown for available containers
       },
       -- Whether to show container name or use generic label
@@ -389,7 +389,7 @@ function M.reload(user_config)
     -- Emit an event for other modules to react to config changes (only if vim.api is available)
     if vim.api and vim.api.nvim_exec_autocmds then
       vim.api.nvim_exec_autocmds('User', {
-        pattern = 'DevcontainerConfigReloaded',
+        pattern = 'ContainerConfigReloaded',
         modeline = false,
       })
     end
@@ -589,7 +589,7 @@ function M.watch_config_file(filepath)
         log.info('Configuration file changed: %s', filepath)
         M.reload()
       end,
-      group = vim.api.nvim_create_augroup('DevcontainerConfigWatch', { clear = true }),
+      group = vim.api.nvim_create_augroup('ContainerConfigWatch', { clear = true }),
     })
   end
 

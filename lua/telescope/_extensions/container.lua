@@ -6,7 +6,7 @@ if not has_telescope then
   error('This plugin requires nvim-telescope/telescope.nvim')
 end
 
-local pickers = require('devcontainer.ui.telescope.pickers')
+local pickers = require('container.ui.telescope.pickers')
 
 return telescope.register_extension({
   setup = function(ext_config, config)
