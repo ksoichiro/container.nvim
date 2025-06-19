@@ -1,5 +1,22 @@
 {
   "customizations": {
+    "container.nvim": {
+      "additionalEnvironment": {
+        "CONTAINER_DEV_MODE": "true"
+      },
+      "execEnvironment": {
+        "EDITOR": "nvim",
+        "PAGER": "less"
+      },
+      "languagePreset": "default",
+      "lspEnvironment": {
+        "LUA_CPATH": "/usr/local/lib/lua/5.4/?.so",
+        "LUA_PATH": "/workspace/lua/?.lua;/workspace/lua/?/init.lua"
+      },
+      "postCreateEnvironment": {
+        "LUACHECK_CONFIG": "/workspace/.luacheckrc"
+      }
+    },
     "vscode": {
       "extensions": [
         "sumneko.lua",
@@ -9,17 +26,17 @@
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/lua:1": {
+      "version": "5.4"
+    },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "18"
     }
   },
   "forwardPorts": [],
-  "image": "mcr.microsoft.com/devcontainers/lua:1-5.4-bullseye",
-  "mounts": [
-    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
-  ],
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
   "name": "container.nvim Development",
-  "postCreateCommand": "apt-get update && apt-get install -y ripgrep fd-find",
+  "postCreateCommand": "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ripgrep fd-find neovim git curl",
   "remoteUser": "vscode",
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
