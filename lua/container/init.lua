@@ -241,7 +241,7 @@ function M.start()
   docker = docker or require('container.docker.init')
 
   log.info('Starting devcontainer...')
-  print('=== DevContainer Start (Async) ===')
+  notify.container('Starting DevContainer...', 'info')
 
   -- Check if image is prepared
   local has_image = state.current_config.built_image
@@ -250,24 +250,24 @@ function M.start()
 
   if not has_image then
     log.info('Image not prepared, building/pulling first...')
-    print('Building/pulling image... This may take a while.')
-    print('Note: Image building is not yet fully async. This may take time.')
+    notify.container('Building/pulling image... This may take a while.', 'info')
+    notify.status('Image building is not yet fully async. This may take time.', 'info')
     M.build()
     return true
   end
 
   -- Check Docker availability (async)
-  print('Step 1: Checking Docker...')
+  notify.progress('start', 'Step 1: Checking Docker...')
   docker.check_docker_availability_async(function(available, err)
     vim.schedule(function()
       if not available then
-        print('✗ Docker not available: ' .. (err or 'unknown'))
+        notify.critical('Docker not available: ' .. (err or 'unknown'))
         return
       end
-      print('✓ Docker is available')
+      notify.progress('start', 'Step 1: ✓ Docker is available')
 
       -- Check for existing containers (async)
-      print('Step 2: Checking for existing containers...')
+      notify.progress('start', 'Step 2: Checking for existing containers...')
       M._list_containers_async('name=' .. state.current_config.name, function(containers)
         vim.schedule(function()
           local container_id = nil
@@ -275,7 +275,7 @@ function M.start()
           if #containers > 0 then
             container_id = containers[1].id
             log.info('Found existing container: %s', container_id)
-            print('✓ Found existing container: ' .. container_id)
+            notify.progress('start', 'Step 2: ✓ Found existing container: ' .. container_id:sub(1, 12))
             state.current_container = container_id
             clear_status_cache()
 
@@ -283,16 +283,16 @@ function M.start()
             M._start_final_step(container_id)
           else
             -- Create new container (async)
-            print('Step 3: Creating new container...')
+            notify.progress('start', 'Step 3: Creating new container...')
             M._create_container_full_async(state.current_config, function(create_result, create_err)
               vim.schedule(function()
                 if not create_result then
                   log.error('Failed to create container: %s', create_err)
-                  print('✗ Failed to create container: ' .. (create_err or 'unknown'))
+                  notify.critical('Failed to create container: ' .. (create_err or 'unknown'))
                   return
                 end
                 container_id = create_result
-                print('✓ Created container: ' .. container_id)
+                notify.progress('start', 'Step 3: ✓ Created container: ' .. container_id:sub(1, 12))
                 state.current_container = container_id
                 clear_status_cache()
 
@@ -306,19 +306,19 @@ function M.start()
     end)
   end)
 
-  print('DevContainer start initiated (non-blocking)...')
+  notify.status('DevContainer start initiated (non-blocking)...', 'info')
   return true
 end
 
 -- Final step: Container startup and setup
 function M._start_final_step(container_id)
-  print('Step 4: Starting container...')
+  notify.progress('start', 'Step 4: Starting container...')
   docker = docker or require('container.docker.init')
 
   docker.start_container_async(container_id, function(success, error_msg)
     vim.schedule(function()
       if success then
-        print('✓ Container started successfully!')
+        notify.container('Container started successfully!', 'info')
         log.info('Container is ready: %s', container_id)
 
         -- Trigger ContainerStarted event
@@ -351,14 +351,16 @@ function M._start_final_step(container_id)
 
         -- Execute post-start command (existing)
         if state.current_config.post_start_command then
-          print('Step 6: Running post-start command...')
+          notify.progress('start', 'Step 6: Running post-start command...')
           M.exec(state.current_config.post_start_command)
         end
 
-        print('=== DevContainer is ready! ===')
+        notify.container('DevContainer is ready!', 'info')
+        notify.clear_progress('start') -- Clear progress messages
       else
         log.error('Failed to start container')
-        print('✗ Failed to start container: ' .. (error_msg or 'unknown'))
+        notify.critical('Failed to start container: ' .. (error_msg or 'unknown'))
+        notify.clear_progress('start') -- Clear progress messages
       end
     end)
   end)
@@ -369,15 +371,15 @@ function M._create_container_full_async(config, callback)
   local docker = require('container.docker.init')
 
   -- Step 1: Check image existence
-  print('Step 3a: Checking if image exists locally...')
+  notify.progress('start', 'Step 3a: Checking if image exists locally...')
   docker.check_image_exists_async(config.image, function(exists, image_id)
     vim.schedule(function()
       if exists then
-        print('✓ Image found locally: ' .. config.image)
+        notify.progress('start', 'Step 3a: ✓ Image found locally: ' .. config.image)
         -- Image exists, create container directly
         M._create_container_direct(config, callback)
       else
-        print('⚠ Image not found locally, pulling: ' .. config.image)
+        notify.status('Image not found locally, pulling: ' .. config.image, 'warn')
         -- Pull image then create container
         M._pull_and_create_container(config, callback)
       end
@@ -389,11 +391,10 @@ end
 function M._pull_and_create_container(config, callback)
   local docker = require('container.docker.init')
 
-  print('Step 3b: Pulling image (this may take a while)...')
-  print('   Image: ' .. config.image)
-  print('   This is a large download and may take 5-15 minutes depending on your connection.')
-  print('   Progress will be shown below. You can continue using Neovim while this runs.')
-  print('   Note: If no progress appears after 30 seconds, there may be an issue.')
+  notify.container('Step 3b: Pulling image (this may take a while)...', 'info')
+  notify.status('Image: ' .. config.image, 'info')
+  notify.status('This is a large download and may take 5-15 minutes depending on your connection.', 'info')
+  log.info('Starting image pull for: %s', config.image)
 
   local start_time = vim.fn.reltime()
   local progress_count = 0
@@ -401,20 +402,26 @@ function M._pull_and_create_container(config, callback)
   local job_id = docker.pull_image_async(config.image, function(progress)
     progress_count = progress_count + 1
     local elapsed = vim.fn.reltimestr(vim.fn.reltime(start_time))
-    print(string.format('   [%ss] %s', elapsed, progress))
+    -- Use progress consolidation to reduce message spam
+    notify.progress('pull', string.format('[%ss] %s', elapsed, progress), {
+      consolidate_rapid = true,
+      consolidate_threshold = 2000, -- Only show progress every 2 seconds
+    })
 
     -- Confirm that progress is visible
     if progress_count == 1 then
-      print('   ✓ Docker pull output started - progress tracking is working')
+      notify.status('Docker pull output started - progress tracking is working', 'info')
     end
   end, function(success, result)
     vim.schedule(function()
       local elapsed = vim.fn.reltimestr(vim.fn.reltime(start_time))
-      print(string.format('   [%ss] Pull completed with status: %s', elapsed, tostring(success)))
+      notify.clear_progress('pull') -- Clear pull progress messages
+
+      log.info('Pull completed with status: %s in %s', tostring(success), elapsed)
 
       if success then
-        print('✓ Image pull completed successfully!')
-        print('   Now proceeding to create container...')
+        notify.container('Image pull completed successfully!', 'info')
+        notify.status('Now proceeding to create container...', 'info')
 
         -- Trigger ContainerBuilt event after successful pull
         vim.api.nvim_exec_autocmds('User', {
@@ -428,50 +435,49 @@ function M._pull_and_create_container(config, callback)
         -- Image pull successful, create container
         M._create_container_direct(config, callback)
       else
-        print('✗ Image pull failed:')
+        notify.critical('Image pull failed')
+        log.error('Image pull failed for %s', config.image)
 
+        local error_details = {}
         if result then
           if result.stderr and result.stderr ~= '' then
-            print('   Error output: ' .. result.stderr)
+            table.insert(error_details, 'Error: ' .. result.stderr)
           end
           if result.error then
-            print('   Error: ' .. result.error)
+            table.insert(error_details, 'Error: ' .. result.error)
           end
           if result.data_received == false then
-            print('   Issue: No data was received from Docker command')
-            print('   This suggests Docker may be unresponsive or the image name is invalid')
-          end
-          if result.duration then
-            print(string.format('   Duration: %.1f seconds', result.duration))
+            table.insert(error_details, 'No data received from Docker command')
+            table.insert(error_details, 'Docker may be unresponsive or image name invalid')
           end
         end
 
-        print('   Troubleshooting steps:')
-        print('   1. Check your internet connection')
-        print('   2. Verify the image name: ' .. config.image)
-        print('   3. Try manually: docker pull ' .. config.image)
-        print('   4. Check if Docker daemon is responsive: docker info')
-        print('   5. Use :DevcontainerTestPull for isolated testing')
+        -- Show error details with logging instead of direct print
+        for _, detail in ipairs(error_details) do
+          log.error(detail)
+        end
 
+        notify.status('Troubleshooting: Check network, verify image name: ' .. config.image, 'warn')
         callback(nil, 'Failed to pull image: ' .. (result and result.stderr or result and result.error or 'unknown'))
       end
     end)
   end)
 
   if job_id and job_id > 0 then
-    print('   ✓ Pull job started successfully (ID: ' .. job_id .. ')')
-    print('   Tip: Use :messages to see all progress, or :DevcontainerTestPull for testing')
+    notify.status('Pull job started successfully (ID: ' .. job_id .. ')', 'info')
+    log.debug('Docker pull job started with ID: %d', job_id)
 
     -- Check progress after 30 seconds
     vim.defer_fn(function()
       if progress_count == 0 then
-        print('   ⚠ Warning: No progress received after 30 seconds')
-        print('   This may indicate a Docker or network issue')
-        print("   Try :DevcontainerTestPull or manual 'docker pull " .. config.image .. "'")
+        notify.status('Warning: No progress received after 30 seconds', 'warn')
+        notify.status('This may indicate a Docker or network issue', 'warn')
+        log.warn('No pull progress received after 30 seconds for image: %s', config.image)
       end
     end, 30000)
   else
-    print('   ✗ Failed to start pull job (job_id: ' .. tostring(job_id) .. ')')
+    notify.critical('Failed to start pull job')
+    log.error('Failed to start Docker pull job, job_id: %s', tostring(job_id))
     callback(nil, 'Failed to start Docker pull job')
   end
 end
@@ -480,12 +486,14 @@ end
 function M._create_container_direct(config, callback)
   local docker = require('container.docker.init')
 
-  print('Step 3c: Creating container...')
+  notify.progress('start', 'Step 3c: Creating container...')
   docker.create_container_async(config, function(container_id, error_msg)
     if container_id then
-      print('✓ Container created successfully: ' .. container_id)
+      notify.progress('start', 'Step 3c: ✓ Container created successfully: ' .. container_id:sub(1, 12))
+      log.info('Container created successfully: %s', container_id)
     else
-      print('✗ Container creation failed: ' .. (error_msg or 'unknown'))
+      notify.critical('Container creation failed: ' .. (error_msg or 'unknown'))
+      log.error('Container creation failed: %s', error_msg or 'unknown')
     end
     callback(container_id, error_msg)
   end)
@@ -554,7 +562,8 @@ function M.kill()
   docker.kill_container(state.current_container, function(success, error_msg)
     vim.schedule(function()
       if success then
-        print('✓ Container killed successfully')
+        notify.container('Container killed successfully', 'info')
+        log.info('Container killed successfully: %s', state.current_container)
         -- Trigger ContainerStopped event before clearing state
         vim.api.nvim_exec_autocmds('User', {
           pattern = 'ContainerStopped',
@@ -568,7 +577,8 @@ function M.kill()
         clear_status_cache()
         state.current_config = nil
       else
-        print('✗ Failed to kill container: ' .. (error_msg or 'unknown'))
+        notify.critical('Failed to kill container: ' .. (error_msg or 'unknown'))
+        log.error('Failed to kill container: %s', error_msg or 'unknown')
       end
     end)
   end)
@@ -602,7 +612,8 @@ function M.terminate()
   docker.terminate_container(state.current_container, function(success, error_msg)
     vim.schedule(function()
       if success then
-        print('✓ Container terminated successfully')
+        notify.container('Container terminated successfully', 'info')
+        log.info('Container terminated successfully: %s', state.current_container)
         -- Trigger ContainerStopped event before clearing state
         vim.api.nvim_exec_autocmds('User', {
           pattern = 'ContainerStopped',
@@ -616,7 +627,8 @@ function M.terminate()
         clear_status_cache()
         state.current_config = nil
       else
-        print('✗ Failed to terminate container: ' .. (error_msg or 'unknown'))
+        notify.critical('Failed to terminate container: ' .. (error_msg or 'unknown'))
+        log.error('Failed to terminate container: %s', error_msg or 'unknown')
       end
     end)
   end)
@@ -629,7 +641,7 @@ function M.exec(command, opts)
   log = log or require('container.utils.log')
 
   if not state.current_container then
-    print('✗ No active container')
+    notify.critical('No active container')
     log.error('No active container')
     return false
   end
@@ -648,9 +660,10 @@ function M.exec(command, opts)
     opts.env = environment.get_exec_environment(state.current_config)
   end
 
-  print('Executing in container: ' .. command)
+  notify.status('Executing in container: ' .. command, 'info')
+  log.info('Executing command in container: %s', command)
   if opts.user then
-    print('  As user: ' .. opts.user)
+    log.debug('Command will run as user: %s', opts.user)
   end
 
   -- Track start time for duration
@@ -667,21 +680,30 @@ function M.exec(command, opts)
 
       if result.success then
         if result.stdout and result.stdout ~= '' then
+          notify.status('Command completed with output', 'info')
+          log.info('Command output: %s', result.stdout)
+          -- For exec commands, we might want to show output directly
+          -- since users expect to see the result
           print('=== Command Output ===')
           for line in result.stdout:gmatch('[^\n]+') do
             print(line)
           end
         else
-          print('Command completed (no output)')
+          notify.status('Command completed (no output)', 'info')
+          log.info('Command completed with no output')
         end
       else
-        print('✗ Command failed:')
+        notify.critical('Command failed')
+        log.error('Command failed with code %d', result.code or -1)
         if result.stderr and result.stderr ~= '' then
+          log.error('Command stderr: %s', result.stderr)
+          -- Show error output directly for debugging
+          print('✗ Command failed:')
           for line in result.stderr:gmatch('[^\n]+') do
             print('Error: ' .. line)
           end
         else
-          print('No error details available')
+          notify.status('No error details available', 'warn')
         end
       end
     end)
@@ -866,7 +888,7 @@ function M.status()
   log = log or require('container.utils.log')
 
   if not state.current_container then
-    print('No active container')
+    notify.status('No active container', 'info')
     return nil
   end
 
