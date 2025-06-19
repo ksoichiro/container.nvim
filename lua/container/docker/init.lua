@@ -995,7 +995,7 @@ function M.terminate_container(container_id, callback)
   end)
 end
 
--- Container removal
+-- Container removal (sync version, kept for compatibility)
 function M.remove_container(container_id, force)
   log.info('Removing container: %s', container_id)
 
@@ -1014,6 +1014,88 @@ function M.remove_container(container_id, force)
       log.error('Failed to remove container: %s', result.stderr)
     end
   end, 100)
+end
+
+-- Container removal (async version)
+function M.remove_container_async(container_id, force, callback)
+  log.info('Removing container (async): %s', container_id)
+
+  local args = { 'rm' }
+  if force then
+    table.insert(args, '-f')
+  end
+  table.insert(args, container_id)
+
+  M.run_docker_command_async(args, {}, function(result)
+    if result.success then
+      log.info('Successfully removed container: %s', container_id)
+      if callback then
+        vim.schedule(function()
+          callback(true, nil)
+        end)
+      end
+    else
+      local error_msg = result.stderr or 'unknown error'
+      log.error('Failed to remove container: %s', error_msg)
+      if callback then
+        vim.schedule(function()
+          callback(false, error_msg)
+        end)
+      end
+    end
+  end)
+end
+
+-- Stop and remove container (async)
+function M.stop_and_remove_container(container_id, stop_timeout, callback)
+  log.info('Stopping and removing container: %s', container_id)
+
+  stop_timeout = stop_timeout or 30
+
+  -- First stop the container
+  local args = { 'stop' }
+  if stop_timeout then
+    table.insert(args, '-t')
+    table.insert(args, tostring(stop_timeout))
+  end
+  table.insert(args, container_id)
+
+  M.run_docker_command_async(args, {}, function(stop_result)
+    if stop_result.success then
+      log.info('Container stopped: %s', container_id)
+
+      -- Then remove the container
+      M.remove_container_async(container_id, false, function(remove_success, remove_error)
+        if remove_success then
+          log.info('Container stopped and removed: %s', container_id)
+          if callback then
+            callback(true, nil)
+          end
+        else
+          log.error('Failed to remove container after stopping: %s', remove_error or 'unknown error')
+          if callback then
+            callback(false, remove_error)
+          end
+        end
+      end)
+    else
+      -- If stop fails, try force removal
+      log.warn('Failed to stop container, attempting force removal: %s', container_id)
+      M.remove_container_async(container_id, true, function(force_remove_success, force_remove_error)
+        if force_remove_success then
+          log.info('Container force removed: %s', container_id)
+          if callback then
+            callback(true, nil)
+          end
+        else
+          log.error('Failed to force remove container: %s', force_remove_error or 'unknown error')
+          if callback then
+            callback(false, force_remove_error)
+          end
+        end
+      end)
+    end
+  end)
 end
 
 -- Execute command in container

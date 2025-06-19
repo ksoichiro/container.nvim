@@ -135,6 +135,19 @@ Basic Operations~
     Requires confirmation unless [!] is used to skip the prompt.
     This may cause data loss.
 
+                                                        *:ContainerRemove*
+:ContainerRemove[!]
+    Remove a stopped container permanently. This will delete the container
+    from Docker but not affect the image. The container must be stopped
+    before removal. Requires confirmation unless [!] is used to skip the prompt.
+
+                                                    *:ContainerStopRemove*
+:ContainerStopRemove[!]
+    Stop the container and then remove it. This is a convenience command
+    that combines :ContainerStop and :ContainerRemove. If stopping fails,
+    it will attempt force removal. Requires confirmation unless [!] is used
+    to skip the prompt.
+
                                                        *:ContainerRestart*
 :ContainerRestart
     Stop and restart the devcontainer.

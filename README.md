@@ -146,6 +146,8 @@ For detailed command documentation, use `:help container-commands` in Neovim.
 | `:ContainerStop` | Stop container |
 | `:ContainerKill[!]` | Kill container (immediate termination, requires confirmation unless `!` is used) |
 | `:ContainerTerminate[!]` | Terminate container (immediate termination, requires confirmation unless `!` is used) |
+| `:ContainerRemove[!]` | Remove stopped container (requires confirmation unless `!` is used) |
+| `:ContainerStopRemove[!]` | Stop and remove container (requires confirmation unless `!` is used) |
 | `:ContainerRestart` | Restart container |
 
 ### Execution & Access
