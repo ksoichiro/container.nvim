@@ -1,6 +1,6 @@
 {
   "customizations": {
-    "devcontainer.nvim": {
+    "container.nvim": {
       "execEnvironment": {
         "GOPATH": "/go",
         "PATH": "/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:$PATH"

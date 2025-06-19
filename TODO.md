@@ -1,11 +1,11 @@
-# devcontainer.nvim TODO & Improvements
+# container.nvim TODO & Improvements
 
-This file tracks the development roadmap, completed features, and planned improvements for devcontainer.nvim.
+This file tracks the development roadmap, completed features, and planned improvements for container.nvim.
 
 ## Current Status (v0.3.0 Complete)
 
 ✅ **Core Features Completed**
-- Basic devcontainer operations (v0.1.0)
+- Basic container operations (v0.1.0)
 - LSP integration features (v0.2.0)
   - Automatic LSP server detection in Docker
   - Asynchronous Docker operations
@@ -42,7 +42,7 @@ Priority: Focus on user experience and ecosystem integration
 
 #### High Priority - User Interface
 - [x] **Telescope Integration** (Week 1-2) ✅ **COMPLETED**
-  - [x] devcontainer picker (select/switch between projects)
+  - [x] container picker (select/switch between projects)
   - [x] Terminal session picker with session management
   - [x] Port management picker (view/manage active ports) - Uses vim.ui.select due to telescope state issues
   - [x] Command history picker for DevcontainerExec
@@ -68,7 +68,7 @@ Priority: Focus on user experience and ecosystem integration
 - [x] **Configuration System Enhancement** (Week 7-8) ✅ **COMPLETED**
   - [x] Runtime configuration validation and error reporting
   - [x] Environment variable overrides with DEVCONTAINER_ prefix
-  - [x] Project-specific configuration file (.devcontainer.nvim.lua)
+  - [x] Project-specific configuration file (.container.nvim.lua)
   - [x] Dynamic configuration updates without restart
   - [x] Configuration save/load functionality
   - [x] Live configuration file watching
@@ -93,7 +93,7 @@ Priority: Seamless integration with popular Neovim development plugins
 
 #### Low Priority - General Integration
 - [ ] **General Command Execution API** (Week 7-8)
-  - [ ] Plugin integration framework (`devcontainer.integrate_command_plugin`)
+  - [ ] Plugin integration framework (`container.integrate_command_plugin`)
   - [ ] Command wrapping utilities for container execution
   - [ ] Documentation for third-party plugin integration
 
@@ -169,13 +169,13 @@ Priority: Production-ready plugin with full ecosystem compatibility
 - [ ] **Full VSCode devcontainer.json Compatibility**
   - [ ] Support for all standard devcontainer.json features
   - [ ] Feature and lifecycle script compatibility
-  - [ ] devcontainer CLI interoperability
+  - [ ] container CLI interoperability
   - [ ] Container template support
 
 ## External Plugin Integration Detailed Design
 
 ### nvim-test Integration
-Currently, test plugins like `klen/nvim-test` and `vim-test/vim-test` execute commands in the local environment, but devcontainer environments require the following integration:
+Currently, test plugins like `klen/nvim-test` and `vim-test/vim-test` execute commands in the local environment, but container environments require the following integration:
 
 **Implementation Approach:**
 - Hook/override test plugin command execution
@@ -201,16 +201,16 @@ Other plugins can be integrated using similar patterns:
 **Design Pattern:**
 ```lua
 -- API for plugin integration
-devcontainer.integrate_command_plugin({
+container.integrate_command_plugin({
   plugin_name = "nvim-test",
   command_patterns = {"Test*"},
   wrapper_function = function(original_cmd)
-    return devcontainer.wrap_command(original_cmd)
+    return container.wrap_command(original_cmd)
   end
 })
 ```
 
-This functionality provides developers with a complete development experience within devcontainers.
+This functionality provides developers with a complete development experience within containers.
 
 ## Environment-specific Configuration Design Improvements
 
@@ -223,11 +223,11 @@ Currently, environment variables (PATH, GOPATH, etc.) for postCreateCommand exec
 ```json
 {
   "name": "Go Project",
-  "image": "mcr.microsoft.com/devcontainers/go:1-1.23-bookworm",
+  "image": "mcr.microsoft.com/containers/go:1-1.23-bookworm",
   "postCreateCommand": "go install golang.org/x/tools/gopls@latest",
 
   "customizations": {
-    "devcontainer.nvim": {
+    "container.nvim": {
       "postCreateEnvironment": {
         "PATH": "/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:$PATH",
         "GOPATH": "/go",
@@ -245,7 +245,7 @@ Currently, environment variables (PATH, GOPATH, etc.) for postCreateCommand exec
 ```json
 {
   "customizations": {
-    "devcontainer.nvim": {
+    "container.nvim": {
       "languagePreset": "go",  // go, python, node, rust, etc.
       "additionalEnvironment": {
         "CUSTOM_VAR": "value"

@@ -1,5 +1,5 @@
 /**
- * Example Node.js file to test LSP integration with devcontainer.nvim
+ * Example Node.js file to test LSP integration with container.nvim
  */
 
 const express = require('express');
@@ -72,7 +72,7 @@ app.use(express.json());
 // Routes
 app.get('/', (req, res) => {
   res.json({
-    message: createGreeting('devcontainer.nvim'),
+    message: createGreeting('container.nvim'),
     timestamp: new Date().toISOString()
   });
 });
@@ -122,7 +122,7 @@ app.post('/calculate/:operation', (req, res) => {
 // Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-  console.log(createGreeting('devcontainer.nvim development server'));
+  console.log(createGreeting('container.nvim development server'));
 });
 
 module.exports = app;

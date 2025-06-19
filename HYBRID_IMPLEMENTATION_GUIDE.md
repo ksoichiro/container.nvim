@@ -1,12 +1,12 @@
 # Hybrid Architecture Implementation Guide
 
-This guide provides detailed implementation steps for the recommended hybrid approach to deep plugin integration in devcontainer.nvim.
+This guide provides detailed implementation steps for the recommended hybrid approach to deep plugin integration in container.nvim.
 
 ## Phase 1: Enhanced Command Forwarding Framework
 
 ### 1.1 Plugin Integration API
 
-Create a new module `lua/devcontainer/plugin_integration/init.lua`:
+Create a new module `lua/container/plugin_integration/init.lua`:
 
 ```lua
 local M = {}
@@ -71,7 +71,7 @@ end
 
 ### 1.2 Integration Templates
 
-Create `lua/devcontainer/plugin_integration/templates.lua`:
+Create `lua/container/plugin_integration/templates.lua`:
 
 ```lua
 local M = {}
@@ -85,7 +85,7 @@ M.test_runner = function(config)
       return vim.fn.exists(':' .. (config.main_command or 'TestNearest')) == 2
     end,
     wrapper = function(cmd, args)
-      local docker = require('devcontainer.docker')
+      local docker = require('container.docker')
       local container_id = require('devcontainer').get_container_id()
 
       -- Extract test command from args
@@ -104,7 +104,7 @@ M.test_runner = function(config)
       -- Override plugin commands
       for _, cmd in ipairs(config.commands) do
         vim.cmd(string.format([[
-          command! -nargs=* %s lua require('devcontainer.plugin_integration').execute('%s', '<args>')
+          command! -nargs=* %s lua require('container.plugin_integration').execute('%s', '<args>')
         ]], cmd, cmd))
       end
     end
@@ -118,7 +118,7 @@ M.linter = function(config)
     patterns = config.patterns or { "^Lint" },
     wrapper = function(cmd, args)
       local file_path = vim.fn.expand('%:p')
-      local container_path = require('devcontainer.lsp.path').to_container(file_path)
+      local container_path = require('container.lsp.path').to_container(file_path)
 
       local lint_cmd = string.format(
         config.command_template,
@@ -126,7 +126,7 @@ M.linter = function(config)
         container_path
       )
 
-      return require('devcontainer.docker').exec_command(
+      return require('container.docker').exec_command(
         require('devcontainer').get_container_id(),
         lint_cmd,
         { user = 'vscode', stream = true }
@@ -142,7 +142,7 @@ M.formatter = function(config)
     patterns = config.patterns or { "^Format" },
     wrapper = function(cmd, args)
       local file_path = vim.fn.expand('%:p')
-      local container_path = require('devcontainer.lsp.path').to_container(file_path)
+      local container_path = require('container.lsp.path').to_container(file_path)
 
       -- Read current buffer content
       local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -155,7 +155,7 @@ M.formatter = function(config)
         container_path
       )
 
-      local result = require('devcontainer.docker').exec_command(
+      local result = require('container.docker').exec_command(
         require('devcontainer').get_container_id(),
         format_cmd,
         {
@@ -181,10 +181,10 @@ return M
 
 ### 1.3 Common Plugin Integrations
 
-Create `lua/devcontainer/plugin_integration/plugins/vim_test.lua`:
+Create `lua/container/plugin_integration/plugins/vim_test.lua`:
 
 ```lua
-local templates = require('devcontainer.plugin_integration.templates')
+local templates = require('container.plugin_integration.templates')
 
 return templates.test_runner({
   name = 'vim-test',
@@ -205,7 +205,7 @@ return templates.test_runner({
 
 ### 1.4 Auto-detection System
 
-Create `lua/devcontainer/plugin_integration/detector.lua`:
+Create `lua/container/plugin_integration/detector.lua`:
 
 ```lua
 local M = {}
@@ -229,7 +229,7 @@ function M.auto_detect()
     if M._is_plugin_loaded(plugin_path) then
       local ok, integration = pcall(require, 'devcontainer.plugin_integration.plugins.' .. integration_name)
       if ok then
-        require('devcontainer.plugin_integration').register(integration)
+        require('container.plugin_integration').register(integration)
         table.insert(loaded, integration_name)
       end
     end
@@ -269,7 +269,7 @@ return M
 
 ### 2.1 Container Plugin Host
 
-Create `lua/devcontainer/remote_plugin/host.lua`:
+Create `lua/container/remote_plugin/host.lua`:
 
 ```lua
 local M = {}
@@ -290,7 +290,7 @@ function M.setup_host(container_id)
   ]]
 
   -- Copy and execute setup script
-  local docker = require('devcontainer.docker')
+  local docker = require('container.docker')
   docker.exec_command(container_id, 'bash -c "' .. setup_script .. '"', {
     user = 'vscode',
     detach = true
@@ -305,7 +305,7 @@ end
 -- Connect to remote plugin host
 function M.connect(container_id)
   -- Get container IP
-  local docker = require('devcontainer.docker')
+  local docker = require('container.docker')
   local ip_result = docker.exec_command(container_id,
     'hostname -I | awk \'{print $1}\'',
     { capture_output = true }
@@ -338,7 +338,7 @@ return M
 
 ### 2.2 Plugin Router
 
-Create `lua/devcontainer/plugin_integration/router.lua`:
+Create `lua/container/plugin_integration/router.lua`:
 
 ```lua
 local M = {}
@@ -386,7 +386,7 @@ M.categories = {
 -- Determine execution strategy for a plugin
 function M.get_strategy(plugin_name)
   -- Check user overrides first
-  local config = require('devcontainer.config').get()
+  local config = require('container.config').get()
   if config.plugin_strategies and config.plugin_strategies[plugin_name] then
     return config.plugin_strategies[plugin_name]
   end
@@ -417,9 +417,9 @@ function M.route_command(plugin_name, cmd, args)
   local strategy = M.get_strategy(plugin_name)
 
   if strategy == M.strategies.COMMAND then
-    return require('devcontainer.plugin_integration').wrap_command(plugin_name, cmd, args)
+    return require('container.plugin_integration').wrap_command(plugin_name, cmd, args)
   elseif strategy == M.strategies.REMOTE then
-    return require('devcontainer.remote_plugin').execute_remote(plugin_name, cmd, args)
+    return require('container.remote_plugin').execute_remote(plugin_name, cmd, args)
   elseif strategy == M.strategies.NATIVE then
     -- Native plugins handle their own integration
     return nil
@@ -437,7 +437,7 @@ return M
 
 ### 3.1 Performance Monitor
 
-Create `lua/devcontainer/plugin_integration/monitor.lua`:
+Create `lua/container/plugin_integration/monitor.lua`:
 
 ```lua
 local M = {}
@@ -542,7 +542,7 @@ return M
 
 ### 3.2 Integration Manager
 
-Create `lua/devcontainer/plugin_integration/manager.lua`:
+Create `lua/container/plugin_integration/manager.lua`:
 
 ```lua
 local M = {}
@@ -550,21 +550,21 @@ local M = {}
 -- Initialize plugin integration system
 function M.setup()
   -- Auto-detect plugins
-  local detector = require('devcontainer.plugin_integration.detector')
+  local detector = require('container.plugin_integration.detector')
   local loaded = detector.auto_detect()
 
   -- Setup performance monitoring
-  local monitor = require('devcontainer.plugin_integration.monitor')
+  local monitor = require('container.plugin_integration.monitor')
 
   -- Override vim.cmd to intercept plugin commands
   local original_cmd = vim.cmd
   vim.cmd = function(cmd)
     -- Try to route through integration system
-    local integration = require('devcontainer.plugin_integration').get_integration_for_command(cmd)
+    local integration = require('container.plugin_integration').get_integration_for_command(cmd)
 
     if integration and require('devcontainer').is_container_active() then
       local start_time = vim.loop.now()
-      local router = require('devcontainer.plugin_integration.router')
+      local router = require('container.plugin_integration.router')
 
       -- Get optimal strategy
       local strategy = router.get_strategy(integration.name)
@@ -593,8 +593,8 @@ end
 
 -- Get integration status
 function M.status()
-  local integrations = require('devcontainer.plugin_integration').registry
-  local monitor = require('devcontainer.plugin_integration.monitor')
+  local integrations = require('container.plugin_integration').registry
+  local monitor = require('container.plugin_integration.monitor')
 
   local status = {
     loaded_integrations = vim.tbl_keys(integrations),
@@ -615,7 +615,7 @@ function M.create_commands()
       M.setup()
       print("Reloaded plugin integrations")
     elseif opts.args == 'metrics' then
-      local metrics = require('devcontainer.plugin_integration.monitor').export_metrics()
+      local metrics = require('container.plugin_integration.monitor').export_metrics()
       print(vim.inspect(metrics))
     else
       print("Usage: :DevcontainerIntegrations {status|reload|metrics}")
@@ -636,7 +636,7 @@ return M
 Here's a complete example of integrating vim-test using the hybrid architecture:
 
 ```lua
--- lua/devcontainer/plugin_integration/plugins/vim_test.lua
+-- lua/container/plugin_integration/plugins/vim_test.lua
 local M = {}
 
 function M.setup()
@@ -651,7 +651,7 @@ function M.setup()
   -- Create custom strategy for devcontainer
   vim.g['test#custom_strategies'] = vim.g['test#custom_strategies'] or {}
   vim.g['test#custom_strategies'].devcontainer = function(cmd)
-    local docker = require('devcontainer.docker')
+    local docker = require('container.docker')
     local container_id = require('devcontainer').get_container_id()
 
     if not container_id then
@@ -753,14 +753,14 @@ require('devcontainer').setup({
 
 ## Testing the Integration
 
-Create `lua/devcontainer/plugin_integration/test.lua`:
+Create `lua/container/plugin_integration/test.lua`:
 
 ```lua
 local M = {}
 
 -- Test a specific integration
 function M.test_integration(plugin_name)
-  local integration = require('devcontainer.plugin_integration').registry[plugin_name]
+  local integration = require('container.plugin_integration').registry[plugin_name]
   if not integration then
     print("Integration not found: " .. plugin_name)
     return false
@@ -792,7 +792,7 @@ end
 
 -- Run all integration tests
 function M.test_all()
-  local registry = require('devcontainer.plugin_integration').registry
+  local registry = require('container.plugin_integration').registry
   local results = {}
 
   for name, _ in pairs(registry) do

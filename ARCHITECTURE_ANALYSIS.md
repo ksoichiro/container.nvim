@@ -1,8 +1,8 @@
-# Architectural Analysis: Deep Plugin Integration for devcontainer.nvim
+# Architectural Analysis: Deep Plugin Integration for container.nvim
 
 ## Executive Summary
 
-This document analyzes different architectural approaches for achieving deep plugin integration in devcontainer.nvim, enabling Neovim plugins to seamlessly work with code running inside Docker containers. The analysis compares four main approaches with their trade-offs in terms of implementation complexity, plugin compatibility, performance, user experience, and maintenance burden.
+This document analyzes different architectural approaches for achieving deep plugin integration in container.nvim, enabling Neovim plugins to seamlessly work with code running inside Docker containers. The analysis compares four main approaches with their trade-offs in terms of implementation complexity, plugin compatibility, performance, user experience, and maintenance burden.
 
 ## Current State Analysis
 
@@ -312,6 +312,6 @@ This approach provides:
 
 ## Conclusion
 
-The hybrid approach offers the best balance of functionality, performance, and maintainability. By building on the current implementation and gradually adding more sophisticated integration methods, devcontainer.nvim can provide a superior development experience while maintaining stability and ease of use.
+The hybrid approach offers the best balance of functionality, performance, and maintainability. By building on the current implementation and gradually adding more sophisticated integration methods, container.nvim can provide a superior development experience while maintaining stability and ease of use.
 
-The phased implementation allows for continuous delivery of value while minimizing risk and gathering user feedback to guide future development. This approach positions devcontainer.nvim to become the definitive solution for container-based development in Neovim.
+The phased implementation allows for continuous delivery of value while minimizing risk and gathering user feedback to guide future development. This approach positions container.nvim to become the definitive solution for container-based development in Neovim.

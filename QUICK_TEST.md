@@ -12,7 +12,7 @@ This document outlines the procedure for testing the fixed LSP integration funct
 ### Load plugin in Neovim
 ```lua
 -- Execute within Neovim
-require('devcontainer').setup({
+require('container').setup({
   log_level = 'debug',
   lsp = {
     auto_setup = true,
@@ -23,7 +23,7 @@ require('devcontainer').setup({
 
 ### Initialization Confirmation
 ```vim
-:DevcontainerDebug
+:ContainerDebug
 ```
 
 Expected output:
@@ -37,7 +37,7 @@ Current config: none
 ## Step 2: LSP Status Check (No Container)
 
 ```vim
-:DevcontainerLspStatus
+:ContainerLspStatus
 ```
 
 Expected output:
@@ -57,15 +57,15 @@ cd examples/python-example
 nvim main.py
 ```
 
-### Start devcontainer
+### Start container
 ```vim
-:DevcontainerOpen
-:DevcontainerStart
+:ContainerOpen
+:ContainerStart
 ```
 
 ### Re-check LSP status
 ```vim
-:DevcontainerLspStatus
+:ContainerLspStatus
 ```
 
 Expected behavior:
@@ -93,29 +93,29 @@ Expected behavior:
 ### Error 1: "LSP not initialized"
 **Solution:**
 ```vim
-:lua require('devcontainer').setup({log_level = 'debug'})
-:DevcontainerLspStatus
+:lua require('container').setup({log_level = 'debug'})
+:ContainerLspStatus
 ```
 
 ### Error 2: "No active container"
 **Solution:**
 ```vim
-:DevcontainerStart
-:DevcontainerLspSetup
+:ContainerStart
+:ContainerLspSetup
 ```
 
 ### Error 3: LSP server not detected
 **Solution:**
 ```vim
-:DevcontainerExec which pylsp
-:DevcontainerExec python -m pip install python-lsp-server
-:DevcontainerLspSetup
+:ContainerExec which pylsp
+:ContainerExec python -m pip install python-lsp-server
+:ContainerLspSetup
 ```
 
 ### Error 4: Path conversion issues
 **Solution:**
 ```vim
-:lua print(vim.inspect(require('devcontainer.lsp.path').get_mappings()))
+:lua print(vim.inspect(require('container.lsp.path').get_mappings()))
 ```
 
 ## Debug Commands
@@ -123,26 +123,26 @@ Expected behavior:
 ### Check detailed logs
 ```vim
 :messages
-:DevcontainerLogs
+:ContainerLogs
 ```
 
 ### Manual LSP restart
 ```vim
-:DevcontainerLspSetup
+:ContainerLspSetup
 :LspRestart
 ```
 
 ### Check Docker information
 ```vim
-:DevcontainerExec ps aux
-:DevcontainerStatus
+:ContainerExec ps aux
+:ContainerStatus
 ```
 
 ## Expected Final State
 
 When everything is working correctly:
 
-1. `:DevcontainerLspStatus` displays the following:
+1. `:ContainerLspStatus` displays the following:
    ```
    === DevContainer LSP Status ===
    Container ID: <container_id>
@@ -162,11 +162,11 @@ When everything is working correctly:
 Minimal test when time is limited:
 
 ```vim
-:lua require('devcontainer').setup()
-:DevcontainerDebug
+:lua require('container').setup()
+:ContainerDebug
 :cd examples/python-example
-:DevcontainerStart
-:DevcontainerLspStatus
+:ContainerStart
+:ContainerLspStatus
 :edit main.py
 ```
 

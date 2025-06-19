@@ -1,5 +1,5 @@
 # .pre-commit-config.yaml
-# Pre-commit hooks configuration for devcontainer.nvim
+# Pre-commit hooks configuration for container.nvim
 
 repos:
   # Standard pre-commit hooks
@@ -108,21 +108,21 @@ repos:
         args:
           - -c
           - |
-            if [[ ! -f "doc/devcontainer.txt" ]]; then
-              echo "Error: doc/devcontainer.txt is missing"
+            if [[ ! -f "doc/container.txt" ]]; then
+              echo "Error: doc/container.txt is missing"
               exit 1
             fi
             # Check for basic structure
-            if ! grep -q "\*devcontainer-commands\*" doc/devcontainer.txt; then
+            if ! grep -q "\*container-commands\*" doc/container.txt; then
               echo "Error: Help file missing commands section"
               exit 1
             fi
-            if ! grep -q "\*devcontainer-configuration\*" doc/devcontainer.txt; then
+            if ! grep -q "\*container-configuration\*" doc/container.txt; then
               echo "Error: Help file missing configuration section"
               exit 1
             fi
         language: system
-        files: (plugin/.*\.lua|lua/devcontainer/init\.lua|doc/devcontainer\.txt)$
+        files: (plugin/.*\.lua|lua/container/init\.lua|doc/container\.txt)$
         pass_filenames: false
 
 # Global configuration

@@ -1,20 +1,20 @@
-# devcontainer.nvim Installation Guide
+# container.nvim Installation Guide
 
 ## Integration with Lazy.nvim
 
 ### 1. Using Local Development Version
 
-Since the current directory is the devcontainer.nvim plugin source, you can install it by specifying the local path.
+Since the current directory is the container.nvim plugin source, you can install it by specifying the local path.
 
 ```lua
--- ~/.config/nvim/lua/plugins/devcontainer.lua or appropriate config file
+-- ~/.config/nvim/lua/plugins/container.lua or appropriate config file
 return {
   {
     -- Specify local path (change to this project's path)
-    dir = "/path/to/devcontainer.nvim",
-    name = "devcontainer.nvim",
+    dir = "/path/to/container.nvim",
+    name = "container.nvim",
     config = function()
-      require('devcontainer').setup({
+      require('container').setup({
         -- Basic configuration
         log_level = 'info',
         container_runtime = 'docker', -- 'docker' or 'podman'
@@ -48,9 +48,9 @@ return {
 ```lua
 return {
   {
-    'ksoichiro/devcontainer.nvim',
+    'ksoichiro/container.nvim',
     config = function()
-      require('devcontainer').setup({
+      require('container').setup({
         log_level = 'info',
         container_runtime = 'docker',
         auto_start = false,
@@ -63,18 +63,18 @@ return {
 ### 3. Development Configuration Example (Recommended)
 
 ```lua
--- ~/.config/nvim/lua/plugins/devcontainer.lua
+-- ~/.config/nvim/lua/plugins/container.lua
 return {
   {
     -- Use local path during development
-    dir = vim.fn.expand("~/path/to/devcontainer.nvim"), -- Change to actual path
-    name = "devcontainer.nvim",
+    dir = vim.fn.expand("~/path/to/container.nvim"), -- Change to actual path
+    name = "container.nvim",
 
     -- Disable lazy loading in development mode
     lazy = false,
 
     config = function()
-      require('devcontainer').setup({
+      require('container').setup({
         -- Development configuration
         log_level = 'debug', -- Display debug information
 
@@ -138,19 +138,19 @@ cd ~/.config/nvim
 
 # Create plugin config file
 mkdir -p lua/plugins
-touch lua/plugins/devcontainer.lua
+touch lua/plugins/container.lua
 ```
 
 ### 2. Write Configuration
 
-Write one of the configuration examples above to `lua/plugins/devcontainer.lua`.
+Write one of the configuration examples above to `lua/plugins/container.lua`.
 
 ### 3. Adjust Path
 
-Change the `dir` parameter to the actual path of the devcontainer.nvim project:
+Change the `dir` parameter to the actual path of the container.nvim project:
 
 ```lua
-dir = "/Users/yourname/path/to/devcontainer.nvim",
+dir = "/Users/yourname/path/to/container.nvim",
 ```
 
 ### 4. Restart Neovim
@@ -162,7 +162,7 @@ After saving the configuration, restart Neovim to load the plugin.
 ### 1. Check Plugin Loading
 
 ```vim
-:DevcontainerDebug
+:ContainerDebug
 ```
 
 This displays the plugin status and debug information.
@@ -170,7 +170,7 @@ This displays the plugin status and debug information.
 ### 2. Check Configuration
 
 ```vim
-:DevcontainerConfig
+:ContainerConfig
 ```
 
 This displays the current configuration.
@@ -178,7 +178,7 @@ This displays the current configuration.
 ### 3. Check Docker
 
 ```vim
-:DevcontainerOpen
+:ContainerOpen
 ```
 
 This checks Docker availability.
@@ -189,7 +189,7 @@ This checks Docker availability.
 
 1. Verify the path is correct
 ```lua
-:lua print(vim.fn.expand("~/path/to/devcontainer.nvim"))
+:lua print(vim.fn.expand("~/path/to/container.nvim"))
 ```
 
 2. Check Lazy.nvim logs
@@ -231,8 +231,8 @@ vim.api.nvim_create_user_command('DevcontainerReload', function()
   end
 
   -- Reload plugin
-  require('devcontainer').setup()
-  print("devcontainer.nvim reloaded!")
+  require('container').setup()
+  print("container.nvim reloaded!")
 end, {})
 ```
 
@@ -240,7 +240,7 @@ end, {})
 
 ```lua
 config = function()
-  require('devcontainer').setup({
+  require('container').setup({
     log_level = 'debug',
     -- Set log file
     log_file = vim.fn.stdpath('data') .. '/devcontainer.log',
@@ -253,4 +253,4 @@ config = function()
 end,
 ```
 
-Now you can integrate and test the devcontainer.nvim plugin with Lazy.nvim!
+Now you can integrate and test the container.nvim plugin with Lazy.nvim!

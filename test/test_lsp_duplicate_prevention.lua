@@ -83,13 +83,13 @@ local mock_log = {
   end,
 }
 
-package.loaded['devcontainer.utils.log'] = mock_log
+package.loaded['container.utils.log'] = mock_log
 
 print('=== LSP Duplicate Client Prevention Test ===')
 print()
 
 -- Load the LSP module
-local lsp = require('devcontainer.lsp.init')
+local lsp = require('container.lsp.init')
 
 -- Initialize mock state
 lsp.setup({ auto_setup = true })

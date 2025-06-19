@@ -74,7 +74,7 @@ func main() {
 	// Routes
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"message":   CreateGreeting("devcontainer.nvim"),
+			"message":   CreateGreeting("container.nvim"),
 			"timestamp": time.Now().Format(time.RFC3339),
 		})
 	})
@@ -142,7 +142,7 @@ func main() {
 	// Start server
 	port := ":8080"
 	log.Printf("Server starting on port %s", port)
-	log.Printf("Greeting: %s", CreateGreeting("Go devcontainer"))
+	log.Printf("Greeting: %s", CreateGreeting("Go container"))
 
 	if err := r.Run(port); err != nil {
 		log.Fatal("Failed to start server:", err)

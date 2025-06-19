@@ -1,10 +1,10 @@
-# Makefile for devcontainer.nvim
+# Makefile for container.nvim
 
 .PHONY: help lint lint-fix format format-check test install-dev clean install-hooks help-tags
 
 # Default target
 help:
-	@echo "devcontainer.nvim Development Commands"
+	@echo "container.nvim Development Commands"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  help         Show this help message"

@@ -1,6 +1,6 @@
-# Go Example for devcontainer.nvim
+# Go Example for container.nvim
 
-This is a Go example project for testing devcontainer.nvim functionality, particularly useful for testing external plugin integration like nvim-test.
+This is a Go example project for testing container.nvim functionality, particularly useful for testing external plugin integration like nvim-test.
 
 ## Features
 
@@ -89,10 +89,10 @@ The HTTP server provides several endpoints for testing:
 
 ## Development Workflow
 
-1. Open project in devcontainer:
+1. Open project in container:
    ```vim
-   :DevcontainerOpen
-   :DevcontainerStart
+   :ContainerOpen
+   :ContainerStart
    ```
 
 2. LSP should automatically start with gopls
@@ -115,7 +115,7 @@ The HTTP server provides several endpoints for testing:
 
 ## Debugging Setup
 
-The devcontainer includes Delve debugger. For future DAP integration:
+The container includes Delve debugger. For future DAP integration:
 
 ```vim
 " Set breakpoint (future DAP integration)
@@ -135,4 +135,4 @@ This project provides various test scenarios for testing nvim-test integration:
 4. **Method Tests**: `TestCalculatorAdd`
 5. **Benchmark Tests**: `BenchmarkCalculateSum`
 
-Perfect for verifying that `:TestNearest`, `:TestFile`, and `:TestSuite` work correctly in the devcontainer environment.
+Perfect for verifying that `:TestNearest`, `:TestFile`, and `:TestSuite` work correctly in the container environment.

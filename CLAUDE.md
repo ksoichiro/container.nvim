@@ -9,25 +9,25 @@ This is a Neovim plugin that can be loaded using Lazy.nvim or Packer. For develo
 ```lua
 -- Load from local directory in Lazy.nvim
 {
-  dir = "/path/to/devcontainer.nvim",
+  dir = "/path/to/container.nvim",
   config = function()
-    require('devcontainer').setup({ log_level = 'debug' })
+    require('container').setup({ log_level = 'debug' })
   end,
 }
 ```
 
 ### Testing Changes
 Currently no formal test framework is implemented. Test manually by:
-1. Reload the plugin: `:lua package.loaded.devcontainer = nil; require('devcontainer').setup()`
-2. Test commands: `:DevcontainerOpen`, `:DevcontainerBuild`, `:DevcontainerStart`
-3. Check debug info: `:DevcontainerDebug`
-4. View logs: `:DevcontainerLogs`
+1. Reload the plugin: `:lua package.loaded.devcontainer = nil; require('container').setup()`
+2. Test commands: `:ContainerOpen`, `:ContainerBuild`, `:ContainerStart`
+3. Check debug info: `:ContainerDebug`
+4. View logs: `:ContainerLogs`
 
 **Important**: When using `nvim --headless` for automated testing, always include the `-u NONE` option to prevent loading user configuration files from `~/.config/nvim`. This ensures consistent test environments.
 
 Example:
 ```bash
-nvim --headless -u NONE -c "lua require('devcontainer').setup()" -c "qa"
+nvim --headless -u NONE -c "lua require('container').setup()" -c "qa"
 ```
 
 ### TODO Management
@@ -85,7 +85,7 @@ This prevents common issues with:
 4. **Documentation**: Keep comments clear and concise in English
 5. **Manual Checks**: Use `make lint` and `make test` for manual verification when needed
 6. **TODO Management**: Add future tasks and improvements to `TODO.md` file, NOT session memory
-7. **Help Documentation**: Update `doc/devcontainer.txt` when adding/modifying commands or features
+7. **Help Documentation**: Update `doc/container.txt` when adding/modifying commands or features
 
 #### Available Make Targets
 - `make install-hooks` - Install pre-commit hooks (one-time setup)
@@ -114,7 +114,7 @@ This prevents common issues with:
 
 ### Documentation Updates
 When modifying the plugin:
-1. **Commands**: Update both `README.md` and `doc/devcontainer.txt`
+1. **Commands**: Update both `README.md` and `doc/container.txt`
 2. **Configuration**: Update help documentation with new options
 3. **API Functions**: Document in the API section of help file
 4. **Examples**: Keep devcontainer.json examples up to date
@@ -152,7 +152,7 @@ lua/devcontainer/
 5. **VSCode Compatibility**: Parser supports standard devcontainer.json format for VSCode compatibility
 
 ### Command Flow
-1. User runs command (e.g., `:DevcontainerOpen`)
+1. User runs command (e.g., `:ContainerOpen`)
 2. `plugin/devcontainer.lua` defines the command
 3. Command calls into `lua/devcontainer/init.lua` public API
 4. Main module orchestrates:

@@ -1,4 +1,4 @@
-# devcontainer.nvim LSP Integration Testing Guide
+# container.nvim LSP Integration Testing Guide
 
 This guide explains how to test the LSP integration functionality implemented in v0.2.0.
 
@@ -14,12 +14,12 @@ This guide explains how to test the LSP integration functionality implemented in
 ```lua
 -- For Lazy.nvim
 {
-  dir = "/path/to/devcontainer.nvim", -- Local path
+  dir = "/path/to/container.nvim", -- Local path
   dependencies = {
     "neovim/nvim-lspconfig",
   },
   config = function()
-    require('devcontainer').setup({
+    require('container').setup({
       log_level = 'debug', -- For debugging
       lsp = {
         auto_setup = true,
@@ -36,7 +36,7 @@ This guide explains how to test the LSP integration functionality implemented in
 
 #### Step 1: Plugin Initialization Verification
 ```vim
-:DevcontainerDebug
+:ContainerDebug
 ```
 - Verify plugin is properly initialized
 - Verify configuration is loaded correctly
@@ -57,13 +57,13 @@ nvim main.py
 
 #### Step 2: Start devcontainer
 ```vim
-:DevcontainerOpen
-:DevcontainerStart
+:ContainerOpen
+:ContainerStart
 ```
 
 #### Step 3: LSP Status Check
 ```vim
-:DevcontainerLspStatus
+:ContainerLspStatus
 ```
 Expected output:
 ```
@@ -105,8 +105,8 @@ nvim index.js
 
 #### Step 2: Start devcontainer
 ```vim
-:DevcontainerOpen
-:DevcontainerStart
+:ContainerOpen
+:ContainerStart
 ```
 
 #### Step 3: Run similar LSP tests
@@ -126,7 +126,7 @@ local function test_lsp_integration()
   print("=== LSP Integration Test ===")
 
   -- 1. Basic functionality test
-  local devcontainer = require('devcontainer')
+  local devcontainer = require('container')
 
   -- Check if plugin is initialized
   local debug_info = devcontainer.debug_info()
@@ -173,13 +173,13 @@ test_lsp_integration()
 
 1. **LSP server not detected**
    ```vim
-   :DevcontainerExec which pylsp
-   :DevcontainerExec python -m pylsp --help
+   :ContainerExec which pylsp
+   :ContainerExec python -m pylsp --help
    ```
 
 2. **Communication errors**
    ```vim
-   :DevcontainerLogs
+   :ContainerLogs
    :messages
    ```
 
@@ -190,12 +190,12 @@ test_lsp_integration()
 
 4. **Manual LSP setup**
    ```vim
-   :DevcontainerLspSetup
+   :ContainerLspSetup
    ```
 
 #### Check logs
 ```vim
-:DevcontainerLogs
+:ContainerLogs
 :lua require('devcontainer.utils.log').show_logs()
 ```
 
@@ -203,13 +203,13 @@ test_lsp_integration()
 
 ```vim
 " Detailed debug information
-:DevcontainerDebug
+:ContainerDebug
 
 " LSP-specific status
-:DevcontainerLspStatus
+:ContainerLspStatus
 
 " Execute commands in container
-:DevcontainerExec ps aux | grep lsp
+:ContainerExec ps aux | grep lsp
 
 " Manual LSP restart
 :LspRestart
@@ -221,7 +221,7 @@ test_lsp_integration()
 ### 7. Expected Behavior
 
 When working correctly:
-- LSP servers are automatically detected and started after `:DevcontainerStart`
+- LSP servers are automatically detected and started after `:ContainerStart`
 - All standard Neovim LSP functionality works
 - File paths are correctly converted between local ⇔ container
 - Diagnostics, completion, definition jump, etc. all function
@@ -235,7 +235,7 @@ git clone https://github.com/psf/requests.git
 cd requests
 # Create .devcontainer/devcontainer.json
 nvim
-:DevcontainerStart
+:ContainerStart
 # Test LSP response speed
 ```
 

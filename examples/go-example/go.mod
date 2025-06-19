@@ -1,4 +1,4 @@
-module github.com/example/devcontainer-go-example
+module github.com/example/container-go-example
 
 go 1.23
 

@@ -1,23 +1,23 @@
 {
-  "author": "devcontainer.nvim",
+  "author": "container.nvim",
   "dependencies": {
     "eslint": "^9.29.0",
     "express": "^4.18.0",
     "typescript-language-server": "^4.3.4"
   },
-  "description": "Example Node.js project for testing devcontainer.nvim LSP integration",
+  "description": "Example Node.js project for testing container.nvim LSP integration",
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.8.3"
   },
   "keywords": [
-    "devcontainer",
+    "container",
     "lsp",
     "nodejs"
   ],
   "license": "MIT",
   "main": "index.js",
-  "name": "devcontainer-node-example",
+  "name": "container-node-example",
   "scripts": {
     "dev": "node --watch index.js",
     "start": "node index.js",

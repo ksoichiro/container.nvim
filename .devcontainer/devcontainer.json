@@ -18,7 +18,7 @@
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
   ],
-  "name": "devcontainer.nvim Development",
+  "name": "container.nvim Development",
   "postCreateCommand": "apt-get update && apt-get install -y ripgrep fd-find",
   "remoteUser": "vscode",
   "workspaceFolder": "/workspace",

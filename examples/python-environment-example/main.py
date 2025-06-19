@@ -7,7 +7,7 @@ def main():
     print("Python Environment Example")
     print("==========================")
 
-    # Print environment variables set by devcontainer.nvim
+    # Print environment variables set by container.nvim
     print(f"PYTHONPATH: {os.getenv('PYTHONPATH', 'Not set')}")
     print(f"DEBUG: {os.getenv('DEBUG', 'Not set')}")
     print(f"PATH: {os.getenv('PATH', 'Not set')}")
@@ -15,7 +15,7 @@ def main():
     print(f"Python executable: {sys.executable}")
 
     print("\nThis demonstrates language preset configuration")
-    print("for Python projects using devcontainer.nvim customizations.")
+    print("for Python projects using container.nvim customizations.")
 
     # Test PYTHONPATH
     if '/workspace/src' in sys.path:

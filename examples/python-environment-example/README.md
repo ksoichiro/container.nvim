@@ -1,6 +1,6 @@
 # Python Environment Customization Example
 
-This example demonstrates how to use language presets and additional environment variables for Python projects with `devcontainer.nvim`.
+This example demonstrates how to use language presets and additional environment variables for Python projects with `container.nvim`.
 
 ## Features
 
@@ -19,8 +19,8 @@ The `.devcontainer/devcontainer.json` file shows:
 ## Usage
 
 1. Open this directory in Neovim
-2. Run `:DevcontainerOpen` to load the configuration
-3. Run `:DevcontainerStart` to start the container
+2. Run `:ContainerOpen` to load the configuration
+3. Run `:ContainerStart` to start the container
 4. The `postCreateCommand` will install Python LSP tools with the correct environment
 
 ## Testing Environment Variables
@@ -28,10 +28,10 @@ The `.devcontainer/devcontainer.json` file shows:
 After starting the container, you can test the environment:
 
 ```vim
-:DevcontainerExec echo $PYTHONPATH
-:DevcontainerExec echo $DEBUG
-:DevcontainerExec python --version
-:DevcontainerExec which pylsp
+:ContainerExec echo $PYTHONPATH
+:ContainerExec echo $DEBUG
+:ContainerExec python --version
+:ContainerExec which pylsp
 ```
 
 ## Language Detection

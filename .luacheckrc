@@ -1,4 +1,4 @@
--- .luacheckrc configuration for devcontainer.nvim
+-- .luacheckrc configuration for container.nvim
 
 -- Global options
 std = "lua54+luajit"

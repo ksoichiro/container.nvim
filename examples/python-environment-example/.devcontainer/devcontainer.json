@@ -1,6 +1,6 @@
 {
   "customizations": {
-    "devcontainer.nvim": {
+    "container.nvim": {
       "additionalEnvironment": {
         "DEBUG": "true",
         "PYTHONPATH": "/workspace/src"

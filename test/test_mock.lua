@@ -121,7 +121,7 @@ package.path = './lua/?.lua;' .. package.path
 local function test_path_conversion_simple()
   print('=== Simple Path Conversion Test ===')
 
-  local path_module = require('devcontainer.lsp.path')
+  local path_module = require('container.lsp.path')
 
   -- Setup test paths
   path_module.setup('/test/workspace', '/workspace', {})
@@ -147,7 +147,7 @@ end
 local function test_config_basic()
   print('\n=== Basic Configuration Test ===')
 
-  local config = require('devcontainer.config')
+  local config = require('container.config')
 
   -- Test if we can access defaults
   if config.defaults and config.defaults.lsp then
@@ -164,9 +164,9 @@ end
 local function test_lsp_module_structure()
   print('\n=== LSP Module Structure Test ===')
 
-  local lsp = require('devcontainer.lsp.init')
-  local path = require('devcontainer.lsp.path')
-  local forwarding = require('devcontainer.lsp.forwarding')
+  local lsp = require('container.lsp.init')
+  local path = require('container.lsp.path')
+  local forwarding = require('container.lsp.forwarding')
 
   -- Check if main functions exist
   local functions_to_check = {
@@ -195,7 +195,7 @@ end
 
 -- Run tests
 local function run_simple_tests()
-  print('Running simplified devcontainer.nvim tests...\n')
+  print('Running simplified container.nvim tests...\n')
 
   local tests = {
     test_config_basic,

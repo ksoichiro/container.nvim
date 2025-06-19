@@ -1,4 +1,4 @@
-# devcontainer.nvim
+# container.nvim
 
 A Neovim plugin that provides VSCode Dev Containers-like development experience.
 
@@ -26,12 +26,12 @@ A Neovim plugin that provides VSCode Dev Containers-like development experience.
 
 ```lua
 {
-  'ksoichiro/devcontainer.nvim',
+  'ksoichiro/container.nvim',
   dependencies = {
     'nvim-lua/plenary.nvim', -- For async operations (future feature expansion)
   },
   config = function()
-    require('devcontainer').setup({
+    require('container').setup({
       -- Configuration options
       log_level = 'info',
       container_runtime = 'docker', -- 'docker' or 'podman'
@@ -47,10 +47,10 @@ Test plugins can be installed independently and will be automatically detected:
 
 ```lua
 {
-  'ksoichiro/devcontainer.nvim',
+  'ksoichiro/container.nvim',
   dependencies = { 'nvim-lua/plenary.nvim' },
   config = function()
-    require('devcontainer').setup({
+    require('container').setup({
       test_integration = { enabled = true },
     })
   end,
@@ -72,12 +72,12 @@ Test plugins can be installed independently and will be automatically detected:
 
 ```lua
 use {
-  'ksoichiro/devcontainer.nvim',
+  'ksoichiro/container.nvim',
   requires = {
     'nvim-lua/plenary.nvim',
   },
   config = function()
-    require('devcontainer').setup()
+    require('container').setup()
   end,
 }
 ```
@@ -127,108 +127,108 @@ USER node
 ### 3. Start devcontainer
 
 ```vim
-:DevcontainerOpen
-:DevcontainerBuild
-:DevcontainerStart
+:ContainerOpen
+:ContainerBuild
+:ContainerStart
 ```
 
 ## Commands
 
-For detailed command documentation, use `:help devcontainer-commands` in Neovim.
+For detailed command documentation, use `:help container-commands` in Neovim.
 
 ### Basic Operations
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerOpen [path]` | Open devcontainer |
-| `:DevcontainerBuild` | Build image |
-| `:DevcontainerStart` | Start container |
-| `:DevcontainerStop` | Stop container |
-| `:DevcontainerKill[!]` | Kill container (immediate termination, requires confirmation unless `!` is used) |
-| `:DevcontainerTerminate[!]` | Terminate container (immediate termination, requires confirmation unless `!` is used) |
-| `:DevcontainerRestart` | Restart container |
+| `:ContainerOpen [path]` | Open devcontainer |
+| `:ContainerBuild` | Build image |
+| `:ContainerStart` | Start container |
+| `:ContainerStop` | Stop container |
+| `:ContainerKill[!]` | Kill container (immediate termination, requires confirmation unless `!` is used) |
+| `:ContainerTerminate[!]` | Terminate container (immediate termination, requires confirmation unless `!` is used) |
+| `:ContainerRestart` | Restart container |
 
 ### Execution & Access
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerExec <command>` | Execute command in container |
+| `:ContainerExec <command>` | Execute command in container |
 
 ### Enhanced Terminal Integration
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerTerminal [options]` | Open enhanced terminal with session management |
-| `:DevcontainerTerminalNew [name]` | Create new terminal session |
-| `:DevcontainerTerminalList` | List all terminal sessions |
-| `:DevcontainerTerminalClose [name]` | Close terminal session |
-| `:DevcontainerTerminalCloseAll` | Close all terminal sessions |
-| `:DevcontainerTerminalRename <old> <new>` | Rename terminal session |
-| `:DevcontainerTerminalNext` | Switch to next terminal session |
-| `:DevcontainerTerminalPrev` | Switch to previous terminal session |
-| `:DevcontainerTerminalStatus` | Show terminal system status |
-| `:DevcontainerTerminalCleanup [days]` | Clean up old terminal history files |
+| `:ContainerTerminal [options]` | Open enhanced terminal with session management |
+| `:ContainerTerminalNew [name]` | Create new terminal session |
+| `:ContainerTerminalList` | List all terminal sessions |
+| `:ContainerTerminalClose [name]` | Close terminal session |
+| `:ContainerTerminalCloseAll` | Close all terminal sessions |
+| `:ContainerTerminalRename <old> <new>` | Rename terminal session |
+| `:ContainerTerminalNext` | Switch to next terminal session |
+| `:ContainerTerminalPrev` | Switch to previous terminal session |
+| `:ContainerTerminalStatus` | Show terminal system status |
+| `:ContainerTerminalCleanup [days]` | Clean up old terminal history files |
 
 ### Information Display
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerStatus` | Show container status |
-| `:DevcontainerLogs` | Show container logs |
-| `:DevcontainerConfig` | Show configuration |
+| `:ContainerStatus` | Show container status |
+| `:ContainerLogs` | Show container logs |
+| `:ContainerConfig` | Show configuration |
 
 ### LSP Integration
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerLspStatus` | Show LSP server status |
-| `:DevcontainerLspSetup` | Setup LSP servers in container |
+| `:ContainerLspStatus` | Show LSP server status |
+| `:ContainerLspSetup` | Setup LSP servers in container |
 
 ### Port Management
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerPorts` | Show detailed port forwarding information |
-| `:DevcontainerPortStats` | Show port allocation statistics |
+| `:ContainerPorts` | Show detailed port forwarding information |
+| `:ContainerPortStats` | Show port allocation statistics |
 
 ### Picker Integration
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerPicker` | Open devcontainer picker (supports telescope, fzf-lua, vim.ui.select) |
-| `:DevcontainerSessionPicker` | Open terminal session picker |
-| `:DevcontainerPortPicker` | Open port management picker |
-| `:DevcontainerHistoryPicker` | Open command history picker |
+| `:ContainerPicker` | Open devcontainer picker (supports telescope, fzf-lua, vim.ui.select) |
+| `:ContainerSessionPicker` | Open terminal session picker |
+| `:ContainerPortPicker` | Open port management picker |
+| `:ContainerHistoryPicker` | Open command history picker |
 
 ### Test Integration
 
-devcontainer.nvim supports running tests in containers with two output modes:
+container.nvim supports running tests in containers with two output modes:
 
 #### Buffer Mode (Default Commands)
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerTestNearest` | Run nearest test in container (output in buffer) |
-| `:DevcontainerTestFile` | Run all tests in current file in container (output in buffer) |
-| `:DevcontainerTestSuite` | Run entire test suite in container (output in buffer) |
+| `:ContainerTestNearest` | Run nearest test in container (output in buffer) |
+| `:ContainerTestFile` | Run all tests in current file in container (output in buffer) |
+| `:ContainerTestSuite` | Run entire test suite in container (output in buffer) |
 
 #### Terminal Mode (Interactive Commands)
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerTestNearestTerminal` | Run nearest test in container terminal |
-| `:DevcontainerTestFileTerminal` | Run all tests in current file in container terminal |
-| `:DevcontainerTestSuiteTerminal` | Run entire test suite in container terminal |
+| `:ContainerTestNearestTerminal` | Run nearest test in container terminal |
+| `:ContainerTestFileTerminal` | Run all tests in current file in container terminal |
+| `:ContainerTestSuiteTerminal` | Run entire test suite in container terminal |
 
 #### Setup & Integration
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerTestSetup` | Setup test plugin integrations |
+| `:ContainerTestSetup` | Setup test plugin integrations |
 
 **Output Modes:**
 - **Buffer Mode**: Tests run asynchronously with output displayed in Neovim's message area. Shows container indicators (🐳) and completion status.
 - **Terminal Mode**: Tests run interactively in a dedicated terminal window. Silent execution with all output appearing in the terminal. Reuses the same terminal session for repeated runs.
 
 **Plugin Detection:**
-devcontainer.nvim automatically detects installed test plugins without requiring them to be loaded:
+container.nvim automatically detects installed test plugins without requiring them to be loaded:
 - **vim-test/nvim-test**: Only installation required - integration works with lazy loading
 - **neotest**: Requires loading for full integration, but provides deferred setup for lazy loading
 - **Fallback**: Manual test commands work independently of any test plugin
@@ -237,17 +237,17 @@ devcontainer.nvim automatically detects installed test plugins without requiring
 
 | Command | Description |
 |---------|-------------|
-| `:DevcontainerAutoStart [mode]` | Configure auto-start behavior (off, notify, prompt, immediate) |
-| `:DevcontainerReset` | Reset plugin state |
-| `:DevcontainerDebug` | Show comprehensive debug information |
-| `:DevcontainerReconnect` | Reconnect to existing devcontainer |
+| `:ContainerAutoStart [mode]` | Configure auto-start behavior (off, notify, prompt, immediate) |
+| `:ContainerReset` | Reset plugin state |
+| `:ContainerDebug` | Show comprehensive debug information |
+| `:ContainerReconnect` | Reconnect to existing devcontainer |
 
 ## Configuration
 
 ### Default Configuration
 
 ```lua
-require('devcontainer').setup({
+require('container').setup({
   -- Basic settings
   auto_start = false,
   log_level = 'info',
@@ -343,43 +343,43 @@ The plugin provides a robust configuration system with multiple ways to customiz
 
 ```vim
 " Show current configuration
-:DevcontainerConfig
+:ContainerConfig
 
 " Reload configuration
-:DevcontainerConfig reload
+:ContainerConfig reload
 
 " Reset to defaults
-:DevcontainerConfig reset
+:ContainerConfig reset
 
 " Validate configuration
-:DevcontainerConfig validate
+:ContainerConfig validate
 
 " Show environment variable options
-:DevcontainerConfig env
+:ContainerConfig env
 
 " Save configuration to file
-:DevcontainerConfig save ~/.config/devcontainer/config.lua
+:ContainerConfig save ~/.config/devcontainer/config.lua
 
 " Load configuration from file
-:DevcontainerConfig load ~/.config/devcontainer/config.lua
+:ContainerConfig load ~/.config/devcontainer/config.lua
 
 " Watch configuration file for changes
-:DevcontainerConfig watch
+:ContainerConfig watch
 
 " Get specific configuration value
-:DevcontainerConfig terminal.default_shell
+:ContainerConfig terminal.default_shell
 
 " Set configuration value
-:DevcontainerConfigSet terminal.default_shell /bin/zsh
-:DevcontainerConfigSet lsp.port_range [9000,10000]
+:ContainerConfigSet terminal.default_shell /bin/zsh
+:ContainerConfigSet lsp.port_range [9000,10000]
 ```
 
 #### Project-specific Configuration
 
-Create a `.devcontainer.nvim.lua` file in your project root:
+Create a `.container.nvim.lua` file in your project root:
 
 ```lua
--- .devcontainer.nvim.lua
+-- .container.nvim.lua
 return {
   log_level = 'debug',
   terminal = {
@@ -416,7 +416,7 @@ export DEVCONTAINER_UI_PICKER=fzf-lua
 export DEVCONTAINER_UI_NOTIFICATION_LEVEL=minimal
 ```
 
-Run `:DevcontainerConfig env` to see all available environment variables.
+Run `:ContainerConfig env` to see all available environment variables.
 
 #### Configuration Priority
 
@@ -425,7 +425,7 @@ Configuration is loaded in this order (later sources override earlier ones):
 1. Default configuration
 2. Environment variables
 3. User configuration (from `setup()`)
-4. Project configuration (`.devcontainer.nvim.lua`)
+4. Project configuration (`.container.nvim.lua`)
 
 #### Configuration Validation
 
@@ -441,8 +441,8 @@ The plugin validates all configuration values to ensure they are correct:
 
 Configuration changes can be applied without restarting Neovim:
 
-- Manual reload: `:DevcontainerConfig reload`
-- Automatic reload: `:DevcontainerConfig watch` monitors `.devcontainer.nvim.lua`
+- Manual reload: `:ContainerConfig reload`
+- Automatic reload: `:ContainerConfig watch` monitors `.container.nvim.lua`
 - Event-based: Other modules react to `DevcontainerConfigReloaded` event
 
 ## StatusLine Integration
@@ -454,7 +454,7 @@ The plugin provides built-in statusline integration to display devcontainer stat
 Enable statusline integration in your configuration:
 
 ```lua
-require('devcontainer').setup({
+require('container').setup({
   ui = {
     status_line = true,  -- Enable statusline integration
     icons = {
@@ -488,7 +488,7 @@ require('devcontainer').setup({
 
 #### Minimal Display (Icons Only)
 ```lua
-require('devcontainer').setup({
+require('container').setup({
   ui = {
     status_line = true,
     statusline = {
@@ -506,7 +506,7 @@ require('devcontainer').setup({
 
 #### Custom Text Labels
 ```lua
-require('devcontainer').setup({
+require('container').setup({
   ui = {
     status_line = true,
     icons = {
@@ -531,7 +531,7 @@ require('devcontainer').setup({
 
 #### Status-Based Display
 ```lua
-require('devcontainer').setup({
+require('container').setup({
   ui = {
     status_line = true,
     statusline = {
@@ -553,7 +553,7 @@ require('devcontainer').setup({
 ```lua
 -- In your statusline configuration
 local function devcontainer_status()
-  return require('devcontainer').statusline()
+  return require('container').statusline()
 end
 
 -- Example with vim.o.statusline
@@ -567,7 +567,7 @@ require('lualine').setup({
   sections = {
     lualine_c = {
       'filename',
-      require('devcontainer').statusline_component(),
+      require('container').statusline_component(),
     }
   }
 })
@@ -621,7 +621,7 @@ The plugin supports advanced port forwarding with dynamic allocation to prevent 
 - **Conflict Prevention**: Multiple projects can run simultaneously without port conflicts
 - **Automatic Allocation**: No need to manually manage port assignments
 - **Project Isolation**: Each project gets its own port allocation space
-- **Easy Monitoring**: Use `:DevcontainerPorts` and `:DevcontainerPortStats` to monitor usage
+- **Easy Monitoring**: Use `:ContainerPorts` and `:ContainerPortStats` to monitor usage
 
 ### Usage Examples
 
@@ -649,7 +649,7 @@ The plugin supports multiple picker backends for an enhanced UI experience:
 ### Configuration
 
 ```lua
-require('devcontainer').setup({
+require('container').setup({
   ui = {
     picker = 'telescope', -- Choose your preferred picker
   }
@@ -677,17 +677,17 @@ require('devcontainer').setup({
 
 ```lua
 -- Use fzf-lua for faster performance
-require('devcontainer').setup({
+require('container').setup({
   ui = { picker = 'fzf-lua' }
 })
 
 -- Use vim.ui.select for minimal setup
-require('devcontainer').setup({
+require('container').setup({
   ui = { picker = 'vim.ui.select' }
 })
 
 -- Auto-fallback: telescope -> fzf-lua -> vim.ui.select
-require('devcontainer').setup({
+require('container').setup({
   ui = { picker = 'telescope' } -- Will fallback if telescope not available
 })
 ```
@@ -706,7 +706,7 @@ Control the verbosity of plugin notifications with the `notification_level` sett
 ### Configuration
 
 ```lua
-require('devcontainer').setup({
+require('container').setup({
   ui = {
     notification_level = 'normal', -- Change to your preferred level
   }
@@ -727,17 +727,17 @@ The plugin categorizes notifications into:
 
 ```lua
 -- Minimal notifications (quiet development)
-require('devcontainer').setup({
+require('container').setup({
   ui = { notification_level = 'minimal' }
 })
 
 -- Verbose notifications (debugging/development)
-require('devcontainer').setup({
+require('container').setup({
   ui = { notification_level = 'verbose' }
 })
 
 -- Silent mode (errors only)
-require('devcontainer').setup({
+require('container').setup({
   ui = { notification_level = 'silent' }
 })
 ```
@@ -748,24 +748,24 @@ For programmatic access to the plugin:
 
 ```lua
 -- Basic operations
-require('devcontainer').open()
-require('devcontainer').build()
-require('devcontainer').start()
-require('devcontainer').stop()
+require('container').open()
+require('container').build()
+require('container').start()
+require('container').stop()
 
 -- Command execution
-require('devcontainer').exec('npm test')
+require('container').exec('npm test')
 
 -- Enhanced terminal functions
-require('devcontainer').terminal({ name = 'dev', position = 'float' })
-require('devcontainer').terminal_new('build')
-require('devcontainer').terminal_list()
-require('devcontainer').terminal_close('dev')
+require('container').terminal({ name = 'dev', position = 'float' })
+require('container').terminal_new('build')
+require('container').terminal_list()
+require('container').terminal_close('dev')
 
 -- Information retrieval
-local status = require('devcontainer').status()
-local config = require('devcontainer').get_config()
-local container_id = require('devcontainer').get_container_id()
+local status = require('container').status()
+local config = require('container').get_config()
+local container_id = require('container').get_container_id()
 ```
 
 ## devcontainer.json Examples
@@ -873,14 +873,14 @@ sudo systemctl start docker
 ### Container won't start
 
 ```vim
-:DevcontainerLogs
-:DevcontainerDebug
+:ContainerLogs
+:ContainerDebug
 ```
 
 ### Configuration file errors
 
 ```vim
-:DevcontainerConfig
+:ContainerConfig
 ```
 
 Use this command to check configuration and verify devcontainer.json syntax.

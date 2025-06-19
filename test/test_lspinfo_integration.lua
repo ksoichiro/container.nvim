@@ -103,7 +103,7 @@ local mock_log = {
   end,
 }
 
-package.loaded['devcontainer.utils.log'] = mock_log
+package.loaded['container.utils.log'] = mock_log
 
 -- Mock lspconfig
 local mock_lspconfig = {
@@ -141,13 +141,13 @@ local mock_forwarding = {
   end,
 }
 
-package.loaded['devcontainer.lsp.forwarding'] = mock_forwarding
+package.loaded['container.lsp.forwarding'] = mock_forwarding
 
 print('Testing LspInfo integration...')
 print()
 
 -- Load and test the LSP module
-local lsp_module = require('devcontainer.lsp.init')
+local lsp_module = require('container.lsp.init')
 
 -- Setup the module
 lsp_module.setup({

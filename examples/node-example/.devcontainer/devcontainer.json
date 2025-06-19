@@ -1,6 +1,6 @@
 {
   "customizations": {
-    "devcontainer.nvim": {
+    "container.nvim": {
       "languagePreset": "node",
       "postCreateEnvironment": {
         "PATH": "/home/node/.local/bin:/usr/local/nodejs/bin:/usr/local/bin:$PATH"

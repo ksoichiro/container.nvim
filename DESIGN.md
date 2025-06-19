@@ -1,17 +1,17 @@
-# devcontainer.nvim Plugin Design Document
+# container.nvim Plugin Design Document
 
 A comprehensive design document for a Neovim plugin that enables devcontainer usage similar to VSCode.
 
 ## Overview
 
-devcontainer.nvim is a plugin that provides a development experience similar to VSCode's Dev Containers extension for Neovim. It automatically sets up development environments within Docker containers and achieves integration with LSP, terminal, and filesystem.
+container.nvim is a plugin that provides a development experience similar to VSCode's Dev Containers extension for Neovim. It automatically sets up development environments within Docker containers and achieves integration with LSP, terminal, and filesystem.
 
 ## Architecture
 
 ### Project Structure
 
 ```
-devcontainer.nvim/
+container.nvim/
 ├── lua/
 │   └── devcontainer/
 │       ├── init.lua              -- Main entry point
@@ -661,7 +661,7 @@ This design enables a development experience equivalent to or better than VSCode
 
 ### Architecture Choice
 
-To achieve deep plugin integration implementation in devcontainer.nvim, after considering multiple approaches, we adopt a **hybrid approach**.
+To achieve deep plugin integration implementation in container.nvim, after considering multiple approaches, we adopt a **hybrid approach**.
 
 #### Approaches Considered
 

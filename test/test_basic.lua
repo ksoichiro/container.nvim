@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
--- Basic test script for devcontainer.nvim
+-- Basic test script for container.nvim
 -- This tests core functionality without requiring a full Neovim session
 
 -- Mock vim global for testing
@@ -93,13 +93,13 @@ local function test_module_loading()
 
   -- Test if modules can be loaded
   local modules = {
-    'devcontainer.config',
-    'devcontainer.parser',
-    'devcontainer.utils.log',
-    'devcontainer.utils.fs',
-    'devcontainer.lsp.init',
-    'devcontainer.lsp.path',
-    'devcontainer.lsp.forwarding',
+    'container.config',
+    'container.parser',
+    'container.utils.log',
+    'container.utils.fs',
+    'container.lsp.init',
+    'container.lsp.path',
+    'container.lsp.forwarding',
   }
 
   for _, module_name in ipairs(modules) do
@@ -118,7 +118,7 @@ end
 local function test_path_conversion()
   print('\n=== Path Conversion Test ===')
 
-  local path_module = require('devcontainer.lsp.path')
+  local path_module = require('container.lsp.path')
 
   -- Setup test paths
   path_module.setup('/test/workspace', '/workspace', {})
@@ -159,7 +159,7 @@ end
 local function test_config_loading()
   print('\n=== Configuration Test ===')
 
-  local config = require('devcontainer.config')
+  local config = require('container.config')
 
   -- Test default configuration
   local success, result = config.setup()
@@ -202,7 +202,7 @@ end
 local function test_server_detection()
   print('\n=== Server Detection Test ===')
 
-  local lsp = require('devcontainer.lsp.init')
+  local lsp = require('container.lsp.init')
 
   -- Setup with test config
   lsp.setup({
@@ -230,7 +230,7 @@ end
 
 -- Main test runner
 local function run_tests()
-  print('Starting devcontainer.nvim basic tests...\n')
+  print('Starting container.nvim basic tests...\n')
 
   local tests = {
     test_module_loading,
@@ -262,7 +262,7 @@ local function run_tests()
 end
 
 -- Add parent directory to package path
-package.path = './lua/?.lua;' .. package.path
+package.path = '../lua/?.lua;../lua/?/init.lua;' .. package.path
 
 -- Run tests
 local exit_code = run_tests()

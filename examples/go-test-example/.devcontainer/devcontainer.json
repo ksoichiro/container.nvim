@@ -1,6 +1,6 @@
 {
   "customizations": {
-    "devcontainer.nvim": {
+    "container.nvim": {
       "languagePreset": "go",
       "postCreateEnvironment": {
         "GOPATH": "/go",

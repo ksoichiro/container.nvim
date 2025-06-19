@@ -48,7 +48,7 @@ local mock_log = {
   end,
 }
 
-package.loaded['devcontainer.utils.log'] = mock_log
+package.loaded['container.utils.log'] = mock_log
 
 -- Mock path module
 local mock_path = {
@@ -61,13 +61,13 @@ local mock_path = {
   end,
 }
 
-package.loaded['devcontainer.lsp.path'] = mock_path
+package.loaded['container.lsp.path'] = mock_path
 
 print('=== LSP Handler Safety Test ===')
 print()
 
 -- Load the forwarding module
-local forwarding = require('devcontainer.lsp.forwarding')
+local forwarding = require('container.lsp.forwarding')
 
 -- Create middleware
 local middleware = forwarding.create_client_middleware()

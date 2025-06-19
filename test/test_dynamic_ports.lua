@@ -134,7 +134,7 @@ local mock_log = {
   end,
 }
 
-package.loaded['devcontainer.utils.log'] = mock_log
+package.loaded['container.utils.log'] = mock_log
 
 -- Mock fs module
 local mock_fs = {
@@ -143,14 +143,14 @@ local mock_fs = {
   end,
 }
 
-package.loaded['devcontainer.utils.fs'] = mock_fs
+package.loaded['container.utils.fs'] = mock_fs
 
 print('=== Dynamic Port Allocation Tests ===')
 print()
 
 -- Test 1: Port Utility Module
 print('Test 1: Port Utility Basic Functions')
-local port_utils = require('devcontainer.utils.port')
+local port_utils = require('container.utils.port')
 
 -- Test find_available_port
 local available_port = port_utils.find_available_port(10000, 10010)
@@ -236,7 +236,7 @@ local mock_config = {
 }
 
 -- Test parser normalization
-local parser = require('devcontainer.parser')
+local parser = require('container.parser')
 local normalized_ports = parser.normalize_ports(mock_config.forwardPorts)
 
 print('Normalized ports:', vim.inspect(normalized_ports))

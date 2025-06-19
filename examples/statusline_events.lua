@@ -1,96 +1,96 @@
--- Example: Using devcontainer.nvim User events for statusline updates
--- This file demonstrates how to listen for devcontainer lifecycle events
+-- Example: Using container.nvim User events for statusline updates
+-- This file demonstrates how to listen for container lifecycle events
 
--- Setup autocmds to listen for devcontainer events
-local augroup = vim.api.nvim_create_augroup('DevcontainerStatusline', { clear = true })
+-- Setup autocmds to listen for container events
+local augroup = vim.api.nvim_create_augroup('ContainerStatusline', { clear = true })
 
--- DevcontainerOpened: Fired when a devcontainer configuration is loaded
+-- ContainerOpened: Fired when a container configuration is loaded
 vim.api.nvim_create_autocmd('User', {
-  pattern = 'DevcontainerOpened',
+  pattern = 'ContainerOpened',
   group = augroup,
   callback = function(args)
     local data = args.data or {}
-    print(string.format('DevcontainerOpened: %s', data.container_name or 'unknown'))
+    print(string.format('ContainerOpened: %s', data.container_name or 'unknown'))
     -- Update your statusline here
-    -- Example: vim.g.devcontainer_status = 'opened'
-    -- Example: vim.g.devcontainer_name = data.container_name
+    -- Example: vim.g.container_status = 'opened'
+    -- Example: vim.g.container_name = data.container_name
   end,
 })
 
--- DevcontainerBuilt: Fired when a container image is built/prepared
+-- ContainerBuilt: Fired when a container image is built/prepared
 vim.api.nvim_create_autocmd('User', {
-  pattern = 'DevcontainerBuilt',
+  pattern = 'ContainerBuilt',
   group = augroup,
   callback = function(args)
     local data = args.data or {}
-    print(string.format('DevcontainerBuilt: %s', data.container_name or 'unknown'))
+    print(string.format('ContainerBuilt: %s', data.container_name or 'unknown'))
     -- Update your statusline here
-    -- Example: vim.g.devcontainer_status = 'built'
+    -- Example: vim.g.container_status = 'built'
   end,
 })
 
--- DevcontainerStarted: Fired when a container starts successfully
+-- ContainerStarted: Fired when a container starts successfully
 vim.api.nvim_create_autocmd('User', {
-  pattern = 'DevcontainerStarted',
+  pattern = 'ContainerStarted',
   group = augroup,
   callback = function(args)
     local data = args.data or {}
-    print(string.format('DevcontainerStarted: %s (ID: %s)',
+    print(string.format('ContainerStarted: %s (ID: %s)',
       data.container_name or 'unknown',
       data.container_id and data.container_id:sub(1, 12) or 'unknown'))
     -- Update your statusline here
-    -- Example: vim.g.devcontainer_status = 'running'
-    -- Example: vim.g.devcontainer_id = data.container_id
+    -- Example: vim.g.container_status = 'running'
+    -- Example: vim.g.container_id = data.container_id
   end,
 })
 
--- DevcontainerStopped: Fired when a container stops
+-- ContainerStopped: Fired when a container stops
 vim.api.nvim_create_autocmd('User', {
-  pattern = 'DevcontainerStopped',
+  pattern = 'ContainerStopped',
   group = augroup,
   callback = function(args)
     local data = args.data or {}
-    print(string.format('DevcontainerStopped: %s', data.container_name or 'unknown'))
+    print(string.format('ContainerStopped: %s', data.container_name or 'unknown'))
     -- Update your statusline here
-    -- Example: vim.g.devcontainer_status = 'stopped'
+    -- Example: vim.g.container_status = 'stopped'
   end,
 })
 
--- DevcontainerClosed: Fired when a devcontainer is closed/reset
+-- ContainerClosed: Fired when a container is closed/reset
 vim.api.nvim_create_autocmd('User', {
-  pattern = 'DevcontainerClosed',
+  pattern = 'ContainerClosed',
   group = augroup,
   callback = function(args)
     local data = args.data or {}
-    print(string.format('DevcontainerClosed: %s', data.container_name or 'unknown'))
+    print(string.format('ContainerClosed: %s', data.container_name or 'unknown'))
     -- Update your statusline here
-    -- Example: vim.g.devcontainer_status = 'closed'
-    -- Example: vim.g.devcontainer_name = nil
-    -- Example: vim.g.devcontainer_id = nil
+    -- Example: vim.g.container_status = 'closed'
+    -- Example: vim.g.container_name = nil
+    -- Example: vim.g.container_id = nil
   end,
 })
 
 -- Example statusline component function
 -- You can use this in your statusline configuration
-function _G.devcontainer_statusline()
-  local status = vim.g.devcontainer_status or 'none'
-  local name = vim.g.devcontainer_name
+function _G.container_statusline()
+  local status = vim.g.container_status or 'none'
+  local name = vim.g.container_name
 
   if status == 'none' then
     return ''
   elseif status == 'opened' then
-    return string.format('📦 %s (opened)', name or 'devcontainer')
+    return string.format('📦 %s (opened)', name or 'container')
   elseif status == 'built' then
-    return string.format('📦 %s (built)', name or 'devcontainer')
+    return string.format('📦 %s (built)', name or 'container')
   elseif status == 'running' then
-    return string.format('📦 %s ✓', name or 'devcontainer')
+    return string.format('📦 %s ✓', name or 'container')
   elseif status == 'stopped' then
-    return string.format('📦 %s ✗', name or 'devcontainer')
+    return string.format('📦 %s ✗', name or 'container')
   elseif status == 'closed' then
     return ''
   end
 
-  return string.format('📦 %s (%s)', name or 'devcontainer', status)
+  return string.format('📦 %s (%s)', name or 'container', status)
 end
 
 -- Example usage in statusline (for lualine)
@@ -98,7 +98,7 @@ end
 -- {
 --   sections = {
 --     lualine_x = {
---       { devcontainer_statusline },
+--       { container_statusline },
 --     },
 --   },
 -- }

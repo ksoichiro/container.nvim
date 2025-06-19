@@ -1,6 +1,6 @@
 # Go Test Integration Example
 
-This example demonstrates how to run tests in devcontainers using devcontainer.nvim's test integration features.
+This example demonstrates how to run tests in containers using container.nvim's test integration features.
 
 ## Features
 
@@ -13,10 +13,10 @@ This example demonstrates how to run tests in devcontainers using devcontainer.n
 ## Setup
 
 1. Open this directory in Neovim
-2. Start the devcontainer:
+2. Start the container:
    ```vim
-   :DevcontainerOpen
-   :DevcontainerStart
+   :ContainerOpen
+   :ContainerStart
    ```
 
 3. Wait for the container to start and test integration to be set up automatically
@@ -36,24 +36,24 @@ This example demonstrates how to run tests in devcontainers using devcontainer.n
 :TestSuite
 ```
 
-### Using devcontainer.nvim commands
+### Using container.nvim commands
 
 These commands work even without vim-test installed:
 
 ```vim
 " Run test under cursor (output in buffer)
-:DevcontainerTestNearest
+:ContainerTestNearest
 
 " Run all tests in current file (output in buffer)
-:DevcontainerTestFile
+:ContainerTestFile
 
 " Run all tests in the project (output in buffer)
-:DevcontainerTestSuite
+:ContainerTestSuite
 
 " Run tests in terminal for interactive output
-:DevcontainerTestNearestTerminal
-:DevcontainerTestFileTerminal
-:DevcontainerTestSuiteTerminal
+:ContainerTestNearestTerminal
+:ContainerTestFileTerminal
+:ContainerTestSuiteTerminal
 ```
 
 **Output modes:**
@@ -66,7 +66,7 @@ You can also run tests manually in the container:
 
 ```vim
 " Open container terminal
-:DevcontainerTerminal
+:ContainerTerminal
 
 " In the terminal, run:
 go test -v ./...
@@ -93,7 +93,7 @@ go test -bench=.
 
 ## How It Works
 
-1. When you run a test command, devcontainer.nvim:
+1. When you run a test command, container.nvim:
    - Detects the test at cursor position (for TestNearest)
    - Builds the appropriate `go test` command
    - Executes it inside the container using Docker exec
@@ -123,17 +123,17 @@ To debug why a test might be failing:
 
 ```vim
 " Check container status
-:DevcontainerStatus
+:ContainerStatus
 
 " View container logs
-:DevcontainerLogs
+:ContainerLogs
 
 " Check test integration setup
-:DevcontainerTestSetup
+:ContainerTestSetup
 ```
 
 ## Tips
 
-- Use `:DevcontainerTestNearest` while developing to quickly run single tests
-- Use `:DevcontainerTestFile` to verify all tests in current file pass
-- Use `:DevcontainerTestSuite` before committing to ensure everything works
+- Use `:ContainerTestNearest` while developing to quickly run single tests
+- Use `:ContainerTestFile` to verify all tests in current file pass
+- Use `:ContainerTestSuite` before committing to ensure everything works

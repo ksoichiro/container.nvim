@@ -90,13 +90,13 @@ local mock_log = {
   end,
 }
 
-package.loaded['devcontainer.utils.log'] = mock_log
+package.loaded['container.utils.log'] = mock_log
 
 print('=== Auto-Start Enhancement Test ===')
 print()
 
 -- Load the config module
-local config = require('devcontainer.config')
+local config = require('container.config')
 
 print('Test 1: Default configuration includes new auto-start options')
 local defaults = config.defaults

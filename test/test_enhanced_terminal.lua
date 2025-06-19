@@ -146,14 +146,14 @@ _G.vim = {
 }
 
 -- Mock file system utilities
-package.loaded['devcontainer.utils.fs'] = {
+package.loaded['container.utils.fs'] = {
   ensure_directory = function(dir)
     return true
   end,
 }
 
 -- Mock log utilities
-package.loaded['devcontainer.utils.log'] = {
+package.loaded['container.utils.log'] = {
   debug = function(...)
     print('[DEBUG]', string.format(...))
   end,
@@ -176,7 +176,7 @@ package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 local function test_session_manager()
   print('=== Testing Session Manager ===')
 
-  local session_manager = require('devcontainer.terminal.session')
+  local session_manager = require('container.terminal.session')
 
   -- Test setup
   local config = {
@@ -243,7 +243,7 @@ end
 local function test_display_module()
   print('\n=== Testing Display Module ===')
 
-  local display = require('devcontainer.terminal.display')
+  local display = require('container.terminal.display')
 
   -- Test terminal command building
   local cmd = display.build_terminal_command('container123', '/bin/bash', { 'TERM=xterm-256color' })
@@ -285,7 +285,7 @@ end
 local function test_history_module()
   print('\n=== Testing History Module ===')
 
-  local history = require('devcontainer.terminal.history')
+  local history = require('container.terminal.history')
 
   -- Mock session
   local mock_session = {
@@ -331,7 +331,7 @@ local function test_main_terminal_module()
   print('\n=== Testing Main Terminal Module ===')
 
   -- Mock config module
-  package.loaded['devcontainer.config'] = {
+  package.loaded['container.config'] = {
     get = function()
       return {
         terminal = {
@@ -355,7 +355,7 @@ local function test_main_terminal_module()
     end,
   }
 
-  local terminal = require('devcontainer.terminal')
+  local terminal = require('container.terminal')
 
   -- Test setup
   local config = {

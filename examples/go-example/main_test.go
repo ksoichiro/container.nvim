@@ -23,9 +23,9 @@ func TestCreateGreeting(t *testing.T) {
 			expected: "Hello, World!",
 		},
 		{
-			name:     "with devcontainer",
-			input:    "devcontainer.nvim",
-			expected: "Hello, devcontainer.nvim!",
+			name:     "with container",
+			input:    "container.nvim",
+			expected: "Hello, container.nvim!",
 		},
 	}
 

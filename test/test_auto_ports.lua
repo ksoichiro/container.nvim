@@ -98,7 +98,7 @@ local mock_log = {
   end,
 }
 
-package.loaded['devcontainer.utils.log'] = mock_log
+package.loaded['container.utils.log'] = mock_log
 
 -- Mock fs module
 local mock_fs = {
@@ -107,7 +107,7 @@ local mock_fs = {
   end,
 }
 
-package.loaded['devcontainer.utils.fs'] = mock_fs
+package.loaded['container.utils.fs'] = mock_fs
 
 print('=== Auto Port Configuration Bug Test ===')
 print()
@@ -124,7 +124,7 @@ print(vim.inspect(test_config))
 print()
 
 -- Load the parser
-local parser = require('devcontainer.parser')
+local parser = require('container.parser')
 
 -- Test 1: Port normalization
 print('Test 1: Port Normalization')

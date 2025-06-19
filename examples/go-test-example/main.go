@@ -8,7 +8,7 @@ func main() {
 	fmt.Println("Go Test Integration Example")
 	fmt.Println("===========================")
 	fmt.Println()
-	fmt.Println("This example demonstrates test execution in devcontainers.")
+	fmt.Println("This example demonstrates test execution in containers.")
 	fmt.Println()
 
 	// Calculator demo

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example Python file to test LSP integration with devcontainer.nvim
+Example Python file to test LSP integration with container.nvim
 """
 
 def hello_world(name: str = "World") -> str:
@@ -38,7 +38,7 @@ class Calculator:
 
 def main():
     """Main function for testing."""
-    print(hello_world("devcontainer.nvim"))
+    print(hello_world("container.nvim"))
 
     numbers = [1, 2, 3, 4, 5]
     total = calculate_sum(numbers)

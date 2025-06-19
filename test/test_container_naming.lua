@@ -30,10 +30,10 @@ local mock_log = {
   error = function(...) end,
 }
 
-package.loaded['devcontainer.utils.log'] = mock_log
+package.loaded['container.utils.log'] = mock_log
 
 -- Load docker module
-local docker = require('devcontainer.docker.init')
+local docker = require('container.docker.init')
 
 print('Running container naming tests...')
 print()
