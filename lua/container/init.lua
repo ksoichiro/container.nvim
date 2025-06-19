@@ -197,8 +197,8 @@ function M.build()
   log.info('Preparing devcontainer image')
 
   return docker.prepare_image(state.current_config, function(data)
-    -- Display progress
-    print(data)
+    -- Display build progress via notification system
+    notify.progress('image_build', nil, nil, data)
   end, function(success, result)
     if success then
       log.info('Successfully prepared devcontainer image')
@@ -778,9 +778,9 @@ function M.exec(command, opts)
           log.info('Command output: %s', result.stdout)
           -- For exec commands, we might want to show output directly
           -- since users expect to see the result
-          print('=== Command Output ===')
+          notify.info('=== Command Output ===')
           for line in result.stdout:gmatch('[^\n]+') do
-            print(line)
+            notify.info(line)
           end
         else
           notify.status('Command completed (no output)', 'info')
@@ -792,9 +792,9 @@ function M.exec(command, opts)
         if result.stderr and result.stderr ~= '' then
           log.error('Command stderr: %s', result.stderr)
           -- Show error output directly for debugging
-          print('✗ Command failed:')
+          notify.critical('✗ Command failed:')
           for line in result.stderr:gmatch('[^\n]+') do
-            print('Error: ' .. line)
+            notify.critical('Error: ' .. line)
           end
         else
           notify.status('No error details available', 'warn')
@@ -1471,14 +1471,14 @@ end
 
 -- Step 4: Container startup process
 function M._start_container_step4(container_id)
-  print('Step 4: Starting container...')
+  notify.progress('container_start', 4, 4, 'Starting container...')
   docker = docker or require('container.docker.init')
 
   docker.start_container_async(container_id, function(success, error_msg)
     vim.schedule(function()
       if success then
-        print('✓ Container started successfully and is ready!')
-        print('=== Container Ready ===')
+        notify.success('Container started successfully and is ready!')
+        notify.container('Container is now ready for development')
 
         -- Trigger ContainerStarted event
         vim.api.nvim_exec_autocmds('User', {
@@ -1523,9 +1523,9 @@ end
 -- Create container asynchronously
 function M._create_container_async(config, callback)
   -- This implementation is complex, so handle with simple error handling for now
-  print('Note: Container creation requires image building/pulling.')
-  print('For now, please use the standard :DevcontainerStart command.')
-  print('This step-by-step version works best with existing containers.')
+  notify.status('Note: Container creation requires image building/pulling.')
+  notify.status('For now, please use the standard :ContainerStart command.')
+  notify.status('This step-by-step version works best with existing containers.')
   callback(nil, 'Container creation requires full :DevcontainerStart workflow')
 end
 
@@ -1664,9 +1664,9 @@ function M._try_reconnect_existing_container()
         clear_status_cache()
         state.current_config = normalized_config
 
-        print('✓ Reconnected to existing container: ' .. container.id:sub(1, 12))
-        print('  Status: ' .. container.status)
-        print('  Use :DevcontainerStatus for details')
+        notify.success('Reconnected to existing container: ' .. container.id:sub(1, 12))
+        notify.container('Status: ' .. container.status)
+        notify.info('Use :ContainerStatus for details')
 
         -- Trigger ContainerOpened event for reconnection
         vim.api.nvim_exec_autocmds('User', {
@@ -1708,7 +1708,7 @@ end
 
 -- Manually reconnect to existing container
 function M.reconnect()
-  print('=== Reconnecting to Existing Container ===')
+  notify.container('Reconnecting to existing container...')
   state.current_container = nil
   clear_status_cache()
   state.current_config = nil
@@ -1729,14 +1729,14 @@ function M._run_post_create_command(container_id, callback)
   end
 
   if not state.current_config or not state.current_config.post_create_command then
-    print('No postCreateCommand found, skipping...')
+    notify.debug('No postCreateCommand found, skipping...')
     log.debug('No postCreateCommand found, skipping')
     callback(true)
     return
   end
 
   local command = state.current_config.post_create_command
-  print('Step 4.5: Running postCreateCommand...')
+  notify.progress('container_setup', 5, 5, 'Running postCreateCommand...')
   log.info('Executing postCreateCommand: %s', command)
 
   local docker = require('container.docker.init')
@@ -1768,14 +1768,14 @@ function M._run_post_create_command(container_id, callback)
   docker.run_docker_command_async(exec_args, {}, function(result)
     vim.schedule(function()
       if result.success then
-        print('✓ postCreateCommand completed successfully')
+        notify.success('postCreateCommand completed successfully')
         log.info('postCreateCommand output: %s', result.stdout)
         if result.stderr and result.stderr ~= '' then
           log.debug('postCreateCommand stderr: %s', result.stderr)
         end
         callback(true)
       else
-        print('✗ postCreateCommand failed')
+        notify.critical('postCreateCommand failed')
         log.error('postCreateCommand failed with code %d', result.code)
         log.error('Error output: %s', result.stderr or '')
         log.error('Stdout: %s', result.stdout or '')
@@ -1872,7 +1872,7 @@ function M.recover_lsp()
     lsp = require('container.lsp')
   end
 
-  print('Starting LSP recovery process...')
+  notify.status('Starting LSP recovery process...')
   lsp.recover_all_lsp_servers()
 
   return true
@@ -1889,7 +1889,7 @@ function M.retry_lsp_server(server_name)
     return false
   end
 
-  print('Retrying LSP server setup: ' .. server_name)
+  notify.status('Retrying LSP server setup: ' .. server_name)
   lsp.retry_lsp_server_setup(server_name, 3)
 
   return true

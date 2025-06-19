@@ -279,7 +279,16 @@ end
 
 -- Get specific configuration item
 function M.get_value(path)
-  local keys = vim.split(path, '.', { plain = true })
+  local split_func = vim.split
+    or function(str, delimiter)
+      local result = {}
+      local pattern = delimiter == '.' and '%.' or delimiter
+      for part in (str .. delimiter):gmatch('([^' .. pattern .. ']*)' .. pattern) do
+        table.insert(result, part)
+      end
+      return result
+    end
+  local keys = split_func(path, '.', { plain = true })
   local value = current_config
 
   for _, key in ipairs(keys) do
@@ -295,7 +304,16 @@ end
 
 -- Update configuration item
 function M.set_value(path, new_value)
-  local keys = vim.split(path, '.', { plain = true })
+  local split_func = vim.split
+    or function(str, delimiter)
+      local result = {}
+      local pattern = delimiter == '.' and '%.' or delimiter
+      for part in (str .. delimiter):gmatch('([^' .. pattern .. ']*)' .. pattern) do
+        table.insert(result, part)
+      end
+      return result
+    end
+  local keys = split_func(path, '.', { plain = true })
   local target = current_config
 
   -- Navigate to all keys except the last one
