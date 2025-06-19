@@ -240,11 +240,15 @@ function M.setup(user_config)
   if filereadable(project_config_path) == 1 then
     local ok, project_config = pcall(dofile, project_config_path)
     if ok and type(project_config) == 'table' then
-      -- Use print instead of log since log might not be initialized yet
-      print('Loading project configuration from ' .. project_config_path)
+      -- Use log since it should be available by now
+      if log then
+        log.info('Loading project configuration from %s', project_config_path)
+      end
       merge_config(current_config, project_config)
     elseif not ok then
-      print('Warning: Failed to load project configuration: ' .. tostring(project_config))
+      if log then
+        log.warn('Failed to load project configuration: %s', tostring(project_config))
+      end
     end
   end
 
@@ -252,7 +256,9 @@ function M.setup(user_config)
   local errors = validate_config(current_config)
   if #errors > 0 then
     for _, error in ipairs(errors) do
-      print('Configuration error: ' .. error)
+      if log then
+        log.error('Configuration error: %s', error)
+      end
     end
     return false, errors
   end
@@ -497,6 +503,8 @@ end
 function M.show_config()
   local diffs = M.diff_from_defaults()
 
+  -- For configuration display, we still want to use print() since this is
+  -- an intentional display command that users expect to see output from
   print('=== container.nvim Configuration ===')
   print()
 

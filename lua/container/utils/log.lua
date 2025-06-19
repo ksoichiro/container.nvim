@@ -49,18 +49,10 @@ local function log(level, msg, ...)
   local formatted_msg = string.format(msg, ...)
   local log_line = string.format('[%s] [%s] %s', timestamp, level_name, formatted_msg)
 
-  -- Console output
-  if M.config.console then
-    local notify = require('container.utils.notify')
-    if level >= log_levels.ERROR then
-      notify.critical(formatted_msg)
-    elseif level >= log_levels.WARN then
-      notify.status(formatted_msg, { level = 'warn' })
-    elseif level >= log_levels.INFO then
-      notify.status(formatted_msg)
-    else
-      print(log_line)
-    end
+  -- Console output - only for DEBUG level or when explicitly enabled
+  -- This removes automatic notification routing to prevent duplicate messages
+  if M.config.console and level == log_levels.DEBUG then
+    print(log_line)
   end
 
   -- File output
@@ -88,6 +80,26 @@ end
 
 function M.error(msg, ...)
   log(log_levels.ERROR, msg, ...)
+end
+
+-- Helper function to format log messages for explicit notification use
+-- This allows other modules to get formatted log messages for user notifications
+function M.format_message(level, msg, ...)
+  local level_name = log_level_names[level] or 'UNKNOWN'
+  return string.format(msg, ...)
+end
+
+-- Convenience functions to get formatted messages without logging
+function M.format_info(msg, ...)
+  return M.format_message(log_levels.INFO, msg, ...)
+end
+
+function M.format_warn(msg, ...)
+  return M.format_message(log_levels.WARN, msg, ...)
+end
+
+function M.format_error(msg, ...)
+  return M.format_message(log_levels.ERROR, msg, ...)
 end
 
 return M
