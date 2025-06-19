@@ -45,7 +45,7 @@ function M.setup(user_config)
   config = require('devcontainer.config')
   notify = require('devcontainer.utils.notify')
 
-  local success = config.setup(user_config)
+  local success, result = config.setup(user_config)
   if not success then
     log.error('Failed to setup configuration')
     return false
@@ -218,9 +218,22 @@ end
 function M.start()
   log = log or require('devcontainer.utils.log')
 
-  if not state.current_config then
-    log.error('No devcontainer configuration loaded')
+  if not state.initialized then
+    log.error('Plugin not initialized. Call setup() first.')
     return false
+  end
+
+  -- If no configuration is loaded, try to load it automatically
+  if not state.current_config then
+    log.info('No devcontainer configuration loaded, attempting to load...')
+    local success = M.open()
+    if not success then
+      log.error('Failed to load devcontainer configuration. Use :DevcontainerOpen first.')
+      return false
+    end
+    -- Since open() is synchronous and includes container building/creation,
+    -- we need to restart the async start process
+    return M.start()
   end
 
   docker = docker or require('devcontainer.docker.init')

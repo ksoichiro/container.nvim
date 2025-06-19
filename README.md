@@ -335,6 +335,116 @@ require('devcontainer').setup({
 })
 ```
 
+### Advanced Configuration System
+
+The plugin provides a robust configuration system with multiple ways to customize settings:
+
+#### Configuration Management Commands
+
+```vim
+" Show current configuration
+:DevcontainerConfig
+
+" Reload configuration
+:DevcontainerConfig reload
+
+" Reset to defaults
+:DevcontainerConfig reset
+
+" Validate configuration
+:DevcontainerConfig validate
+
+" Show environment variable options
+:DevcontainerConfig env
+
+" Save configuration to file
+:DevcontainerConfig save ~/.config/devcontainer/config.lua
+
+" Load configuration from file
+:DevcontainerConfig load ~/.config/devcontainer/config.lua
+
+" Watch configuration file for changes
+:DevcontainerConfig watch
+
+" Get specific configuration value
+:DevcontainerConfig terminal.default_shell
+
+" Set configuration value
+:DevcontainerConfigSet terminal.default_shell /bin/zsh
+:DevcontainerConfigSet lsp.port_range [9000,10000]
+```
+
+#### Project-specific Configuration
+
+Create a `.devcontainer.nvim.lua` file in your project root:
+
+```lua
+-- .devcontainer.nvim.lua
+return {
+  log_level = 'debug',
+  terminal = {
+    default_shell = '/bin/zsh',
+  },
+  port_forwarding = {
+    common_ports = { 3000, 8080 },
+  },
+}
+```
+
+This file is automatically loaded and takes precedence over user configuration.
+
+#### Environment Variable Overrides
+
+You can override configuration using environment variables:
+
+```bash
+# Basic settings
+export DEVCONTAINER_AUTO_START=true
+export DEVCONTAINER_LOG_LEVEL=debug
+export DEVCONTAINER_CONTAINER_RUNTIME=podman
+
+# Terminal settings
+export DEVCONTAINER_TERMINAL_SHELL=/bin/zsh
+export DEVCONTAINER_TERMINAL_POSITION=float
+
+# Port forwarding
+export DEVCONTAINER_PORT_COMMON=3000,8080,5000
+export DEVCONTAINER_PORT_AUTO_FORWARD=false
+
+# UI settings
+export DEVCONTAINER_UI_PICKER=fzf-lua
+export DEVCONTAINER_UI_NOTIFICATION_LEVEL=minimal
+```
+
+Run `:DevcontainerConfig env` to see all available environment variables.
+
+#### Configuration Priority
+
+Configuration is loaded in this order (later sources override earlier ones):
+
+1. Default configuration
+2. Environment variables
+3. User configuration (from `setup()`)
+4. Project configuration (`.devcontainer.nvim.lua`)
+
+#### Configuration Validation
+
+The plugin validates all configuration values to ensure they are correct:
+
+- Type checking (boolean, number, string, array)
+- Enum validation (valid options for specific fields)
+- Range validation (port numbers, percentages)
+- Path validation (mount points, directories)
+- Cross-field validation (port ranges, dependencies)
+
+#### Live Configuration Reload
+
+Configuration changes can be applied without restarting Neovim:
+
+- Manual reload: `:DevcontainerConfig reload`
+- Automatic reload: `:DevcontainerConfig watch` monitors `.devcontainer.nvim.lua`
+- Event-based: Other modules react to `DevcontainerConfigReloaded` event
+
 ## StatusLine Integration
 
 The plugin provides built-in statusline integration to display devcontainer status in your Neovim statusline.

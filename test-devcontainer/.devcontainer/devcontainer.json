@@ -1,0 +1,5 @@
+{
+  "image": "ubuntu:latest",
+  "name": "Test Container",
+  "workspaceFolder": "/workspace"
+}

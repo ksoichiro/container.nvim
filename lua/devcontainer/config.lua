@@ -4,6 +4,24 @@
 local M = {}
 local log = require('devcontainer.utils.log')
 
+-- Lazy load sub-modules to avoid circular dependencies and test issues
+local validator = nil
+local env = nil
+
+local function get_validator()
+  if not validator then
+    validator = require('devcontainer.config.validator')
+  end
+  return validator
+end
+
+local function get_env()
+  if not env then
+    env = require('devcontainer.config.env')
+  end
+  return env
+end
+
 -- Default configuration
 M.defaults = {
   -- Basic settings
@@ -182,61 +200,10 @@ local function merge_config(target, source)
   end
 end
 
--- Validate configuration
+-- Validate configuration (uses new validator module)
 local function validate_config(config)
-  local errors = {}
-
-  -- Validate log level
-  local valid_log_levels = { 'debug', 'info', 'warn', 'error' }
-  if not vim.tbl_contains(valid_log_levels, config.log_level:lower()) then
-    table.insert(errors, 'Invalid log_level: ' .. config.log_level)
-  end
-
-  -- Validate container runtime
-  local valid_runtimes = { 'docker', 'podman' }
-  if not vim.tbl_contains(valid_runtimes, config.container_runtime) then
-    table.insert(errors, 'Invalid container_runtime: ' .. config.container_runtime)
-  end
-
-  -- Validate auto_start_mode
-  local valid_auto_start_modes = { 'notify', 'prompt', 'immediate', 'off' }
-  if not vim.tbl_contains(valid_auto_start_modes, config.auto_start_mode) then
-    table.insert(errors, 'Invalid auto_start_mode: ' .. config.auto_start_mode)
-  end
-
-  -- Validate auto_start_delay
-  if type(config.auto_start_delay) ~= 'number' or config.auto_start_delay < 0 then
-    table.insert(errors, 'auto_start_delay must be a non-negative number')
-  end
-
-  -- Validate terminal default_position
-  local valid_positions = { 'split', 'tab', 'float' }
-  if not vim.tbl_contains(valid_positions, config.terminal.default_position) then
-    table.insert(errors, 'Invalid terminal default_position: ' .. config.terminal.default_position)
-  end
-
-  -- Validate terminal float border
-  local valid_borders = { 'single', 'double', 'rounded', 'solid', 'shadow' }
-  if config.terminal.float.border and not vim.tbl_contains(valid_borders, config.terminal.float.border) then
-    table.insert(errors, 'Invalid terminal float border: ' .. config.terminal.float.border)
-  end
-
-  -- Validate port range
-  if config.lsp.port_range[1] >= config.lsp.port_range[2] then
-    table.insert(errors, 'Invalid LSP port_range: start port must be less than end port')
-  end
-
-  -- Validate picker
-  local valid_pickers = { 'telescope', 'fzf-lua', 'vim.ui.select' }
-  if not vim.tbl_contains(valid_pickers, config.ui.picker) then
-    table.insert(errors, 'Invalid ui.picker: ' .. config.ui.picker)
-  end
-
-  -- Validate paths
-  if config.workspace.mount_point == '' then
-    table.insert(errors, 'workspace.mount_point cannot be empty')
-  end
-
+  local v = get_validator()
+  local valid, errors = v.validate(config)
   return errors
 end
 
@@ -247,22 +214,55 @@ function M.setup(user_config)
   -- Copy default configuration
   current_config = deep_copy(M.defaults)
 
-  -- Merge user configuration
+  -- Apply environment variable overrides first
+  local e = get_env()
+  current_config = e.apply_overrides(current_config)
+
+  -- Merge user configuration (user config takes precedence over env vars)
   merge_config(current_config, user_config)
+
+  -- Check for project-specific configuration file
+  local getcwd = (vim.fn and vim.fn.getcwd) or function()
+    return '.'
+  end
+  local filereadable = (vim.fn and vim.fn.filereadable)
+    or function(path)
+      -- Fallback: try to open file
+      local f = io.open(path, 'r')
+      if f then
+        f:close()
+        return 1
+      end
+      return 0
+    end
+
+  local project_config_path = getcwd() .. '/.devcontainer.nvim.lua'
+  if filereadable(project_config_path) == 1 then
+    local ok, project_config = pcall(dofile, project_config_path)
+    if ok and type(project_config) == 'table' then
+      -- Use print instead of log since log might not be initialized yet
+      print('Loading project configuration from ' .. project_config_path)
+      merge_config(current_config, project_config)
+    elseif not ok then
+      print('Warning: Failed to load project configuration: ' .. tostring(project_config))
+    end
+  end
 
   -- Validate configuration
   local errors = validate_config(current_config)
   if #errors > 0 then
     for _, error in ipairs(errors) do
-      log.error('Configuration error: %s', error)
+      print('Configuration error: ' .. error)
     end
     return false, errors
   end
 
-  -- Set log level
-  log.set_level(current_config.log_level)
+  -- Set log level if log is available
+  if log then
+    log.set_level(current_config.log_level)
+    log.debug('Configuration loaded successfully')
+  end
 
-  log.debug('Configuration loaded successfully')
   return true, current_config
 end
 
@@ -362,6 +362,88 @@ function M.reset()
   current_config = deep_copy(M.defaults)
   log.info('Configuration reset to defaults')
   return current_config
+end
+
+-- Reload configuration
+function M.reload(user_config)
+  log.info('Reloading configuration')
+
+  -- Store the current config for comparison
+  local old_config = deep_copy(current_config)
+
+  -- Re-run setup with the provided user config
+  local success, result = M.setup(user_config)
+
+  if success then
+    -- Check what changed
+    local diffs = M.diff_configs(old_config, current_config)
+    if #diffs > 0 then
+      log.info('Configuration reloaded with %d changes', #diffs)
+      for _, diff in ipairs(diffs) do
+        log.debug('Config change: %s', vim.inspect(diff))
+      end
+    else
+      log.info('Configuration reloaded (no changes)')
+    end
+
+    -- Emit an event for other modules to react to config changes (only if vim.api is available)
+    if vim.api and vim.api.nvim_exec_autocmds then
+      vim.api.nvim_exec_autocmds('User', {
+        pattern = 'DevcontainerConfigReloaded',
+        modeline = false,
+      })
+    end
+  else
+    log.error('Failed to reload configuration')
+  end
+
+  return success, result
+end
+
+-- Compare two configurations
+function M.diff_configs(old, new, prefix)
+  local diffs = {}
+  prefix = prefix or ''
+
+  -- Check for changes and additions
+  for key, new_value in pairs(new) do
+    local path = prefix == '' and key or prefix .. '.' .. key
+    local old_value = old[key]
+
+    if old_value == nil then
+      table.insert(diffs, {
+        path = path,
+        action = 'added',
+        value = new_value,
+      })
+    elseif type(new_value) == 'table' and type(old_value) == 'table' then
+      local sub_diffs = M.diff_configs(old_value, new_value, path)
+      for _, diff in ipairs(sub_diffs) do
+        table.insert(diffs, diff)
+      end
+    elseif new_value ~= old_value then
+      table.insert(diffs, {
+        path = path,
+        action = 'changed',
+        old_value = old_value,
+        new_value = new_value,
+      })
+    end
+  end
+
+  -- Check for removals
+  for key, old_value in pairs(old) do
+    local path = prefix == '' and key or prefix .. '.' .. key
+    if new[key] == nil then
+      table.insert(diffs, {
+        path = path,
+        action = 'removed',
+        value = old_value,
+      })
+    end
+  end
+
+  return diffs
 end
 
 -- Display configuration differences
@@ -466,5 +548,66 @@ function M.get_schema()
 
   return extract_schema(M.defaults)
 end
+
+-- Watch for configuration file changes
+function M.watch_config_file(filepath)
+  if not filepath then
+    local getcwd = (vim.fn and vim.fn.getcwd) or function()
+      return '.'
+    end
+    filepath = getcwd() .. '/.devcontainer.nvim.lua'
+  end
+
+  -- Use Neovim's file watcher if available
+  local has = (vim.fn and vim.fn.has) or function()
+    return 0
+  end
+  if has('nvim-0.10') == 1 then
+    local ok, watcher = pcall(vim.uv.new_fs_event)
+    if ok then
+      watcher:start(
+        filepath,
+        {},
+        vim.schedule_wrap(function(err, filename, events)
+          if not err then
+            log.info('Configuration file changed: %s', filepath)
+            M.reload()
+          end
+        end)
+      )
+
+      log.debug('Watching configuration file: %s', filepath)
+      return watcher
+    end
+  end
+
+  -- Fallback to autocmd-based watching (only if vim.api is available)
+  if vim.api and vim.api.nvim_create_autocmd then
+    vim.api.nvim_create_autocmd({ 'BufWritePost' }, {
+      pattern = filepath,
+      callback = function()
+        log.info('Configuration file changed: %s', filepath)
+        M.reload()
+      end,
+      group = vim.api.nvim_create_augroup('DevcontainerConfigWatch', { clear = true }),
+    })
+  end
+
+  return nil
+end
+
+-- Export sub-modules for direct access with lazy loading
+local mt = {
+  __index = function(t, k)
+    if k == 'validator' then
+      return get_validator()
+    elseif k == 'env' then
+      return get_env()
+    end
+    return rawget(t, k)
+  end,
+}
+
+setmetatable(M, mt)
 
 return M

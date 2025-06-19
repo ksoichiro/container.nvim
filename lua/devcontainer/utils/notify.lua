@@ -3,7 +3,17 @@
 
 local M = {}
 
-local config = require('devcontainer.config')
+-- Lazy load config to avoid circular dependency
+local config = nil
+local function get_config()
+  if not config then
+    local ok, c = pcall(require, 'devcontainer.config')
+    if ok then
+      config = c
+    end
+  end
+  return config
+end
 
 -- Notification levels (higher number = more important)
 local LEVELS = {
@@ -29,7 +39,12 @@ local CATEGORIES = {
 
 -- Determine if notification should be shown based on level and category
 local function should_notify(level, category)
-  local cfg = config.get()
+  local c = get_config()
+  if not c then
+    return true -- Default to showing notifications if config not loaded
+  end
+
+  local cfg = c.get()
   if not cfg or not cfg.ui or not cfg.ui.show_notifications then
     return false
   end

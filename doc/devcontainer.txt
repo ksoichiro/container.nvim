@@ -496,6 +496,108 @@ Configure the plugin by passing options to the setup function:
     })
 <
 
+Configuration System~
+
+The plugin provides multiple ways to configure settings:
+
+1. User configuration (passed to setup())
+2. Project-specific configuration (.devcontainer.nvim.lua)
+3. Environment variable overrides
+4. Runtime configuration changes
+
+Configuration Commands~
+                                                        *:DevcontainerConfig*
+:DevcontainerConfig
+    Show current configuration with differences from defaults.
+
+:DevcontainerConfig reload
+    Reload configuration from all sources.
+
+:DevcontainerConfig reset
+    Reset configuration to defaults.
+
+:DevcontainerConfig validate
+    Validate current configuration for errors.
+
+:DevcontainerConfig env
+    Show all available environment variable options.
+
+:DevcontainerConfig save {filepath}
+    Save current configuration to file.
+
+:DevcontainerConfig load {filepath}
+    Load configuration from file.
+
+:DevcontainerConfig watch
+    Watch configuration file for changes and auto-reload.
+
+:DevcontainerConfig {path}
+    Get value at specific configuration path.
+    Example: >vim
+        :DevcontainerConfig terminal.default_shell
+<
+
+                                                   *:DevcontainerConfigSet*
+:DevcontainerConfigSet {path} {value}
+    Set configuration value at runtime.
+    Examples: >vim
+        :DevcontainerConfigSet log_level debug
+        :DevcontainerConfigSet terminal.default_shell /bin/zsh
+        :DevcontainerConfigSet lsp.port_range [9000,10000]
+<
+
+Project Configuration~
+                                              *devcontainer-project-config*
+
+Create `.devcontainer.nvim.lua` in your project root:
+>lua
+    -- .devcontainer.nvim.lua
+    return {
+      log_level = 'debug',
+      terminal = {
+        default_shell = '/bin/zsh',
+        default_position = 'float',
+      },
+      port_forwarding = {
+        common_ports = { 3000, 8080 },
+      },
+    }
+<
+
+This file is automatically loaded and takes precedence over user config.
+
+Environment Variables~
+                                                    *devcontainer-env-vars*
+
+Override configuration using environment variables with `DEVCONTAINER_` prefix:
+
+Basic settings:
+  • DEVCONTAINER_AUTO_START         - Enable auto-start (true/false)
+  • DEVCONTAINER_LOG_LEVEL          - Log level (debug/info/warn/error)
+  • DEVCONTAINER_CONTAINER_RUNTIME  - Runtime (docker/podman)
+
+Terminal settings:
+  • DEVCONTAINER_TERMINAL_SHELL     - Default shell path
+  • DEVCONTAINER_TERMINAL_POSITION  - Default position (split/tab/float)
+
+Port forwarding:
+  • DEVCONTAINER_PORT_COMMON        - Common ports (comma-separated)
+  • DEVCONTAINER_PORT_AUTO_FORWARD  - Auto-forward (true/false)
+
+UI settings:
+  • DEVCONTAINER_UI_PICKER          - Picker (telescope/fzf-lua/vim.ui.select)
+  • DEVCONTAINER_UI_NOTIFICATION_LEVEL - Notification level
+
+Run `:DevcontainerConfig env` to see all available variables.
+
+Configuration Priority~
+
+Settings are loaded in this order (later overrides earlier):
+  1. Default configuration
+  2. Environment variables
+  3. User configuration (setup())
+  4. Project configuration (.devcontainer.nvim.lua)
+
 Options~
 
 auto_start                                      *devcontainer-config-auto_start*

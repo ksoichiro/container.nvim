@@ -235,10 +235,153 @@ local function create_commands()
   })
 
   -- Configuration and management commands
-  vim.api.nvim_create_user_command('DevcontainerConfig', function()
-    require('devcontainer.config').show_config()
+  vim.api.nvim_create_user_command('DevcontainerConfig', function(args)
+    local config = require('devcontainer.config')
+
+    if args.args == '' then
+      config.show_config()
+    elseif args.args == 'reload' then
+      local success, result = config.reload()
+      if success then
+        require('devcontainer.utils.notify').status('Configuration reloaded successfully')
+      else
+        require('devcontainer.utils.notify').critical('Failed to reload configuration')
+      end
+    elseif args.args == 'reset' then
+      config.reset()
+      require('devcontainer.utils.notify').status('Configuration reset to defaults')
+    elseif args.args == 'env' then
+      -- Show environment variable configuration
+      local env_vars = config.env.get_supported_vars()
+      print('Environment variable configuration options:')
+      print('')
+      for _, var in ipairs(env_vars) do
+        local current = vim.env[var.name]
+        if current then
+          print(string.format('%s=%s (%s) [ACTIVE]', var.name, current, var.path))
+        else
+          print(string.format('%s (%s -> %s)', var.name, var.type, var.path))
+        end
+      end
+    elseif args.args == 'validate' then
+      local c = config.get()
+      local valid, errors = config.validator.validate(c)
+      if valid then
+        require('devcontainer.utils.notify').status('Configuration is valid')
+      else
+        require('devcontainer.utils.notify').critical('Configuration validation failed:')
+        for _, err in ipairs(errors) do
+          print('  - ' .. err)
+        end
+      end
+    elseif args.args:match('^save ') then
+      local filepath = args.args:gsub('^save ', '')
+      local success, err = config.save_to_file(filepath)
+      if success then
+        require('devcontainer.utils.notify').status('Configuration saved to ' .. filepath)
+      else
+        require('devcontainer.utils.notify').critical('Failed to save configuration: ' .. (err or 'unknown error'))
+      end
+    elseif args.args:match('^load ') then
+      local filepath = args.args:gsub('^load ', '')
+      local success, err = config.load_from_file(filepath)
+      if success then
+        require('devcontainer.utils.notify').status('Configuration loaded from ' .. filepath)
+      else
+        require('devcontainer.utils.notify').critical('Failed to load configuration: ' .. (err or 'unknown error'))
+      end
+    elseif args.args == 'watch' then
+      config.watch_config_file()
+      require('devcontainer.utils.notify').status('Watching configuration file for changes')
+    else
+      -- Try to get/set specific value
+      local path = args.args
+      local value = config.get_value(path)
+      if value ~= nil then
+        print(string.format('%s = %s', path, vim.inspect(value)))
+      else
+        print('Configuration path not found: ' .. path)
+      end
+    end
   end, {
-    desc = 'Show current configuration',
+    desc = 'Show or manage devcontainer configuration',
+    nargs = '*',
+    complete = function(arg_lead, cmd_line, cursor_pos)
+      -- First argument completions
+      if not cmd_line:match('DevcontainerConfig%s+%S+%s') then
+        local completions = {
+          'reload',
+          'reset',
+          'env',
+          'validate',
+          'save',
+          'load',
+          'watch',
+        }
+
+        -- Add configuration paths
+        local schema = require('devcontainer.config').get_schema()
+        for path, _ in pairs(schema) do
+          table.insert(completions, path)
+        end
+
+        return vim.tbl_filter(function(item)
+          return item:match('^' .. vim.pesc(arg_lead))
+        end, completions)
+      end
+
+      -- File path completion for save/load
+      if cmd_line:match('save%s') or cmd_line:match('load%s') then
+        return vim.fn.getcompletion(arg_lead, 'file')
+      end
+
+      return {}
+    end,
+  })
+
+  vim.api.nvim_create_user_command('DevcontainerConfigSet', function(args)
+    local parts = vim.split(args.args, ' ', { plain = false, trimempty = true })
+    if #parts < 2 then
+      require('devcontainer.utils.notify').critical('Usage: DevcontainerConfigSet <path> <value>')
+      return
+    end
+
+    local path = parts[1]
+    table.remove(parts, 1)
+    local value_str = table.concat(parts, ' ')
+
+    -- Try to parse value
+    local value
+    if value_str == 'true' then
+      value = true
+    elseif value_str == 'false' then
+      value = false
+    elseif value_str:match('^%d+$') then
+      value = tonumber(value_str)
+    elseif value_str:match('^%[.*%]$') then
+      -- Try to parse as array
+      local ok, parsed = pcall(vim.fn.json_decode, value_str)
+      value = ok and parsed or value_str
+    else
+      value = value_str
+    end
+
+    require('devcontainer.config').set_value(path, value)
+    require('devcontainer.utils.notify').status(string.format('Set %s = %s', path, vim.inspect(value)))
+  end, {
+    desc = 'Set configuration value',
+    nargs = '+',
+    complete = function(arg_lead, cmd_line, cursor_pos)
+      -- Complete configuration paths
+      if not cmd_line:match('DevcontainerConfigSet%s+%S+%s') then
+        local schema = require('devcontainer.config').get_schema()
+        local paths = vim.tbl_keys(schema)
+        return vim.tbl_filter(function(item)
+          return item:match('^' .. vim.pesc(arg_lead))
+        end, paths)
+      end
+      return {}
+    end,
   })
 
   vim.api.nvim_create_user_command('DevcontainerAutoStart', function(args)
