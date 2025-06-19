@@ -13,7 +13,8 @@ function M.check_docker_availability()
 
   if exit_code ~= 0 then
     log.error('Docker is not available')
-    return false, 'Docker command not found'
+    local error_msg = M._build_docker_not_found_error()
+    return false, error_msg
   end
 
   -- Check Docker daemon operation
@@ -22,7 +23,8 @@ function M.check_docker_availability()
 
   if exit_code ~= 0 then
     log.error('Docker daemon is not running')
-    return false, 'Docker daemon is not running'
+    local error_msg = M._build_docker_daemon_error()
+    return false, error_msg
   end
 
   log.info('Docker is available and running')
@@ -38,7 +40,8 @@ function M.check_docker_availability_async(callback)
     on_exit = function(_, exit_code, _)
       if exit_code ~= 0 then
         log.error('Docker is not available')
-        callback(false, 'Docker command not found')
+        local error_msg = M._build_docker_not_found_error()
+        callback(false, error_msg)
         return
       end
 
@@ -47,7 +50,8 @@ function M.check_docker_availability_async(callback)
         on_exit = function(_, daemon_exit_code, _)
           if daemon_exit_code ~= 0 then
             log.error('Docker daemon is not running')
-            callback(false, 'Docker daemon is not running')
+            local error_msg = M._build_docker_daemon_error()
+            callback(false, error_msg)
           else
             log.info('Docker is available and running')
             callback(true)
@@ -205,9 +209,12 @@ function M.check_image_exists_async(image_name, callback)
   end)
 end
 
--- Docker image pull (fixed version - with detailed debugging)
-function M.pull_image_async(image_name, on_progress, on_complete)
-  log.info('Pulling Docker image (async): %s', image_name)
+-- Docker image pull with retry mechanism
+function M.pull_image_async(image_name, on_progress, on_complete, retry_count)
+  retry_count = retry_count or 0
+  local max_retries = 2
+
+  log.info('Pulling Docker image (async): %s (attempt %d/%d)', image_name, retry_count + 1, max_retries + 1)
 
   -- Debug information immediately after start
   if on_progress then
@@ -306,13 +313,49 @@ function M.pull_image_async(image_name, on_progress, on_complete)
         end
       else
         log.error('Failed to pull Docker image: %s (exit code: %d)', image_name, exit_code)
+        local error_msg = M.handle_network_error(table.concat(stderr_lines, '\n'))
         if on_progress then
           on_progress('✗ Image pull failed (exit code: ' .. exit_code .. ')')
+          on_progress('Network error details:')
+          for line in error_msg:gmatch('[^\n]+') do
+            on_progress('  ' .. line)
+          end
         end
       end
 
       if on_complete then
         vim.schedule(function()
+          -- Retry logic for network failures
+          if not result.success and retry_count < max_retries then
+            -- Check if error is potentially retryable (network-related)
+            local stderr_output = table.concat(stderr_lines, '\n'):lower()
+            local is_retryable = stderr_output:match('timeout')
+              or stderr_output:match('network')
+              or stderr_output:match('connection')
+              or stderr_output:match('temporary failure')
+              or exit_code == 124 -- timeout exit code
+
+            if is_retryable then
+              local wait_time = (retry_count + 1) * 2000 -- 2s, 4s, 6s
+              log.info('Retrying image pull in %d seconds...', wait_time / 1000)
+              if on_progress then
+                on_progress(
+                  string.format(
+                    'Retrying in %d seconds... (attempt %d/%d)',
+                    wait_time / 1000,
+                    retry_count + 2,
+                    max_retries + 1
+                  )
+                )
+              end
+
+              vim.defer_fn(function()
+                M.pull_image_async(image_name, on_progress, on_complete, retry_count + 1)
+              end, wait_time)
+              return
+            end
+          end
+
           on_complete(result.success, result)
         end)
       end
@@ -356,8 +399,10 @@ function M.pull_image_async(image_name, on_progress, on_complete)
     on_progress('   Waiting for Docker output...')
   end
 
-  -- Add progress check
+  -- Add progress check with configurable timeout
   local progress_check_count = 0
+  local timeout_seconds = 600 -- 10 minutes default, make this configurable
+
   local function check_progress()
     progress_check_count = progress_check_count + 1
     local elapsed = (vim.loop.hrtime() - start_time) / 1e9
@@ -377,22 +422,37 @@ function M.pull_image_async(image_name, on_progress, on_complete)
         on_progress(string.format('   [%.0fs] Pull in progress... (check #%d)', elapsed, progress_check_count))
 
         if not data_received and elapsed > 30 then
-          on_progress('   Warning: No data received from Docker yet. This might indicate a problem.')
+          on_progress('   Warning: No data received from Docker yet. This might indicate a network problem.')
+        end
+
+        -- Show timeout countdown
+        if elapsed > timeout_seconds - 60 then -- Last minute warning
+          local remaining = timeout_seconds - elapsed
+          on_progress(string.format('   ⚠ Timeout in %.0f seconds', remaining))
         end
       end
 
-      -- Timeout after 10 minutes
-      if elapsed < 600 then
+      -- Configurable timeout
+      if elapsed < timeout_seconds then
         vim.defer_fn(check_progress, 10000) -- Check every 10 seconds
       else
-        log.warn('Docker pull timeout, stopping job: %d', job_id)
+        log.warn('Docker pull timeout after %d seconds, stopping job: %d', timeout_seconds, job_id)
         vim.fn.jobstop(job_id)
         if on_progress then
-          on_progress('⚠ Image pull timed out (10 minutes)')
+          on_progress(string.format('⚠ Image pull timed out (%d minutes)', timeout_seconds / 60))
+          on_progress('This may be due to:')
+          on_progress('  • Slow internet connection')
+          on_progress('  • Large image size')
+          on_progress('  • Docker registry issues')
+          on_progress('  • Network configuration problems')
         end
         if on_complete then
           vim.schedule(function()
-            on_complete(false, { error = 'Timeout', duration = elapsed })
+            on_complete(false, {
+              error = 'Timeout',
+              duration = elapsed,
+              timeout_seconds = timeout_seconds,
+            })
           end)
         end
       end
@@ -1332,6 +1392,153 @@ function M.restart_container(container_name, callback)
       M.start_existing_container(container_name, callback)
     end, 1000)
   end)
+end
+
+-- Enhanced error message builders
+
+-- Build detailed error message when Docker command is not found
+function M._build_docker_not_found_error()
+  local error_lines = {
+    'Docker command not found.',
+    '',
+    'Please install Docker:',
+    '• macOS: Install Docker Desktop from https://docker.com/products/docker-desktop',
+    '• Linux: Use your package manager (e.g., apt install docker.io, yum install docker)',
+    '• Windows: Install Docker Desktop from https://docker.com/products/docker-desktop',
+    '',
+    'After installation, ensure Docker is in your PATH and restart your terminal.',
+  }
+  return table.concat(error_lines, '\n')
+end
+
+-- Build detailed error message when Docker daemon is not running
+function M._build_docker_daemon_error()
+  local error_lines = {
+    'Docker is installed but the daemon is not running.',
+    '',
+    'To start Docker daemon:',
+    '• macOS/Windows: Start Docker Desktop application',
+    '• Linux: Run "sudo systemctl start docker" or "sudo service docker start"',
+    '',
+    'If using Docker Desktop, check that it has started completely.',
+    'You may need to wait a few moments after starting Docker Desktop.',
+  }
+  return table.concat(error_lines, '\n')
+end
+
+-- Enhanced network error handling
+function M.handle_network_error(error_details)
+  local error_lines = {
+    'Network operation failed.',
+    '',
+    'Common causes:',
+    '• No internet connection',
+    '• Docker registry is unreachable',
+    '• Firewall or proxy configuration issues',
+    '',
+    'Troubleshooting:',
+    '• Check your internet connection',
+    '• Try pulling a simple image: docker pull hello-world',
+    '• Configure proxy settings if behind a corporate firewall',
+  }
+
+  if error_details then
+    table.insert(error_lines, '')
+    table.insert(error_lines, 'Error details: ' .. tostring(error_details))
+  end
+
+  return table.concat(error_lines, '\n')
+end
+
+-- Enhanced container operation error handling
+function M.handle_container_error(operation, container_id, error_details)
+  local error_lines = {
+    string.format('Container %s operation failed.', operation),
+    '',
+  }
+
+  if operation == 'create' then
+    vim.list_extend(error_lines, {
+      'Common causes:',
+      '• Image not found or invalid',
+      '• Port already in use',
+      '• Insufficient resources (memory, disk space)',
+      '• Invalid configuration in devcontainer.json',
+      '',
+      'Try:',
+      '• Check if the specified image exists: docker images',
+      '• Verify port availability: netstat -an | grep <port>',
+      '• Check available disk space: df -h',
+      '• Review your devcontainer.json configuration',
+    })
+  elseif operation == 'start' then
+    vim.list_extend(error_lines, {
+      'Common causes:',
+      '• Container configuration conflicts',
+      '• Resource constraints',
+      '• Missing dependencies in container',
+      '',
+      'Try:',
+      '• Check container logs: docker logs ' .. (container_id or '<container>'),
+      '• Inspect container: docker inspect ' .. (container_id or '<container>'),
+      '• Remove and recreate the container',
+    })
+  elseif operation == 'exec' then
+    vim.list_extend(error_lines, {
+      'Common causes:',
+      '• Container not running',
+      '• Command not found in container',
+      '• Permission issues',
+      '',
+      'Try:',
+      '• Check container status: docker ps',
+      '• Verify command exists in container',
+      '• Check user permissions and working directory',
+    })
+  end
+
+  if error_details then
+    table.insert(error_lines, '')
+    table.insert(error_lines, 'Error details: ' .. tostring(error_details))
+  end
+
+  return table.concat(error_lines, '\n')
+end
+
+-- Timeout handling with retry mechanism
+function M.with_timeout_and_retry(operation_name, operation_func, timeout_ms, max_retries)
+  timeout_ms = timeout_ms or 30000 -- 30 seconds default
+  max_retries = max_retries or 2 -- 2 retries default
+
+  local function attempt(retry_count)
+    local success = false
+    local result = nil
+    local timed_out = false
+
+    -- Set up timeout
+    local timeout_timer = vim.defer_fn(function()
+      timed_out = true
+      log.warn('%s operation timed out (attempt %d/%d)', operation_name, retry_count + 1, max_retries + 1)
+    end, timeout_ms)
+
+    -- Execute operation
+    operation_func(function(op_success, op_result)
+      if not timed_out then
+        success = op_success
+        result = op_result
+        pcall(vim.fn.timer_stop, timeout_timer) -- Stop timeout timer
+
+        if not success and retry_count < max_retries then
+          log.info('Retrying %s operation (attempt %d/%d)', operation_name, retry_count + 2, max_retries + 1)
+          vim.defer_fn(function()
+            attempt(retry_count + 1)
+          end, 2000) -- Wait 2 seconds before retry
+        end
+      end
+    end)
+  end
+
+  attempt(0)
 end
 
 return M

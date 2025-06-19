@@ -115,6 +115,8 @@ function M.open(path)
   local docker_ok, docker_err = docker.check_docker_availability()
   if not docker_ok then
     log.error('Docker is not available: %s', docker_err)
+    -- Display detailed error message to user
+    notify.error('Docker is not available', docker_err)
     return false
   end
 
@@ -328,36 +330,8 @@ function M._start_final_step(container_id)
           },
         })
 
-        -- Execute postCreateCommand
-        M._run_post_create_command(container_id, function(post_create_success)
-          if not post_create_success then
-            print('⚠ Warning: postCreateCommand failed, but continuing...')
-          end
-
-          -- Setup LSP integration
-          if config.get_value('lsp.auto_setup') then
-            print('Step 5: Setting up LSP...')
-            lsp = lsp or require('container.lsp.init')
-            lsp.setup(config.get_value('lsp'))
-            lsp.set_container_id(container_id)
-
-            -- Configure path mapping
-            local ok, lsp_path = pcall(require, 'devcontainer.lsp.path')
-            if ok then
-              lsp_path.setup(
-                vim.fn.getcwd(),
-                state.current_config.workspace_mount or '/workspace',
-                state.current_config.mounts or {}
-              )
-            else
-              log.warn('Failed to load LSP path module')
-            end
-
-            -- Setup LSP servers
-            lsp.setup_lsp_in_container()
-            print('✓ LSP setup complete!')
-          end
-        end) -- _run_post_create_command callback end
+        -- Setup core features with graceful degradation
+        M._setup_container_features_gracefully(container_id)
 
         -- Setup test integration
         local test_config = config.get()
@@ -1143,7 +1117,7 @@ function M.show_port_stats()
 end
 
 -- Get LSP status
-function M.lsp_status()
+function M.lsp_status(detailed)
   log = log or require('container.utils.log')
   config = config or require('container.config')
 
@@ -1164,21 +1138,71 @@ function M.lsp_status()
   print('Auto setup: ' .. tostring(lsp_state.config and lsp_state.config.auto_setup or 'unknown'))
 
   if lsp_state.servers and next(lsp_state.servers) then
-    print('Detected servers:')
+    print('\nDetected servers:')
     for name, server in pairs(lsp_state.servers) do
-      print(string.format('  %s: %s (available: %s)', name, server.cmd, tostring(server.available)))
+      if detailed then
+        print(string.format('  📋 %s:', name))
+        print(string.format('    Command: %s', server.cmd))
+        print(string.format('    Available: %s', tostring(server.available)))
+        if server.path then
+          print(string.format('    Path: %s', server.path))
+        end
+        if server.languages then
+          print(string.format('    Languages: %s', table.concat(server.languages, ', ')))
+        end
+      else
+        print(string.format('  %s: %s (available: %s)', name, server.cmd, tostring(server.available)))
+      end
     end
   else
-    print('No servers detected (container may not be running)')
+    print('\nNo servers detected (container may not be running)')
+    if detailed then
+      print('  💡 Possible reasons:')
+      print('    • LSP servers not installed in container')
+      print('    • Container not running')
+      print('    • PATH configuration issues')
+    end
   end
 
   if lsp_state.clients and #lsp_state.clients > 0 then
-    print('Active clients:')
+    print('\nActive clients:')
     for _, client_name in ipairs(lsp_state.clients) do
-      print('  ' .. client_name)
+      if detailed then
+        -- Get additional client info
+        local clients = vim.lsp.get_active_clients({ name = client_name })
+        if #clients > 0 then
+          local client = clients[1]
+          print(string.format('  🔌 %s (ID: %d)', client_name, client.id))
+          if client.config and client.config.root_dir then
+            print(string.format('    Root: %s', client.config.root_dir))
+          end
+          local attached_buffers = vim.lsp.get_buffers_by_client_id(client.id)
+          print(string.format('    Buffers: %d attached', #attached_buffers))
+        else
+          print('  ⚠️  ' .. client_name .. ' (client not found)')
+        end
+      else
+        print('  ' .. client_name)
+      end
     end
   else
-    print('No active LSP clients')
+    print('\nNo active LSP clients')
+    if detailed then
+      print('  💡 Try:')
+      print('    • :ContainerLspSetup - initialize servers')
+      print('    • :ContainerLspRecover - recover failed servers')
+    end
+  end
+
+  if detailed then
+    print('\n🔧 Available commands:')
+    print('  :ContainerLspDiagnose - health check and troubleshooting')
+    print('  :ContainerLspRecover - recover all failed servers')
+    print('  :ContainerLspRetry <server> - retry specific server')
+    print('  :ContainerLspSetup - setup LSP servers')
+  else
+    print('\nFor detailed info: :ContainerLspStatus true')
+    print('For troubleshooting: :ContainerLspDiagnose')
   end
 
   return lsp_state
@@ -1664,6 +1688,267 @@ function M.statusline_component()
 
   local statusline = require('container.ui.statusline')
   return statusline.lualine_component()
+end
+
+-- LSP diagnostic and recovery functions
+
+-- Diagnose LSP server issues with enhanced troubleshooting
+function M.diagnose_lsp()
+  if not lsp then
+    print('✗ LSP module not initialized')
+    return false
+  end
+
+  local health = lsp.health_check()
+
+  print('=== LSP Diagnostic Report ===')
+  print('Container connected: ' .. (health.container_connected and '✓' or '✗'))
+  print('LSPConfig available: ' .. (health.lspconfig_available and '✓' or '✗'))
+  print('Servers detected: ' .. health.servers_detected)
+  print('Active clients: ' .. health.clients_active)
+
+  if #health.issues > 0 then
+    print('\n🔍 Issues found:')
+    for _, issue in ipairs(health.issues) do
+      print('  • ' .. issue)
+    end
+
+    print('\n💡 Recommended actions:')
+    if not health.container_connected then
+      print('  1. Start a container: :ContainerStart')
+      print('  2. Open a devcontainer: :ContainerOpen')
+    end
+
+    if not health.lspconfig_available then
+      print('  1. Install nvim-lspconfig plugin')
+      print('  2. Check plugin configuration')
+    end
+
+    if health.servers_detected == 0 then
+      print('  1. Install LSP servers in container')
+      print('  2. Check devcontainer.json postCreateCommand')
+      print('  3. Verify container PATH includes server binaries')
+    end
+
+    if health.clients_active == 0 and health.servers_detected > 0 then
+      print('  1. Try LSP recovery: :ContainerLspRecover')
+      print('  2. Check logs: :ContainerLogs')
+      print('  3. Restart container: :ContainerRestart')
+    end
+
+    print('\n🔧 Advanced troubleshooting:')
+    print('  • Detailed status: :ContainerLspStatus')
+    print('  • Debug info: :ContainerDebug')
+    print('  • Retry specific server: :ContainerLspRetry <server_name>')
+  else
+    print('\n✅ No issues found - LSP system is healthy')
+    print('\nNext steps:')
+    print('  • View detailed status: :ContainerLspStatus')
+    print('  • Open a file to test LSP features')
+  end
+
+  return #health.issues == 0
+end
+
+-- Recover LSP servers
+function M.recover_lsp()
+  if not lsp then
+    lsp = require('container.lsp')
+  end
+
+  print('Starting LSP recovery process...')
+  lsp.recover_all_lsp_servers()
+
+  return true
+end
+
+-- Retry specific LSP server setup
+function M.retry_lsp_server(server_name)
+  if not lsp then
+    lsp = require('container.lsp')
+  end
+
+  if not server_name then
+    print('✗ Server name required')
+    return false
+  end
+
+  print('Retrying LSP server setup: ' .. server_name)
+  lsp.retry_lsp_server_setup(server_name, 3)
+
+  return true
+end
+
+-- Graceful degradation for container feature setup
+function M._setup_container_features_gracefully(container_id)
+  local features_status = {
+    post_create_command = 'pending',
+    lsp_setup = 'pending',
+    test_integration = 'pending',
+    post_start_command = 'pending',
+  }
+
+  local function update_status(feature, status, message)
+    features_status[feature] = status
+    if status == 'success' then
+      print('✓ ' .. feature .. ': ' .. (message or 'completed'))
+    elseif status == 'warning' then
+      print('⚠ ' .. feature .. ': ' .. (message or 'completed with warnings'))
+    elseif status == 'failed' then
+      print('✗ ' .. feature .. ': ' .. (message or 'failed'))
+    end
+  end
+
+  local function check_completion()
+    local completed = 0
+    local total = 0
+    local warnings = 0
+    local errors = 0
+
+    for feature, status in pairs(features_status) do
+      total = total + 1
+      if status ~= 'pending' then
+        completed = completed + 1
+        if status == 'warning' then
+          warnings = warnings + 1
+        elseif status == 'failed' then
+          errors = errors + 1
+        end
+      end
+    end
+
+    if completed == total then
+      print('=== Container Setup Complete ===')
+      if errors > 0 then
+        print(
+          string.format('Status: %d succeeded, %d warnings, %d errors', total - warnings - errors, warnings, errors)
+        )
+        print('Container is partially functional. Some features may not work.')
+      elseif warnings > 0 then
+        print(string.format('Status: %d succeeded, %d warnings', total - warnings, warnings))
+        print('Container is functional with minor issues.')
+      else
+        print('Status: All features configured successfully!')
+        print('Container is fully operational.')
+      end
+    end
+  end
+
+  -- 1. Execute postCreateCommand
+  print('Setting up container features...')
+  if state.current_config.post_create_command then
+    print('Step 4.5: Running postCreateCommand...')
+    M._run_post_create_command(container_id, function(success)
+      if success then
+        update_status('post_create_command', 'success', 'postCreateCommand completed')
+      else
+        update_status('post_create_command', 'warning', 'postCreateCommand failed but continuing')
+      end
+      check_completion()
+    end)
+  else
+    update_status('post_create_command', 'success', 'no postCreateCommand defined')
+    check_completion()
+  end
+
+  -- 2. Setup LSP integration with error handling
+  if config.get_value('lsp.auto_setup') then
+    print('Step 5: Setting up LSP...')
+    local lsp_success = pcall(function()
+      lsp = lsp or require('container.lsp.init')
+      lsp.setup(config.get_value('lsp'))
+      lsp.set_container_id(container_id)
+
+      -- Configure path mapping with error handling
+      local path_ok, lsp_path = pcall(require, 'container.lsp.path')
+      if path_ok then
+        lsp_path.setup(
+          vim.fn.getcwd(),
+          state.current_config.workspace_mount or '/workspace',
+          state.current_config.mounts or {}
+        )
+      else
+        log.warn('Failed to load LSP path module: %s', lsp_path)
+      end
+
+      -- Setup LSP servers with error handling
+      vim.defer_fn(function()
+        local setup_ok, setup_err = pcall(function()
+          lsp.setup_lsp_in_container()
+        end)
+
+        if setup_ok then
+          update_status('lsp_setup', 'success', 'LSP servers configured')
+        else
+          log.error('LSP setup failed: %s', setup_err)
+          update_status('lsp_setup', 'warning', 'LSP setup failed: ' .. tostring(setup_err))
+        end
+        check_completion()
+      end, 500)
+    end)
+
+    if not lsp_success then
+      update_status('lsp_setup', 'failed', 'LSP module failed to load')
+      check_completion()
+    end
+  else
+    update_status('lsp_setup', 'success', 'LSP auto-setup disabled')
+    check_completion()
+  end
+
+  -- 3. Setup test integration with error handling
+  local test_config = config.get()
+  if
+    test_config.test_integration
+    and test_config.test_integration.enabled
+    and test_config.test_integration.auto_setup
+  then
+    vim.defer_fn(function()
+      local test_ok, test_err = pcall(function()
+        local test_runner = require('container.test_runner')
+        return test_runner.setup()
+      end)
+
+      if test_ok and test_err then
+        update_status('test_integration', 'success', 'test plugins integrated')
+      elseif test_ok then
+        update_status('test_integration', 'warning', 'test integration partially configured')
+      else
+        update_status('test_integration', 'failed', 'test integration failed: ' .. tostring(test_err))
+      end
+      check_completion()
+    end, 700)
+  else
+    update_status('test_integration', 'success', 'test integration disabled')
+    check_completion()
+  end
+
+  -- 4. Execute post-start command with error handling
+  if state.current_config.post_start_command then
+    print('Step 6: Running post-start command...')
+    vim.defer_fn(function()
+      local exec_ok, exec_err = pcall(function()
+        M.exec(state.current_config.post_start_command, {
+          on_complete = function(result)
+            if result.success then
+              update_status('post_start_command', 'success', 'post-start command completed')
+            else
+              update_status('post_start_command', 'warning', 'post-start command failed')
+            end
+            check_completion()
+          end,
+        })
+      end)
+
+      if not exec_ok then
+        update_status('post_start_command', 'failed', 'post-start command error: ' .. tostring(exec_err))
+        check_completion()
+      end
+    end, 1000)
+  else
+    update_status('post_start_command', 'success', 'no post-start command defined')
+    check_completion()
+  end
 end
 
 return M

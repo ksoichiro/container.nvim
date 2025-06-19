@@ -429,16 +429,59 @@ local function create_commands()
   })
 
   -- LSP related commands
-  vim.api.nvim_create_user_command('ContainerLspStatus', function()
-    require('container').lsp_status()
+  vim.api.nvim_create_user_command('ContainerLspStatus', function(args)
+    local detailed = args.args == 'true' or args.args == 'detailed' or args.args == '-v'
+    require('container').lsp_status(detailed)
   end, {
-    desc = 'Show LSP status in container',
+    desc = 'Show LSP status in container (add "true" for detailed info)',
+    nargs = '?',
+    complete = function()
+      return { 'true', 'detailed', '-v' }
+    end,
   })
 
   vim.api.nvim_create_user_command('ContainerLspSetup', function()
     require('container').lsp_setup()
   end, {
     desc = 'Setup LSP servers in container',
+  })
+
+  vim.api.nvim_create_user_command('ContainerLspDiagnose', function()
+    require('container').diagnose_lsp()
+  end, {
+    desc = 'Diagnose LSP server issues',
+  })
+
+  vim.api.nvim_create_user_command('ContainerLspRecover', function()
+    require('container').recover_lsp()
+  end, {
+    desc = 'Recover failed LSP servers',
+  })
+
+  vim.api.nvim_create_user_command('ContainerLspRetry', function(args)
+    if args.args == '' then
+      print('Usage: ContainerLspRetry <server_name>')
+      print('Available servers: gopls, pylsp, pyright, tsserver, lua_ls, rust_analyzer, clangd, etc.')
+    else
+      require('container').retry_lsp_server(args.args)
+    end
+  end, {
+    desc = 'Retry specific LSP server setup',
+    nargs = '*',
+    complete = function()
+      return {
+        'gopls',
+        'pylsp',
+        'pyright',
+        'tsserver',
+        'lua_ls',
+        'rust_analyzer',
+        'clangd',
+        'jdtls',
+        'solargraph',
+        'intelephense',
+      }
+    end,
   })
 
   -- Port management commands

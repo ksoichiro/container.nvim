@@ -3,6 +3,9 @@
 -- Basic test script for container.nvim
 -- This tests core functionality without requiring a full Neovim session
 
+-- Add project lua directory to package path
+package.path = './lua/?.lua;./lua/?/init.lua;../lua/?.lua;../lua/?/init.lua;' .. package.path
+
 -- Mock vim global for testing
 _G.vim = {
   tbl_contains = function(t, value)

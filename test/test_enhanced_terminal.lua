@@ -348,8 +348,8 @@ local function test_main_terminal_module()
     end,
   }
 
-  -- Mock devcontainer module
-  package.loaded['devcontainer'] = {
+  -- Mock container module
+  package.loaded['container'] = {
     get_container_id = function()
       return 'container123'
     end,

@@ -456,4 +456,217 @@ function M._attach_to_existing_buffers(server_name, server_config, client_id)
   end
 end
 
+-- Enhanced LSP error handling and recovery functions
+
+-- Diagnose LSP server issues in container
+function M.diagnose_lsp_server(server_name)
+  local server_config = state.servers[server_name]
+  if not server_config then
+    return {
+      available = false,
+      error = 'Server not detected in container',
+      suggestions = {
+        'Check if the server is installed in the container',
+        'Verify devcontainer.json includes necessary dependencies',
+        'Run: docker exec ' .. (state.container_id or '<container>') .. ' which ' .. (server_name or '<server>'),
+      },
+    }
+  end
+
+  local docker = require('container.docker.init')
+  local environment = require('container.environment')
+  local config = require('container').get_state().current_config
+
+  -- Check if server command exists
+  local args = { 'exec' }
+  local env_args = environment.build_lsp_args(config)
+  for _, arg in ipairs(env_args) do
+    table.insert(args, arg)
+  end
+  table.insert(args, state.container_id)
+  table.insert(args, 'which')
+  table.insert(args, server_config.cmd)
+
+  local which_result = docker.run_docker_command(args)
+
+  if not which_result.success then
+    return {
+      available = false,
+      error = 'Server command not found in container PATH',
+      details = {
+        command = server_config.cmd,
+        path_env = 'Check PATH environment variable in container',
+        stderr = which_result.stderr,
+      },
+      suggestions = {
+        'Install ' .. server_config.cmd .. ' in the container',
+        'Add installation command to devcontainer.json postCreateCommand',
+        'Check container PATH includes the server binary location',
+        'Verify user permissions to execute the server command',
+      },
+    }
+  end
+
+  -- Check if server can start (test run)
+  local test_args = { 'exec', '-i' }
+  for _, arg in ipairs(env_args) do
+    table.insert(test_args, arg)
+  end
+  table.insert(test_args, state.container_id)
+  table.insert(test_args, server_config.cmd)
+  table.insert(test_args, '--version') -- Most LSP servers support --version
+
+  local version_result = docker.run_docker_command(test_args)
+
+  if not version_result.success then
+    return {
+      available = true,
+      error = 'Server found but cannot start',
+      details = {
+        command = server_config.cmd,
+        path = server_config.path,
+        exit_code = version_result.code,
+        stderr = version_result.stderr,
+        stdout = version_result.stdout,
+      },
+      suggestions = {
+        'Check server dependencies are installed',
+        'Verify server configuration is correct',
+        'Check container environment variables',
+        'Review container logs for additional errors',
+      },
+    }
+  end
+
+  return {
+    available = true,
+    working = true,
+    details = {
+      command = server_config.cmd,
+      path = server_config.path,
+      version_output = version_result.stdout,
+    },
+  }
+end
+
+-- Retry LSP server setup with enhanced diagnostics
+function M.retry_lsp_server_setup(server_name, max_attempts)
+  max_attempts = max_attempts or 3
+
+  local function attempt_setup(attempt_num)
+    log.info('LSP: Attempting to setup %s (attempt %d/%d)', server_name, attempt_num, max_attempts)
+
+    -- First, diagnose the server
+    local diagnosis = M.diagnose_lsp_server(server_name)
+
+    if not diagnosis.available then
+      log.error('LSP: Server %s is not available: %s', server_name, diagnosis.error)
+      local notify = require('container.utils.notify')
+      notify.error(
+        'LSP Server Not Available: ' .. server_name,
+        diagnosis.error .. '\n\nSuggestions:\n• ' .. table.concat(diagnosis.suggestions, '\n• ')
+      )
+      return false
+    end
+
+    if diagnosis.available and not diagnosis.working then
+      log.error('LSP: Server %s found but not working: %s', server_name, diagnosis.error)
+      local notify = require('container.utils.notify')
+      notify.warn(
+        'LSP Server Issues: ' .. server_name,
+        diagnosis.error
+          .. '\n\nDetails:\n'
+          .. vim.inspect(diagnosis.details)
+          .. '\n\nSuggestions:\n• '
+          .. table.concat(diagnosis.suggestions, '\n• ')
+      )
+      return false
+    end
+
+    -- Server is available and working, attempt setup
+    local server_config = state.servers[server_name]
+    M.create_lsp_client(server_name, server_config)
+
+    -- Wait a moment and check if client started successfully
+    vim.defer_fn(function()
+      local exists, client_id = M.client_exists(server_name)
+      if exists then
+        log.info('LSP: Successfully setup %s on attempt %d', server_name, attempt_num)
+        local notify = require('container.utils.notify')
+        notify.success('LSP Server Started', server_name .. ' is now ready')
+      else
+        if attempt_num < max_attempts then
+          log.warn('LSP: Setup failed for %s, retrying in 2 seconds...', server_name)
+          vim.defer_fn(function()
+            attempt_setup(attempt_num + 1)
+          end, 2000)
+        else
+          log.error('LSP: Failed to setup %s after %d attempts', server_name, max_attempts)
+          local notify = require('container.utils.notify')
+          notify.error(
+            'LSP Setup Failed',
+            'Could not start ' .. server_name .. ' after ' .. max_attempts .. ' attempts'
+          )
+        end
+      end
+    end, 1000)
+  end
+
+  attempt_setup(1)
+end
+
+-- Recover from LSP failures by restarting all servers
+function M.recover_all_lsp_servers()
+  log.info('LSP: Starting recovery process for all LSP servers')
+
+  -- Stop all existing clients
+  M.stop_all()
+
+  -- Wait a moment for cleanup
+  vim.defer_fn(function()
+    -- Detect servers again
+    local servers = M.detect_language_servers()
+
+    -- Setup servers with retry logic
+    for name, server in pairs(servers) do
+      if server.available then
+        M.retry_lsp_server_setup(name, 2)
+      end
+    end
+  end, 1000)
+end
+
+-- Health check for LSP system
+function M.health_check()
+  local health = {
+    container_connected = state.container_id ~= nil,
+    lspconfig_available = pcall(require, 'lspconfig'),
+    servers_detected = vim.tbl_count(state.servers),
+    clients_active = vim.tbl_count(state.clients),
+    issues = {},
+  }
+
+  if not health.container_connected then
+    table.insert(health.issues, 'No container connected')
+  end
+
+  if not health.lspconfig_available then
+    table.insert(health.issues, 'nvim-lspconfig not available')
+  end
+
+  if health.servers_detected == 0 then
+    table.insert(health.issues, 'No LSP servers detected in container')
+  end
+
+  -- Check each active client
+  for name, client_info in pairs(state.clients) do
+    local client = vim.lsp.get_client_by_id(client_info.client_id)
+    if not client or client.is_stopped then
+      table.insert(health.issues, 'LSP client ' .. name .. ' is not running')
+    end
+  end
+
+  return health
+end
+
 return M
