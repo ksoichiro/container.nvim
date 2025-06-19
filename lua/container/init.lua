@@ -624,6 +624,100 @@ function M.terminate()
   return true
 end
 
+-- Remove container
+function M.remove()
+  log = log or require('container.utils.log')
+
+  if not state.current_container then
+    log.error('No active container')
+    return false
+  end
+
+  docker = docker or require('container.docker.init')
+
+  -- Stop LSP clients
+  if lsp then
+    lsp.stop_all()
+  end
+
+  -- Clean up port allocations
+  if state.current_config and state.current_config.project_id then
+    local port_utils = require('container.utils.port')
+    port_utils.release_project_ports(state.current_config.project_id)
+  end
+
+  log.info('Removing container: %s', state.current_container)
+  docker.remove_container_async(state.current_container, false, function(success, error_msg)
+    vim.schedule(function()
+      if success then
+        print('✓ Container removed successfully')
+        -- Trigger ContainerStopped event before clearing state
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'ContainerStopped',
+          data = {
+            container_id = state.current_container,
+            container_name = state.current_config and state.current_config.name or 'unknown',
+          },
+        })
+        state.current_container = nil
+        clear_status_cache()
+        state.current_config = nil
+      else
+        print('✗ Failed to remove container: ' .. (error_msg or 'unknown'))
+      end
+    end)
+  end)
+
+  return true
+end
+
+-- Stop and remove container
+function M.stop_and_remove()
+  log = log or require('container.utils.log')
+
+  if not state.current_container then
+    log.error('No active container')
+    return false
+  end
+
+  docker = docker or require('container.docker.init')
+
+  -- Stop LSP clients
+  if lsp then
+    lsp.stop_all()
+  end
+
+  -- Clean up port allocations
+  if state.current_config and state.current_config.project_id then
+    local port_utils = require('container.utils.port')
+    port_utils.release_project_ports(state.current_config.project_id)
+  end
+
+  log.info('Stopping and removing container: %s', state.current_container)
+  docker.stop_and_remove_container(state.current_container, 30, function(success, error_msg)
+    vim.schedule(function()
+      if success then
+        print('✓ Container stopped and removed successfully')
+        -- Trigger ContainerStopped event before clearing state
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'ContainerStopped',
+          data = {
+            container_id = state.current_container,
+            container_name = state.current_config and state.current_config.name or 'unknown',
+          },
+        })
+        state.current_container = nil
+        clear_status_cache()
+        state.current_config = nil
+      else
+        print('✗ Failed to stop and remove container: ' .. (error_msg or 'unknown'))
+      end
+    end)
+  end)
+
+  return true
+end
+
 -- Execute command in container
 function M.exec(command, opts)
   log = log or require('container.utils.log')

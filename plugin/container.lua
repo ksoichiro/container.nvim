@@ -74,6 +74,44 @@ local function create_commands()
     desc = 'Terminate container (immediate termination). Use ! to skip confirmation.',
   })
 
+  vim.api.nvim_create_user_command('ContainerRemove', function(args)
+    if args.bang then
+      -- Skip confirmation with :ContainerRemove!
+      require('container').remove()
+    else
+      local choice = vim.fn.confirm(
+        'Remove container? This will permanently delete the container.',
+        '&Yes\n&No',
+        2 -- Default to No
+      )
+      if choice == 1 then
+        require('container').remove()
+      end
+    end
+  end, {
+    bang = true,
+    desc = 'Remove container. Use ! to skip confirmation.',
+  })
+
+  vim.api.nvim_create_user_command('ContainerStopRemove', function(args)
+    if args.bang then
+      -- Skip confirmation with :ContainerStopRemove!
+      require('container').stop_and_remove()
+    else
+      local choice = vim.fn.confirm(
+        'Stop and remove container? This will stop the container and permanently delete it.',
+        '&Yes\n&No',
+        2 -- Default to No
+      )
+      if choice == 1 then
+        require('container').stop_and_remove()
+      end
+    end
+  end, {
+    bang = true,
+    desc = 'Stop and remove container. Use ! to skip confirmation.',
+  })
+
   vim.api.nvim_create_user_command('ContainerRestart', function()
     require('container').stop()
     vim.defer_fn(function()
