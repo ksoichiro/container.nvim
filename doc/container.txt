@@ -18,8 +18,9 @@ CONTENTS                                                *container-contents*
     11. API ................................. |container-api|
     12. devcontainer.json ................... |container-json|
     13. Test Integration .................... |container-test-integration|
-    14. User Events ......................... |container-events|
-    15. Contributing ........................ |container-contributing|
+    14. Third-Party Plugin Integration ...... |container-plugin-integration|
+    15. User Events ......................... |container-events|
+    16. Contributing ........................ |container-contributing|
 
 ==============================================================================
 1. INTRODUCTION                                     *container-introduction*
@@ -1504,7 +1505,187 @@ You can add custom test patterns for other languages:
 <
 
 ==============================================================================
-14. USER EVENTS                                         *container-events*
+14. THIRD-PARTY PLUGIN INTEGRATION           *container-plugin-integration*
+
+container.nvim seamlessly integrates with popular Neovim plugins to enhance
+your development workflow within containers.
+
+Picker Integration~
+                                              *container-picker-integration*
+
+The plugin supports multiple picker backends for enhanced UI experience:
+
+Available Pickers:
+  • telescope      - Full-featured picker with preview and advanced actions
+  • fzf-lua        - Fast and lightweight picker with similar features
+  • vim.ui.select  - Built-in Neovim picker (always available, basic functionality)
+
+Configuration: >lua
+
+    require('container').setup({
+      ui = {
+        picker = 'telescope', -- 'telescope', 'fzf-lua', 'vim.ui.select'
+      }
+    })
+<
+
+Picker-specific features:
+
+Telescope:
+  • Full preview functionality
+  • Advanced filtering and sorting
+  • Custom key bindings (e.g., <C-d> to delete sessions)
+
+fzf-lua:
+  • Extremely fast performance
+  • Built-in preview
+  • Key bindings: <C-y> (copy), <C-x> (delete), <C-e> (edit)
+
+vim.ui.select:
+  • No external dependencies
+  • Basic selection functionality
+  • Fallback when other pickers are unavailable
+
+The plugin automatically falls back through available pickers:
+telescope -> fzf-lua -> vim.ui.select
+
+Statusline Integration~
+                                          *container-statusline-integration*
+
+Built-in statusline integration works with popular statusline plugins.
+
+Lualine integration: >lua
+
+    require('lualine').setup({
+      sections = {
+        lualine_c = {
+          'filename',
+          require('container').statusline_component(),
+        }
+      }
+    })
+<
+
+Lightline integration: >vim
+
+    let g:lightline = {
+      \ 'active': {
+      \   'left': [ [ 'mode', 'paste' ],
+      \           [ 'readonly', 'filename', 'modified', 'devcontainer' ] ]
+      \ },
+      \ 'component_function': {
+      \   'devcontainer': 'DevcontainerStatus'
+      \ },
+      \ }
+
+    function! DevcontainerStatus()
+      return luaeval('require("container.ui.statusline").lightline_component()')
+    endfunction
+<
+
+Custom statusline: >lua
+
+    -- In your statusline configuration
+    local function devcontainer_status()
+      return require('container').statusline()
+    end
+
+    -- Example with vim.o.statusline
+    vim.o.statusline = '%f %{luaeval("require(\"container\").statusline()")} %='
+<
+
+LSP Integration~
+                                                *container-lsp-integration*
+
+container.nvim provides seamless LSP integration for development within containers.
+
+Automatic LSP Detection:
+  • Automatically detects language servers installed in containers
+  • Configures LSP clients to connect to container-based servers
+  • Supports popular language servers: gopls, pylsp, pyright, tsserver,
+    lua_ls, rust_analyzer, clangd, jdtls, solargraph, intelephense
+
+Requirements:
+  • nvim-lspconfig (recommended for full LSP integration)
+  • Language servers installed within the container
+
+LSP Commands: See |container-commands| section for LSP-specific commands.
+
+Plugin Manager Compatibility~
+                                        *container-plugin-manager-compat*
+
+container.nvim is compatible with all major Neovim plugin managers.
+
+lazy.nvim: >lua
+
+    {
+      'ksoichiro/container.nvim',
+      dependencies = { 'nvim-lua/plenary.nvim' },
+      config = function()
+        require('container').setup()
+      end,
+    }
+<
+
+packer.nvim: >lua
+
+    use {
+      'ksoichiro/container.nvim',
+      requires = { 'nvim-lua/plenary.nvim' },
+      config = function()
+        require('container').setup()
+      end,
+    }
+<
+
+vim-plug: >vim
+
+    Plug 'nvim-lua/plenary.nvim'
+    Plug 'ksoichiro/container.nvim'
+<
+
+Plugin Extension Points~
+                                       *container-plugin-extension-points*
+
+container.nvim provides extension points for other plugin developers.
+
+User Events:
+The plugin triggers User autocmd events for integration: >lua
+
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'DevcontainerStarted',
+      callback = function(args)
+        local data = args.data or {}
+        print('Container started: ' .. (data.container_name or 'unknown'))
+      end,
+    })
+<
+
+Available events: |DevcontainerOpened|, |DevcontainerBuilt|,
+|DevcontainerStarted|, |DevcontainerStopped|, |DevcontainerClosed|
+
+Configuration API:
+Runtime configuration management for dynamic plugin interaction: >lua
+
+    local container = require('container')
+
+    -- Get current configuration
+    local config = container.get_config()
+
+    -- Update configuration at runtime
+    container.config_set('terminal.default_shell', '/bin/zsh')
+
+    -- Watch for configuration changes
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'ContainerConfigReloaded',
+      callback = function()
+        -- React to configuration changes
+      end,
+    })
+<
+
+==============================================================================
+15. USER EVENTS                                         *container-events*
 
 The plugin triggers User autocmd events during devcontainer lifecycle changes.
 These can be used to update statuslines, run custom commands, or integrate
@@ -1586,7 +1767,7 @@ Statusline integration:
 See |examples/statusline_events.lua| for a complete statusline implementation.
 
 ==============================================================================
-15. CONTRIBUTING                                   *container-contributing*
+16. CONTRIBUTING                                   *container-contributing*
 
 Contributions are welcome! Visit the GitHub repository:
 https://github.com/ksoichiro/container.nvim

@@ -636,17 +636,21 @@ Multi-project development:
 
 Both projects can run simultaneously with automatically assigned unique ports.
 
-## Picker Integration
+## Third-Party Plugin Integration
+
+container.nvim seamlessly integrates with popular Neovim plugins to enhance your development workflow within containers.
+
+### Picker Integration
 
 The plugin supports multiple picker backends for an enhanced UI experience:
 
-### Available Pickers
+#### Available Pickers
 
 - **`telescope`**: Full-featured picker with preview and advanced actions (requires `nvim-telescope/telescope.nvim`)
 - **`fzf-lua`**: Fast and lightweight picker with similar features (requires `ibhagwan/fzf-lua`)
 - **`vim.ui.select`**: Built-in Neovim picker (always available, basic functionality)
 
-### Configuration
+#### Configuration
 
 ```lua
 require('container').setup({
@@ -656,24 +660,24 @@ require('container').setup({
 })
 ```
 
-### Picker-Specific Features
+#### Picker-Specific Features
 
-#### Telescope
+**Telescope**
 - Full preview functionality
 - Advanced filtering and sorting
 - Custom key bindings (e.g., `<C-d>` to delete sessions)
 
-#### fzf-lua
+**fzf-lua**
 - Extremely fast performance
 - Built-in preview
 - Key bindings: `<C-y>` (copy), `<C-x>` (delete), `<C-e>` (edit)
 
-#### vim.ui.select
+**vim.ui.select**
 - No external dependencies
 - Basic selection functionality
 - Fallback when other pickers are unavailable
 
-### Examples
+#### Examples
 
 ```lua
 -- Use fzf-lua for faster performance
@@ -689,6 +693,221 @@ require('container').setup({
 -- Auto-fallback: telescope -> fzf-lua -> vim.ui.select
 require('container').setup({
   ui = { picker = 'telescope' } -- Will fallback if telescope not available
+})
+```
+
+### Test Plugin Integration
+
+container.nvim automatically integrates with popular test runner plugins to execute tests within containers, ensuring consistent test environments.
+
+#### Supported Test Plugins
+
+- **vim-test/vim-test**: Classic Vim test runner
+- **klen/nvim-test**: Neovim-specific test runner  
+- **nvim-neotest/neotest**: Modern test framework with rich features
+
+#### Lazy Loading Support
+
+Test plugins can be lazy-loaded and will be automatically detected when needed:
+
+```lua
+-- Example with lazy.nvim
+{
+  'ksoichiro/container.nvim',
+  dependencies = { 'nvim-lua/plenary.nvim' },
+  config = function()
+    require('container').setup({
+      test_integration = { enabled = true },
+    })
+  end,
+},
+{
+  'vim-test/vim-test',
+  lazy = true, -- Works with lazy loading
+},
+{
+  'nvim-neotest/neotest',
+  lazy = true, -- Deferred integration for lazy loading
+  dependencies = {
+    'nvim-neotest/neotest-go', -- Add adapters as needed
+  },
+}
+```
+
+#### Automatic Plugin Detection
+
+container.nvim automatically detects and integrates with test plugins:
+
+- Already loaded plugins are detected immediately
+- Installed but not loaded plugins (lazy.nvim) are loaded on-demand
+- Manual fallback commands work without any test plugin
+
+#### Test Commands
+
+| Command | Description |
+|---------|-------------|
+| `:ContainerTestNearest [mode]` | Run nearest test in container |
+| `:ContainerTestFile [mode]` | Run all tests in current file |
+| `:ContainerTestSuite [mode]` | Run entire test suite |
+| `:ContainerTestSetup` | Setup test plugin integrations |
+
+**Output Modes:**
+- `buffer`: Tests run asynchronously with output in Neovim's message area
+- `terminal`: Tests run interactively in a dedicated terminal window
+
+#### Language Support
+
+Built-in test command patterns for:
+- Go: `go test`
+- Python: `pytest`
+- JavaScript/TypeScript: `npm test`
+- Rust: `cargo test`
+
+Custom test patterns can be added for other languages.
+
+### LSP Integration
+
+container.nvim provides seamless LSP integration for development within containers:
+
+#### Automatic LSP Detection
+
+- Automatically detects language servers installed in containers
+- Configures LSP clients to connect to container-based servers
+- Supports popular language servers: gopls, pylsp, pyright, tsserver, lua_ls, rust_analyzer, clangd, jdtls, solargraph, intelephense
+
+#### LSP Commands
+
+| Command | Description |
+|---------|-------------|
+| `:ContainerLspStatus [detailed]` | Show LSP server status |
+| `:ContainerLspSetup` | Manually setup LSP servers |
+| `:ContainerLspDiagnose` | Comprehensive LSP health check |
+| `:ContainerLspRecover` | Recover from LSP failures |
+| `:ContainerLspRetry {server}` | Retry specific server setup |
+
+#### Requirements
+
+- nvim-lspconfig (recommended for full LSP integration)
+- Language servers installed within the container
+
+### Statusline Integration
+
+Built-in statusline integration works with popular statusline plugins:
+
+#### Lualine Integration
+
+```lua
+require('lualine').setup({
+  sections = {
+    lualine_c = {
+      'filename',
+      require('container').statusline_component(),
+    }
+  }
+})
+```
+
+#### Lightline Integration
+
+```vim
+let g:lightline = {
+  \ 'active': {
+  \   'left': [ [ 'mode', 'paste' ],
+  \           [ 'readonly', 'filename', 'modified', 'devcontainer' ] ]
+  \ },
+  \ 'component_function': {
+  \   'devcontainer': 'DevcontainerStatus'
+  \ },
+  \ }
+
+function! DevcontainerStatus()
+  return luaeval('require("container.ui.statusline").lightline_component()')
+endfunction
+```
+
+#### Custom Statusline
+
+```lua
+-- In your statusline configuration
+local function devcontainer_status()
+  return require('container').statusline()
+end
+
+-- Example with vim.o.statusline
+vim.o.statusline = '%f %{luaeval("require(\"container\").statusline()")} %='
+```
+
+### Plugin Manager Compatibility
+
+container.nvim is compatible with all major Neovim plugin managers:
+
+#### lazy.nvim
+```lua
+{
+  'ksoichiro/container.nvim',
+  dependencies = { 'nvim-lua/plenary.nvim' },
+  config = function()
+    require('container').setup()
+  end,
+}
+```
+
+#### packer.nvim
+```lua
+use {
+  'ksoichiro/container.nvim',
+  requires = { 'nvim-lua/plenary.nvim' },
+  config = function()
+    require('container').setup()
+  end,
+}
+```
+
+#### vim-plug
+```vim
+Plug 'nvim-lua/plenary.nvim'
+Plug 'ksoichiro/container.nvim'
+```
+
+### Plugin Extension Points
+
+container.nvim provides extension points for other plugin developers:
+
+#### User Events
+
+The plugin triggers User autocmd events for integration:
+
+```lua
+vim.api.nvim_create_autocmd('User', {
+  pattern = 'DevcontainerStarted',
+  callback = function(args)
+    local data = args.data or {}
+    print('Container started: ' .. (data.container_name or 'unknown'))
+  end,
+})
+```
+
+Available events: `DevcontainerOpened`, `DevcontainerBuilt`, `DevcontainerStarted`, `DevcontainerStopped`, `DevcontainerClosed`
+
+#### Configuration API
+
+Runtime configuration management for dynamic plugin interaction:
+
+```lua
+local container = require('container')
+
+-- Get current configuration
+local config = container.get_config()
+
+-- Update configuration at runtime
+container.config_set('terminal.default_shell', '/bin/zsh')
+
+-- Watch for configuration changes
+vim.api.nvim_create_autocmd('User', {
+  pattern = 'ContainerConfigReloaded',
+  callback = function()
+    -- React to configuration changes
+  end,
 })
 ```
 
