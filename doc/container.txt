@@ -13,12 +13,13 @@ CONTENTS                                                *container-contents*
     6. Enhanced Terminal Integration ........ |container-terminal|
     7. Configuration ........................ |container-configuration|
     8. Notification Levels .................. |container-notification-levels|
-    9. API .................................. |container-api|
-    10. devcontainer.json ................... |container-json|
-    11. Test Integration .................... |container-test-integration|
-    12. Troubleshooting ..................... |container-troubleshooting|
-    13. User Events ......................... |container-events|
-    14. Contributing ........................ |container-contributing|
+    9. Error Handling ....................... |container-error-handling|
+    10. Troubleshooting ..................... |container-troubleshooting|
+    11. API ................................. |container-api|
+    12. devcontainer.json ................... |container-json|
+    13. Test Integration .................... |container-test-integration|
+    14. User Events ......................... |container-events|
+    15. Contributing ........................ |container-contributing|
 
 ==============================================================================
 1. INTRODUCTION                                     *container-introduction*
@@ -165,13 +166,32 @@ Information Display~
 
 LSP Integration~
                                                      *:ContainerLspStatus*
-:ContainerLspStatus
+:ContainerLspStatus [detailed]
     Show the status of LSP servers detected and running in the container.
+    Use 'true', 'detailed', or '-v' flag for detailed information including
+    server paths, languages, client IDs, and attached buffers.
 
                                                       *:ContainerLspSetup*
 :ContainerLspSetup
     Manually setup LSP servers in the container. Usually this happens
     automatically.
+
+                                                    *:ContainerLspDiagnose*
+:ContainerLspDiagnose
+    Perform comprehensive LSP system health check and provide targeted
+    troubleshooting guidance. Shows detailed diagnostics and recommended
+    actions for resolving LSP issues.
+
+                                                     *:ContainerLspRecover*
+:ContainerLspRecover
+    Recover from LSP failures by restarting all LSP servers. Stops existing
+    clients, re-detects servers, and sets up new clients with retry logic.
+
+                                                       *:ContainerLspRetry*
+:ContainerLspRetry {server_name}
+    Retry setup for a specific LSP server with enhanced diagnostics.
+    Available servers: gopls, pylsp, pyright, tsserver, lua_ls, rust_analyzer,
+    clangd, jdtls, solargraph, intelephense.
 
 Port Management~
                                                          *:ContainerPorts*
@@ -771,7 +791,7 @@ workspace                                        *container-config-workspace*
 <
 
 ==============================================================================
-7. API                                                      *container-api*
+11. API                                                     *container-api*
 
 The plugin exposes a Lua API for programmatic access:
 
@@ -948,7 +968,7 @@ devcontainer.get_container_id()
     Get the current container ID.
 
 ==============================================================================
-8. DEVCONTAINER.JSON                                      *container-json*
+12. DEVCONTAINER.JSON                                     *container-json*
 
 The plugin supports standard devcontainer.json format. Here are common fields:
 
@@ -1114,7 +1134,56 @@ Mounts~
 <
 
 ==============================================================================
-9. TROUBLESHOOTING                               *container-troubleshooting*
+9. ERROR HANDLING                                     *container-error-handling*
+
+container.nvim includes comprehensive error handling and recovery mechanisms to
+ensure robust operation in complex development environments.
+
+Enhanced Error Diagnostics~
+
+The plugin provides detailed error messages with actionable guidance for common
+issues. When Docker is not available, the plugin will detect your platform and
+provide specific installation instructions.
+
+LSP Recovery System~
+
+When LSP servers fail or become unresponsive, the plugin offers several recovery
+mechanisms:
+
+• Automatic detection of failed servers
+• Retry logic with exponential backoff
+• Complete LSP system recovery
+• Server-specific diagnostic information
+
+Network Resilience~
+
+For operations that depend on network connectivity (such as pulling Docker images),
+the plugin implements:
+
+• Automatic retry with exponential backoff
+• Timeout handling for long-running operations
+• Graceful degradation when network is unavailable
+
+Graceful Degradation~
+
+When non-critical components fail, the plugin continues to operate with reduced
+functionality:
+
+• LSP setup failures don't prevent container startup
+• Test integration failures don't affect terminal functionality
+• Port forwarding issues are isolated and reported individually
+
+Error Recovery Commands~
+
+Use these commands for troubleshooting and recovery:
+
+• :ContainerLspDiagnose - Comprehensive LSP system health check
+• :ContainerLspRecover - Full LSP system recovery
+• :ContainerLspRetry - Retry specific server setup
+• :ContainerDebug - Complete system diagnostic information
+
+==============================================================================
+10. TROUBLESHOOTING                              *container-troubleshooting*
 
 Docker Issues~
 
@@ -1146,13 +1215,22 @@ Container won't start:
 <
 
 LSP not working:
-  1. Check LSP status: >vim
-        :ContainerLspStatus
+  1. Run comprehensive diagnosis: >vim
+        :ContainerLspDiagnose
 <
-  2. Manually setup LSP: >vim
+  2. Check detailed status: >vim
+        :ContainerLspStatus true
+<
+  3. Try LSP recovery: >vim
+        :ContainerLspRecover
+<
+  4. Retry specific server: >vim
+        :ContainerLspRetry gopls
+<
+  5. Manually setup LSP: >vim
         :ContainerLspSetup
 <
-  3. Verify language server is installed in container
+  6. Verify language server is installed in container
 
 Port Forwarding Issues~
 
@@ -1258,7 +1336,7 @@ Terminal Issues~
   • Check for large history files
 
 ==============================================================================
-11. TEST INTEGRATION                            *container-test-integration*
+13. TEST INTEGRATION                            *container-test-integration*
 
 container.nvim integrates with popular test runner plugins to execute tests
 within containers, ensuring consistent test environments. The plugin supports
@@ -1426,7 +1504,7 @@ You can add custom test patterns for other languages:
 <
 
 ==============================================================================
-12. USER EVENTS                                         *container-events*
+14. USER EVENTS                                         *container-events*
 
 The plugin triggers User autocmd events during devcontainer lifecycle changes.
 These can be used to update statuslines, run custom commands, or integrate
@@ -1508,7 +1586,7 @@ Statusline integration:
 See |examples/statusline_events.lua| for a complete statusline implementation.
 
 ==============================================================================
-14. CONTRIBUTING                                   *container-contributing*
+15. CONTRIBUTING                                   *container-contributing*
 
 Contributions are welcome! Visit the GitHub repository:
 https://github.com/ksoichiro/container.nvim
