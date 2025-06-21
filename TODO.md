@@ -90,6 +90,10 @@ Priority: Seamless integration with popular Neovim development plugins
   - [x] Automatic DAP adapter setup for containers ✅ **COMPLETED**
   - [x] Debug port forwarding management ✅ **COMPLETED**
   - [x] Debugger startup within container environment ✅ **COMPLETED**
+  - [x] Go debugging with delve (dlv) support ✅ **COMPLETED**
+  - [x] Attach mode debugging for better container compatibility ✅ **COMPLETED**
+  - [x] Path mapping between host and container for debugging ✅ **COMPLETED**
+  - [x] Automatic dlv server startup on container start ✅ **COMPLETED**
 
 #### Low Priority - General Integration
 - [ ] **General Command Execution API** (Week 7-8)
