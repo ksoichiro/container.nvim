@@ -1962,6 +1962,16 @@ function M._try_reconnect_existing_container()
         notify.container('Status: ' .. container.status)
         notify.info('Use :ContainerStatus for details')
 
+        -- Trigger ContainerDetected event for LSP auto-initialization
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'ContainerDetected',
+          data = {
+            container_id = container.id,
+            container_name = normalized_config.name,
+            status = container.status,
+          },
+        })
+
         -- Trigger ContainerOpened event for reconnection
         vim.api.nvim_exec_autocmds('User', {
           pattern = 'ContainerOpened',

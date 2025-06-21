@@ -26,6 +26,40 @@ _G.vim = {
     end
     return keys
   end,
+  api = {
+    nvim_create_augroup = function(name, opts)
+      return 1 -- Return mock group ID
+    end,
+    nvim_create_autocmd = function(events, opts)
+      return 1 -- Return mock autocmd ID
+    end,
+    nvim_list_bufs = function()
+      return { 1 } -- Return mock buffer list
+    end,
+    nvim_buf_is_loaded = function(buf)
+      return true
+    end,
+    nvim_buf_get_name = function(buf)
+      return '/test/main.go'
+    end,
+    nvim_get_current_buf = function()
+      return 1
+    end,
+    nvim_buf_get_option = function(buf, option)
+      if option == 'filetype' then
+        return 'go'
+      end
+      return nil
+    end,
+  },
+  bo = setmetatable({}, {
+    __index = function(_, key)
+      if type(key) == 'number' then
+        return { filetype = 'go' }
+      end
+      return { filetype = 'go' }
+    end,
+  }),
   lsp = {
     get_active_clients = function(opts)
       if opts and opts.name then
@@ -34,6 +68,8 @@ _G.vim = {
           return {
             { id = 1, name = 'gopls', is_stopped = false },
           }
+        elseif opts.name == 'container_gopls' then
+          return {} -- No container gopls initially
         elseif opts.name == 'lua_ls' then
           return {} -- No active clients
         end
@@ -94,11 +130,12 @@ local lsp = require('container.lsp.init')
 -- Initialize mock state
 lsp.setup({ auto_setup = true })
 
-print('Test 1: Check for existing active client (gopls)')
+print('Test 1: Check for existing active client (container_gopls)')
 local exists, client_id = lsp.client_exists('gopls')
 print('Result: exists=' .. tostring(exists) .. ', client_id=' .. tostring(client_id))
-assert(exists == true, 'Should find existing gopls client')
-assert(client_id == 1, 'Should return correct client ID')
+-- Note: The function now checks for 'container_gopls' not 'gopls'
+assert(exists == false, 'Should not find container_gopls client initially')
+assert(client_id == nil, 'Should return nil client ID')
 print('✓ Test 1 passed')
 print()
 

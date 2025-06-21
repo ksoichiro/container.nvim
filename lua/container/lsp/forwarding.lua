@@ -293,19 +293,24 @@ function M.get_client_cmd(server_name, server_config, container_id)
     table.insert(cmd, 'bash')
     table.insert(cmd, '-c')
     local gopls_script = [[
+      # Change to workspace directory
       cd /workspace || exit 1
 
-      # Set environment variables
+      # Set environment variables for Go
       export GO111MODULE=on
       export GOPATH=/go
+      export GOROOT=/usr/local/go
       export PATH=/usr/local/go/bin:/go/bin:$PATH
 
-      # Disable file watching completely by setting environment variables
+      # Configure gopls to reduce file watching and improve stability
       export GOPLSREMOTEDEBUG=off
       export GOPLSREMOTELOG=off
 
-      # Run gopls with options to minimize file system access
-      exec gopls -mode=stdio -remote=auto -rpc.trace=false
+      # Set up signal handlers to ensure clean shutdown
+      trap 'exit 0' TERM INT
+
+      # Start gopls with minimal configuration for stdio mode
+      gopls -mode=stdio -remote=auto -rpc.trace=false -logfile=/tmp/gopls.log
     ]]
     table.insert(cmd, gopls_script)
   else

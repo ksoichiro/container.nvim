@@ -13,6 +13,9 @@ local state = {
 -- Track if path mappings have been initialized
 local path_mappings_initialized = false
 
+-- Track auto-initialization status per container to prevent duplicates
+local container_init_status = {} -- { [container_id] = "in_progress" | "completed" }
+
 -- Initialize LSP module
 function M.setup(config)
   log.debug('LSP: Initializing LSP module')
@@ -21,6 +24,179 @@ function M.setup(config)
     timeout = 5000,
     servers = {},
   }, config or {})
+
+  -- Setup automatic LSP initialization when Go files are opened
+  if M.config.auto_setup then
+    M._setup_auto_initialization()
+  end
+end
+
+-- Setup automatic LSP initialization
+function M._setup_auto_initialization()
+  local auto_group = vim.api.nvim_create_augroup('ContainerLspAutoSetup', { clear = true })
+
+  -- Strategy: Listen for container detection, then check for Go buffers
+  -- This solves the timing issue where BufEnter fires before container detection
+
+  -- Helper function to check and setup LSP for Go buffers
+  local function check_go_buffers_and_setup(container_id)
+    log.debug('LSP: Checking Go buffers for container %s', container_id)
+
+    -- Prevent duplicate initialization for this container
+    if container_init_status[container_id] == 'in_progress' then
+      log.debug('LSP: Auto-initialization already in progress for container %s', container_id)
+      return
+    end
+
+    if container_init_status[container_id] == 'completed' then
+      log.debug('LSP: Auto-initialization already completed for container %s', container_id)
+      return
+    end
+
+    -- Check if we already have container_gopls running for this container
+    local container_client_name = 'container_gopls'
+    local existing_clients = vim.lsp.get_active_clients({ name = container_client_name })
+
+    if #existing_clients > 0 then
+      log.debug('LSP: Found %d container_gopls client(s), cleaning up duplicates', #existing_clients)
+
+      -- Stop all but the first client
+      for i = 2, #existing_clients do
+        log.info('LSP: Stopping duplicate container_gopls (id: %d)', existing_clients[i].id)
+        existing_clients[i].stop()
+      end
+
+      -- If we have at least one working client, mark as completed and skip setup
+      if #existing_clients >= 1 and not existing_clients[1].is_stopped then
+        log.debug('LSP: container_gopls already running for container %s, marking as completed', container_id)
+        container_init_status[container_id] = 'completed'
+        return
+      end
+    end
+
+    -- Mark initialization as in progress for this container
+    container_init_status[container_id] = 'in_progress'
+
+    -- Stop any existing host gopls clients to avoid conflicts
+    local host_gopls_clients = vim.lsp.get_active_clients({ name = 'gopls' })
+    for _, client in ipairs(host_gopls_clients) do
+      log.info('LSP: Stopping host gopls client (id: %d) to avoid conflicts', client.id)
+      client.stop()
+
+      -- Also detach from all buffers to prevent automatic restart
+      for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_loaded(buf) then
+          local buf_clients = vim.lsp.get_active_clients({ bufnr = buf })
+          for _, buf_client in ipairs(buf_clients) do
+            if buf_client.id == client.id then
+              vim.lsp.buf_detach_client(buf, client.id)
+              log.debug('LSP: Detached host gopls from buffer %d', buf)
+            end
+          end
+        end
+      end
+    end
+
+    -- Small delay to ensure host gopls is fully stopped
+    vim.defer_fn(function()
+      -- Check if any host gopls clients are still running and force stop them
+      local remaining_host_clients = vim.lsp.get_active_clients({ name = 'gopls' })
+      if #remaining_host_clients > 0 then
+        log.warn('LSP: %d host gopls client(s) still running, force stopping...', #remaining_host_clients)
+        for _, client in ipairs(remaining_host_clients) do
+          if not client.is_stopped then
+            client.stop(true) -- Force stop
+            log.info('LSP: Force stopped host gopls client (id: %d)', client.id)
+          end
+        end
+      end
+    end, 200)
+
+    -- Look for loaded Go buffers
+    local go_buffers = {}
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_is_loaded(buf) then
+        local filetype = vim.bo[buf].filetype
+        local filename = vim.api.nvim_buf_get_name(buf)
+        if filetype == 'go' or (filename and filename:match('%.go$')) then
+          table.insert(go_buffers, buf)
+        end
+      end
+    end
+
+    if #go_buffers > 0 then
+      log.info('LSP: Found %d Go buffer(s), auto-initializing container_gopls for %s', #go_buffers, container_id)
+      M.set_container_id(container_id)
+      M.setup_lsp_in_container()
+
+      -- Mark setup as completed for this container (with delay to ensure setup is done)
+      vim.defer_fn(function()
+        container_init_status[container_id] = 'completed'
+        log.debug('LSP: Auto-initialization completed for container %s', container_id)
+      end, 2000)
+    else
+      log.debug('LSP: No Go buffers found, skipping LSP setup for container %s', container_id)
+      container_init_status[container_id] = nil -- Clear status since no setup needed
+    end
+  end
+
+  -- Listen for container state changes using User events
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'ContainerDetected',
+    group = auto_group,
+    callback = function(args)
+      local container_id = args.data and args.data.container_id
+      if container_id then
+        log.debug('LSP: Container detected: %s', container_id)
+        vim.defer_fn(function()
+          check_go_buffers_and_setup(container_id)
+        end, 100)
+      end
+    end,
+  })
+
+  -- Also listen for manual container operations
+  vim.api.nvim_create_autocmd('User', {
+    pattern = { 'ContainerStarted', 'ContainerOpened' },
+    group = auto_group,
+    callback = function(args)
+      local container_id = args.data and args.data.container_id
+      if container_id then
+        log.debug('LSP: Container operation completed: %s', container_id)
+        vim.defer_fn(function()
+          check_go_buffers_and_setup(container_id)
+        end, 500) -- Longer delay for container operations
+      end
+    end,
+  })
+
+  -- Fallback: Still handle FileType events for cases where container is already detected
+  vim.api.nvim_create_autocmd({ 'BufEnter', 'FileType' }, {
+    pattern = { '*.go', 'go' },
+    group = auto_group,
+    callback = function(args)
+      -- Only proceed for Go files
+      local filetype = vim.bo[args.buf].filetype
+      if filetype ~= 'go' then
+        return
+      end
+
+      -- Small delay to allow container detection to complete if in progress
+      vim.defer_fn(function()
+        local container = require('container')
+        local state = container.get_state()
+
+        if state.current_container then
+          log.debug('LSP: FileType fallback triggered for container %s', state.current_container)
+          check_go_buffers_and_setup(state.current_container)
+        else
+          log.debug('LSP: FileType fallback - no container available yet')
+        end
+      end, 1000) -- 1 second delay to allow container detection
+    end,
+  })
+
+  log.debug('LSP: Auto-initialization setup complete (event-driven approach)')
 end
 
 -- Set the container ID for LSP operations
@@ -108,10 +284,12 @@ end
 
 -- Check if LSP client already exists for a server
 function M.client_exists(server_name)
+  local container_client_name = 'container_' .. server_name
+
   -- Check active clients first
-  local active_clients = vim.lsp.get_active_clients({ name = server_name })
+  local active_clients = vim.lsp.get_active_clients({ name = container_client_name })
   if #active_clients > 0 then
-    log.debug('LSP: Found existing active client for %s', server_name)
+    log.debug('LSP: Found existing active client for %s', container_client_name)
     return true, active_clients[1].id
   end
 
@@ -145,20 +323,32 @@ function M.setup_lsp_in_container()
 
   for name, server in pairs(servers) do
     if server.available then
-      -- Check if client already exists
-      local exists, client_id = M.client_exists(name)
-      if exists then
-        log.info('LSP: Skipping %s - client already exists (ID: %s)', name, client_id)
+      -- Check if client already exists and clean up duplicates
+      local container_client_name = 'container_' .. name
+      local existing_clients = vim.lsp.get_active_clients({ name = container_client_name })
+
+      if #existing_clients > 0 then
+        log.info('LSP: Found %d existing %s client(s)', #existing_clients, container_client_name)
+
+        -- Stop all but the first client to avoid duplicates
+        for i = 2, #existing_clients do
+          log.info('LSP: Stopping duplicate %s client (ID: %s)', container_client_name, existing_clients[i].id)
+          existing_clients[i].stop()
+        end
+
+        local client = existing_clients[1]
+        log.info('LSP: Using existing %s client (ID: %s)', container_client_name, client.id)
         skipped_count = skipped_count + 1
 
-        -- Update our state if needed
-        if not state.clients[name] then
-          state.clients[name] = {
-            client_id = client_id,
-            config = nil, -- Will be filled if needed
-            server_config = server,
-          }
-        end
+        -- Update our state
+        state.clients[name] = {
+          client_id = client.id,
+          config = nil,
+          server_config = server,
+        }
+
+        -- Ensure client is attached to current Go buffers
+        M._attach_to_existing_buffers(name, server, client.id)
       else
         log.info('LSP: Setting up %s', name)
         M.create_lsp_client(name, server)
@@ -184,21 +374,6 @@ function M.create_lsp_client(name, server_config)
   log.debug('Creating LSP client for %s', name)
   local lsp_config = M._prepare_lsp_config(name, server_config)
 
-  -- Check if lspconfig is available
-  local ok, lspconfig = pcall(require, 'lspconfig')
-  if not ok then
-    print('ERROR: nvim-lspconfig not found')
-    log.warn('LSP: nvim-lspconfig not found, skipping LSP setup')
-    return
-  end
-
-  -- Check if the server is supported by lspconfig
-  if not lspconfig[name] then
-    print('ERROR: Server ' .. name .. ' not supported by lspconfig')
-    log.warn('LSP: Server ' .. name .. ' not supported by lspconfig')
-    return
-  end
-
   log.debug('Getting forwarding command for %s', name)
   -- Get forwarding module for communication setup
   local forwarding = require('container.lsp.forwarding')
@@ -217,11 +392,29 @@ function M.create_lsp_client(name, server_config)
 
   log.debug('Setting up LSP client with lspconfig')
 
-  -- Use lspconfig to properly register the server configuration
-  lspconfig[name].setup(lsp_config)
+  -- Instead of using lspconfig, directly create and start the LSP client
+  -- This avoids the complexity of custom lspconfig registration
 
-  -- For lspconfig to work properly with :LspInfo, we need to let it manage the client
-  -- But we can trigger it to start by attaching to a buffer of the right filetype
+  log.debug('LSP: Starting client directly with vim.lsp.start_client')
+
+  -- Start client directly using vim.lsp.start_client
+  local client_id = vim.lsp.start_client(lsp_config)
+
+  if not client_id then
+    log.error('LSP: Failed to start client for %s', name)
+    return
+  end
+
+  log.info('LSP: Started client for %s with ID %s', name, client_id)
+
+  -- Update state with actual client ID
+  state.clients[name] = {
+    client_id = client_id,
+    config = lsp_config,
+    server_config = server_config,
+  }
+
+  -- Attach to current buffer and existing Go buffers
   local bufnr = vim.api.nvim_get_current_buf()
   local ft = vim.api.nvim_buf_get_option(bufnr, 'filetype')
 
@@ -230,47 +423,17 @@ function M.create_lsp_client(name, server_config)
   local should_attach = vim.tbl_contains(supported_filetypes, ft)
 
   if should_attach then
-    -- Trigger lspconfig by simulating a buffer attach
-    vim.cmd('doautocmd FileType')
+    vim.lsp.buf_attach_client(bufnr, client_id)
+    log.info('LSP: Attached %s to current buffer %s', name, bufnr)
   end
 
-  -- Store the server configuration for state tracking
-  state.clients[name] = {
-    client_id = nil, -- Will be set when client actually starts
-    config = lsp_config,
-    server_config = server_config,
-  }
+  -- Setup autocommand for automatic attachment to new buffers
+  M._setup_auto_attach(name, server_config, client_id)
 
-  -- Wait a moment for the client to start, then set up additional functionality
-  vim.defer_fn(function()
-    local clients = vim.lsp.get_active_clients({ name = name })
-    local client_id = nil
-    for _, client in ipairs(clients) do
-      if client.name == name then
-        client_id = client.id
-        log.info('LSP client started via lspconfig with ID: %s', client_id)
+  -- Attach to existing loaded buffers with matching filetypes
+  M._attach_to_existing_buffers(name, server_config, client_id)
 
-        -- Update state with actual client ID
-        if state.clients[name] then
-          state.clients[name].client_id = client_id
-        end
-
-        -- Setup autocommand for automatic attachment to new buffers
-        M._setup_auto_attach(name, server_config, client_id)
-
-        -- Attach to existing loaded buffers with matching filetypes
-        M._attach_to_existing_buffers(name, server_config, client_id)
-
-        break
-      end
-    end
-
-    if not client_id then
-      log.warn('LSP client for %s not found after lspconfig setup', name)
-    end
-  end, 500) -- Increase delay to allow lspconfig to start the client
-
-  log.info('LSP: Successfully configured %s via lspconfig', name)
+  log.info('LSP: Successfully started %s client directly', name)
 end
 
 -- Prepare LSP configuration for a server
@@ -278,8 +441,8 @@ function M._prepare_lsp_config(name, server_config)
   local path_utils = require('container.lsp.path')
 
   local config = vim.tbl_deep_extend('force', {
-    -- Base configuration
-    name = name,
+    -- Base configuration - use unique name for container-based LSP
+    name = 'container_' .. name,
     filetypes = server_config.languages,
 
     -- Command will be overridden by forwarding module
@@ -349,6 +512,10 @@ function M.stop_all()
   state.clients = {}
   state.port_mappings = {}
   state.container_id = nil
+
+  -- Clear container initialization status
+  container_init_status = {}
+  log.debug('LSP: Cleared all container initialization status')
 end
 
 -- Stop a specific LSP client
@@ -358,14 +525,23 @@ function M.stop_client(name)
     return
   end
 
-  -- Stop any active LSP clients
-  local clients = vim.lsp.get_active_clients({ name = name })
+  -- Stop any active LSP clients using container client name
+  local container_client_name = 'container_' .. name
+  local clients = vim.lsp.get_active_clients({ name = container_client_name })
   for _, client in ipairs(clients) do
     client.stop()
   end
 
   state.clients[name] = nil
-  log.info('LSP: Stopped ' .. name)
+  log.info('LSP: Stopped ' .. container_client_name)
+end
+
+-- Clear initialization status for a specific container
+function M.clear_container_init_status(container_id)
+  if container_init_status[container_id] then
+    container_init_status[container_id] = nil
+    log.debug('LSP: Cleared initialization status for container %s', container_id)
+  end
 end
 
 -- Get current LSP state
@@ -640,7 +816,6 @@ end
 function M.health_check()
   local health = {
     container_connected = state.container_id ~= nil,
-    lspconfig_available = pcall(require, 'lspconfig'),
     servers_detected = vim.tbl_count(state.servers),
     clients_active = vim.tbl_count(state.clients),
     issues = {},
@@ -648,10 +823,6 @@ function M.health_check()
 
   if not health.container_connected then
     table.insert(health.issues, 'No container connected')
-  end
-
-  if not health.lspconfig_available then
-    table.insert(health.issues, 'nvim-lspconfig not available')
   end
 
   if health.servers_detected == 0 then
