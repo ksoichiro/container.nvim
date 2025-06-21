@@ -34,7 +34,7 @@ function M._setup_autocmds()
     pattern = 'ContainerStarted',
     group = group,
     callback = function(event)
-      -- コンテナIDを取得（container_nameではなくcontainer_idを使用）
+      -- Get container ID from event data
       local container_id = event.data.container_id
       if container_id then
         M._configure_for_container(container_id)
@@ -73,18 +73,18 @@ function M._configure_for_container(container_id)
     M._register_adapter(language, adapter_config)
     M._register_configuration(language, container_id)
 
-    -- Go言語の場合、dlvサーバーを自動起動
+    -- Auto-start dlv server for Go language
     if language == 'go' then
       M._start_dlv_server(container_id)
     end
   end
 end
 
--- コンテナ内でdlvサーバーを起動
+-- Start dlv debugger server in container
 function M._start_dlv_server(container_id)
   log.debug('Checking dlv server in container: ' .. container_id)
 
-  -- 既存のdlvプロセスを確認
+  -- Check for existing dlv processes
   local check_result = docker.run_docker_command({ 'exec', container_id, 'pgrep', '-f', 'dlv.*listen.*2345' })
 
   if check_result.success and check_result.stdout ~= '' then
@@ -95,11 +95,11 @@ function M._start_dlv_server(container_id)
 
   log.debug('Starting new dlv server...')
 
-  -- 古いdlvプロセスをクリーンアップ
+  -- Cleanup old dlv processes
   docker.run_docker_command({ 'exec', container_id, 'pkill', '-f', 'dlv' })
   vim.fn.system('sleep 1')
 
-  -- dlvサーバーを起動
+  -- Start dlv server
   local result = docker.run_docker_command({
     'exec',
     '-d',
@@ -182,7 +182,7 @@ function M._get_adapter_config(language, container_id)
       },
     },
     go = function()
-      -- Go用のアタッチモード設定（より安定した方式）
+      -- Go adapter configuration for attach mode (more stable approach)
       return {
         type = 'server',
         host = '127.0.0.1',
@@ -216,9 +216,9 @@ function M._register_adapter(language, adapter_config)
 
   local adapter_name = 'container_' .. language
 
-  -- Go言語の場合は特別な処理
+  -- Special handling for Go language
   if language == 'go' then
-    -- アダプターを直接設定（関数ではなく）
+    -- Set adapter directly (not as function)
     if type(adapter_config) == 'function' then
       dap.adapters[adapter_name] = adapter_config()
     else
@@ -282,8 +282,8 @@ function M._register_configuration(language, container_id)
         host = '127.0.0.1',
         substitutePath = {
           {
-            from = vim.fn.getcwd(), -- ホスト側パス
-            to = '/workspace', -- コンテナ内パス
+            from = vim.fn.getcwd(), -- Host path
+            to = '/workspace', -- Container path
           },
         },
         remotePath = '/workspace',
