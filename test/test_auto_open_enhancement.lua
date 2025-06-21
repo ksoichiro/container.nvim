@@ -1,7 +1,7 @@
 #!/usr/bin/env lua
 
--- Test script for enhanced auto-start functionality
--- Tests the new auto_start_mode configurations and behavior
+-- Test script for enhanced auto-open functionality
+-- Tests the new auto_open configuration and behavior
 
 package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
@@ -92,46 +92,43 @@ local mock_log = {
 
 package.loaded['container.utils.log'] = mock_log
 
-print('=== Auto-Start Enhancement Test ===')
+print('=== Auto-Open Enhancement Test ===')
 print()
 
 -- Load the config module
 local config = require('container.config')
 
-print('Test 1: Default configuration includes new auto-start options')
+print('Test 1: Default configuration includes new auto-open options')
 local defaults = config.defaults
-print('auto_start:', defaults.auto_start)
-print('auto_start_mode:', defaults.auto_start_mode)
-print('auto_start_delay:', defaults.auto_start_delay)
-assert(defaults.auto_start == false, 'Default auto_start should be false')
-assert(defaults.auto_start_mode == 'notify', "Default auto_start_mode should be 'notify'")
-assert(defaults.auto_start_delay == 2000, 'Default auto_start_delay should be 2000')
+print('auto_open:', defaults.auto_open)
+print('auto_open_delay:', defaults.auto_open_delay)
+assert(defaults.auto_open == 'immediate', "Default auto_open should be 'immediate'")
+assert(defaults.auto_open_delay == 2000, 'Default auto_open_delay should be 2000')
 print('✓ Test 1 passed')
 print()
 
-print('Test 2: Configuration setup with valid auto-start options')
+print('Test 2: Configuration setup with valid auto-open options')
 local success, result = config.setup({
-  auto_start = true,
-  auto_start_mode = 'prompt',
-  auto_start_delay = 3000,
+  auto_open = 'immediate',
+  auto_open_delay = 3000,
 })
 assert(success == true, 'Configuration setup should succeed')
 print('Setup result:', success)
 print('✓ Test 2 passed')
 print()
 
-print('Test 3: Configuration validation with invalid auto_start_mode')
+print('Test 3: Configuration validation with invalid auto_open')
 success, result = config.setup({
-  auto_start_mode = 'invalid_mode',
+  auto_open = 'invalid_mode',
 })
 assert(success == false, 'Configuration setup should fail with invalid mode')
 print('Validation correctly failed for invalid mode')
 print('✓ Test 3 passed')
 print()
 
-print('Test 4: Configuration validation with invalid auto_start_delay')
+print('Test 4: Configuration validation with invalid auto_open_delay')
 success, result = config.setup({
-  auto_start_delay = -100,
+  auto_open_delay = -100,
 })
 assert(success == false, 'Configuration setup should fail with negative delay')
 print('Validation correctly failed for negative delay')
@@ -140,26 +137,25 @@ print()
 
 print('Test 5: Get and set configuration values')
 local success_setup, _ = config.setup({
-  auto_start = true,
-  auto_start_mode = 'immediate',
-  auto_start_delay = 1000,
+  auto_open = 'immediate',
+  auto_open_delay = 1000,
 })
 print('Setup successful:', success_setup)
 
 -- Debug the path splitting
 print('Testing get_value function:')
-local test_keys = vim.split('auto_start_mode', '.', { plain = true })
-print("Split keys for 'auto_start_mode':", vim.inspect(test_keys))
+local test_keys = vim.split('auto_open', '.', { plain = true })
+print("Split keys for 'auto_open':", vim.inspect(test_keys))
 
-local mode = config.get_value('auto_start_mode')
-local delay = config.get_value('auto_start_delay')
-print('Retrieved auto_start_mode:', tostring(mode))
-print('Retrieved auto_start_delay:', tostring(delay))
+local mode = config.get_value('auto_open')
+local delay = config.get_value('auto_open_delay')
+print('Retrieved auto_open:', tostring(mode))
+print('Retrieved auto_open_delay:', tostring(delay))
 
 -- Debug: check full config
 local full_config = config.get()
-print('Full config auto_start_mode:', tostring(full_config.auto_start_mode))
-print('Full config auto_start_delay:', tostring(full_config.auto_start_delay))
+print('Full config auto_open:', tostring(full_config.auto_open))
+print('Full config auto_open_delay:', tostring(full_config.auto_open_delay))
 
 -- Skip assertion for now to complete other tests
 if mode == 'immediate' and delay == 1000 then
@@ -168,18 +164,18 @@ else
   print('⚠ get_value has issues, but continuing tests')
 end
 
-config.set_value('auto_start_mode', 'prompt')
-local new_mode = config.get_value('auto_start_mode')
-print('Updated auto_start_mode:', new_mode)
-assert(new_mode == 'prompt', 'Should update auto_start_mode')
+config.set_value('auto_open', 'off')
+local new_mode = config.get_value('auto_open')
+print('Updated auto_open:', new_mode)
+assert(new_mode == 'off', 'Should update auto_open')
 print('✓ Test 5 passed')
 print()
 
-print('Test 6: Valid auto_start_mode values')
-local valid_modes = { 'off', 'notify', 'prompt', 'immediate' }
+print('Test 6: Valid auto_open values')
+local valid_modes = { 'off', 'immediate' }
 for _, mode in ipairs(valid_modes) do
   success, result = config.setup({
-    auto_start_mode = mode,
+    auto_open = mode,
   })
   assert(success == true, 'Mode ' .. mode .. ' should be valid')
   print("  ✓ Mode '" .. mode .. "' is valid")
@@ -187,11 +183,11 @@ end
 print('✓ Test 6 passed')
 print()
 
-print('=== All Auto-Start Enhancement Tests Passed! ===')
+print('=== All Auto-Open Enhancement Tests Passed! ===')
 print()
 print('Enhanced features:')
-print('  ✓ Four auto-start modes: off, notify, prompt, immediate')
+print('  ✓ Unified auto_open setting: off, immediate')
 print('  ✓ Configurable delay for immediate mode')
 print('  ✓ Proper configuration validation')
 print('  ✓ Dynamic configuration updates')
-print('  ✓ Backward compatibility with existing auto_start setting')
+print('  ✓ Simplified and intuitive configuration')

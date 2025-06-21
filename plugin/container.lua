@@ -550,35 +550,32 @@ local function create_commands()
     end,
   })
 
-  vim.api.nvim_create_user_command('ContainerAutoStart', function(args)
+  vim.api.nvim_create_user_command('ContainerAutoOpen', function(args)
     local config = require('container.config')
     local mode = args.args
 
     if mode == '' then
-      local current_mode = config.get_value('auto_start_mode')
-      local auto_start = config.get_value('auto_start')
-      print('Current auto-start configuration:')
-      print('  auto_start: ' .. tostring(auto_start))
-      print('  auto_start_mode: ' .. current_mode)
+      local current_mode = config.get_value('auto_open')
+      print('Current auto-open configuration:')
+      print('  auto_open: ' .. current_mode)
       print('')
-      print('Available modes: off, notify, prompt, immediate')
-      print('Usage: :ContainerAutoStart <mode>')
-    elseif vim.tbl_contains({ 'off', 'notify', 'prompt', 'immediate' }, mode) then
-      config.set_value('auto_start', mode ~= 'off')
-      config.set_value('auto_start_mode', mode)
+      print('Available modes: off, immediate')
+      print('Usage: :ContainerAutoOpen <mode>')
+    elseif vim.tbl_contains({ 'off', 'immediate' }, mode) then
+      config.set_value('auto_open', mode)
       if mode == 'off' then
-        require('container.utils.notify').status('Auto-start disabled')
+        require('container.utils.notify').status('Auto-open disabled')
       else
-        require('container.utils.notify').status('Auto-start mode set to: ' .. mode)
+        require('container.utils.notify').status('Auto-open mode set to: ' .. mode)
       end
     else
-      require('container.utils.notify').critical('Invalid mode. Available: off, notify, prompt, immediate')
+      require('container.utils.notify').critical('Invalid mode. Available: off, immediate')
     end
   end, {
     nargs = '?',
-    desc = 'Configure auto-start behavior',
+    desc = 'Configure auto-open behavior when devcontainer.json is detected',
     complete = function()
-      return { 'off', 'notify', 'prompt', 'immediate' }
+      return { 'off', 'immediate' }
     end,
   })
 
@@ -817,36 +814,20 @@ vim.api.nvim_create_autocmd({ 'VimEnter', 'DirChanged' }, {
   group = augroup,
   callback = function()
     local config = require('container.config').get()
-    if config and config.auto_start and config.auto_start_mode ~= 'off' then
+    if config and config.auto_open == 'immediate' then
       -- Check for devcontainer.json existence
       local parser = require('container.parser')
       local container_path = parser.find_devcontainer_json()
       if container_path then
-        -- Handle different auto-start modes
-        if config.auto_start_mode == 'notify' then
-          require('container.utils.notify').status('Found devcontainer.json. Use :ContainerOpen to start.')
-        elseif config.auto_start_mode == 'prompt' then
-          vim.defer_fn(function()
-            local choice =
-              vim.fn.confirm('Found devcontainer.json. Open container?', '&Yes\n&No\n&Always (change config)', 1)
-            if choice == 1 then
-              require('container').open()
-            elseif choice == 3 then
-              require('container.config').set_value('auto_start_mode', 'immediate')
-              require('container.utils.notify').status('Auto-start mode changed to immediate. Restart Neovim to apply.')
-            end
-          end, 500)
-        elseif config.auto_start_mode == 'immediate' then
-          vim.defer_fn(function()
-            -- Check if container is already running first
-            local container = require('container')
-            local state = container.get_state()
-            if not state.current_container then
-              require('container.utils.notify').status('Auto-starting container...')
-              container.open()
-            end
-          end, config.auto_start_delay or 2000)
-        end
+        vim.defer_fn(function()
+          -- Check if container is already running first
+          local container = require('container')
+          local state = container.get_state()
+          if not state.current_container then
+            require('container.utils.notify').status('Auto-opening container...')
+            container.open()
+          end
+        end, config.auto_open_delay or 2000)
       end
     end
   end,

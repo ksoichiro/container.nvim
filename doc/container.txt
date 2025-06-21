@@ -383,17 +383,16 @@ Management~
     Attempt to reconnect to an existing devcontainer. Useful after restarting
     Neovim.
 
-                                                    *:ContainerAutoStart*
-:ContainerAutoStart [mode]
-    Configure auto-start behavior. Available modes:
-      off       - Disable auto-start
-      notify    - Show notification when devcontainer.json is found
-      prompt    - Prompt user to start container
-      immediate - Start container automatically
+                                                     *:ContainerAutoOpen*
+:ContainerAutoOpen [mode]
+    Configure auto-open behavior when devcontainer.json is detected.
+    Available modes:
+      immediate - Automatically open container after a delay (default)
+      off       - Do not automatically open container
 
     Without arguments, shows current configuration.
     Example: >vim
-        :ContainerAutoStart prompt
+        :ContainerAutoOpen off
 <
 
 Enhanced Terminal Commands~
@@ -754,7 +753,7 @@ Environment Variables~
 Override configuration using environment variables with `DEVCONTAINER_` prefix:
 
 Basic settings:
-  • DEVCONTAINER_AUTO_START         - Enable auto-start (true/false)
+  • DEVCONTAINER_AUTO_OPEN          - Auto-open mode (immediate/off)
   • DEVCONTAINER_LOG_LEVEL          - Log level (debug/info/warn/error)
   • DEVCONTAINER_CONTAINER_RUNTIME  - Runtime (docker/podman)
 
@@ -782,12 +781,20 @@ Settings are loaded in this order (later overrides earlier):
 
 Options~
 
-auto_start                                      *container-config-auto_start*
-    Type: |boolean|
-    Default: `false`
+auto_open                                        *container-config-auto_open*
+    Type: |string|
+    Default: `"immediate"`
 
-    Automatically start containers when opening projects with
-    devcontainer.json.
+    Behavior when devcontainer.json is detected in a project:
+      "immediate" - Automatically open container after a delay
+      "off"       - Do not automatically open container
+
+auto_open_delay                            *container-config-auto_open_delay*
+    Type: |number|
+    Default: `2000`
+
+    Delay in milliseconds before automatically opening container when
+    auto_open is set to "immediate".
 
 log_level                                        *container-config-log_level*
     Type: |string|

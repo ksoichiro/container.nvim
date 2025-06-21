@@ -36,7 +36,7 @@ A Neovim plugin that provides VSCode Dev Containers-like development experience.
       -- Configuration options
       log_level = 'info',
       container_runtime = 'docker', -- 'docker' or 'podman'
-      auto_start = false,
+      auto_open = 'immediate', -- 'immediate' or 'off'
     })
   end,
 }
@@ -127,10 +127,17 @@ USER node
 
 ### 3. Start devcontainer
 
+By default, container.nvim automatically detects `devcontainer.json` and opens the container when you start Neovim. If you want to control this manually:
+
 ```vim
-:ContainerOpen
-:ContainerBuild
-:ContainerStart
+:ContainerOpen    " Parse devcontainer.json and prepare container
+:ContainerBuild   " Build the container image  
+:ContainerStart   " Start the container
+```
+
+To disable automatic opening:
+```vim
+:ContainerAutoOpen off
 ```
 
 ## Commands
@@ -179,6 +186,12 @@ For detailed command documentation, use `:help container-commands` in Neovim.
 | `:ContainerStatus` | Show container status |
 | `:ContainerLogs` | Show container logs |
 | `:ContainerConfig` | Show configuration |
+
+### Configuration Management
+
+| Command | Description |
+|---------|-------------|
+| `:ContainerAutoOpen [mode]` | Configure auto-open behavior (`immediate` or `off`) |
 
 ### LSP Integration
 
@@ -360,7 +373,7 @@ Update your devcontainer.json accordingly:
 
 | Command | Description |
 |---------|-------------|
-| `:ContainerAutoStart [mode]` | Configure auto-start behavior (off, notify, prompt, immediate) |
+| `:ContainerAutoOpen [mode]` | Configure auto-open behavior (`immediate` or `off`) |
 | `:ContainerReset` | Reset plugin state |
 | `:ContainerDebug` | Show comprehensive debug information |
 | `:ContainerReconnect` | Reconnect to existing devcontainer |
@@ -372,7 +385,8 @@ Update your devcontainer.json accordingly:
 ```lua
 require('container').setup({
   -- Basic settings
-  auto_start = false,
+  auto_open = 'immediate', -- 'immediate', 'off' - behavior when devcontainer.json is detected
+  auto_open_delay = 2000,  -- milliseconds to wait before auto-open
   log_level = 'info',
   container_runtime = 'docker', -- 'docker' or 'podman'
 

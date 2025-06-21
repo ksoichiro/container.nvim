@@ -162,9 +162,8 @@ end
 -- Configuration schema definition
 M.schema = {
   -- Basic settings
-  auto_start = validators.type('boolean'),
-  auto_start_mode = validators.enum({ 'notify', 'prompt', 'immediate', 'off' }),
-  auto_start_delay = validators.all(validators.type('number'), validators.range(0, 60000)),
+  auto_open = validators.enum({ 'immediate', 'off' }),
+  auto_open_delay = validators.all(validators.type('number'), validators.range(0, 60000)),
   log_level = validators.enum({ 'debug', 'info', 'warn', 'error' }),
   container_runtime = validators.enum({ 'docker', 'podman' }),
 

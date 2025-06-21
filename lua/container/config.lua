@@ -25,9 +25,8 @@ end
 -- Default configuration
 M.defaults = {
   -- Basic settings
-  auto_start = false,
-  auto_start_mode = 'notify', -- 'notify', 'prompt', 'immediate', 'off'
-  auto_start_delay = 2000, -- milliseconds to wait before auto-start
+  auto_open = 'immediate', -- 'immediate', 'off' - behavior when devcontainer.json is detected
+  auto_open_delay = 2000, -- milliseconds to wait before auto-open
   log_level = 'info',
   container_runtime = 'docker', -- 'docker' or 'podman'
 
