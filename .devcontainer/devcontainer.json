@@ -33,7 +33,10 @@
       "version": "18"
     }
   },
-  "forwardPorts": [],
+  "forwardPorts": [
+    2345,
+    8080
+  ],
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
   "name": "container.nvim Development",
   "postCreateCommand": "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ripgrep fd-find neovim git curl",

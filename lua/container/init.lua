@@ -85,6 +85,16 @@ function M.setup(user_config)
     end
   end
 
+  -- Initialize DAP integration
+  local dap_ok, dap_err = pcall(function()
+    local dap = require('container.dap')
+    dap.setup()
+  end)
+
+  if not dap_ok then
+    log.debug('Failed to initialize DAP integration: %s', dap_err)
+  end
+
   state.initialized = true
   log.debug('container.nvim initialized successfully')
 
@@ -2065,6 +2075,42 @@ function M._setup_container_features_gracefully(container_id)
     update_status('post_start_command', 'success', 'no post-start command defined')
     check_completion()
   end
+end
+
+-- DAP integration API
+
+-- Start debugging in container
+function M.dap_start(opts)
+  if not state.initialized then
+    log.error('Plugin not initialized. Call setup() first.')
+    return false
+  end
+
+  if not state.current_container then
+    log.error('No active container')
+    return false
+  end
+
+  local dap = require('container.dap')
+  return dap.start_debugging(opts)
+end
+
+-- Stop debugging
+function M.dap_stop()
+  local dap = require('container.dap')
+  return dap.stop_debugging()
+end
+
+-- Get DAP status
+function M.dap_status()
+  local dap = require('container.dap')
+  return dap.get_debug_status()
+end
+
+-- List debug sessions
+function M.dap_list_sessions()
+  local dap = require('container.dap')
+  return dap.list_debug_sessions()
 end
 
 return M

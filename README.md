@@ -10,6 +10,7 @@ A Neovim plugin that provides VSCode Dev Containers-like development experience.
 - **Automatic Image Building**: Automatic Docker image building and management
 - **Enhanced Terminal Integration**: Advanced in-container terminal with session management
 - **LSP Integration**: Automatic detection and configuration of LSP servers in containers
+- **DAP Integration**: Container-based debugging with nvim-dap support for multiple languages
 - **Smart Port Forwarding**: Dynamic port allocation to prevent conflicts between projects
 - **Test Integration**: Run tests in containers with vim-test, nvim-test, and neotest. Supports both buffer and terminal output modes
 - **Asynchronous Operations**: All Docker operations executed asynchronously
@@ -234,6 +235,51 @@ container.nvim automatically detects installed test plugins without requiring th
 - **vim-test/nvim-test**: Only installation required - integration works with lazy loading
 - **neotest**: Requires loading for full integration, but provides deferred setup for lazy loading
 - **Fallback**: Manual test commands work independently of any test plugin
+
+### DAP Integration
+
+container.nvim provides seamless debugging integration with nvim-dap for running debuggers in containers.
+
+#### Commands
+| Command | Description |
+|---------|-------------|
+| `:ContainerDapStart [language]` | Start debugging in container (auto-detects language if not specified) |
+| `:ContainerDapStop` | Stop active debugging session |
+| `:ContainerDapStatus` | Show current debugging status |
+| `:ContainerDapSessions` | List all active debug sessions |
+
+#### Supported Languages
+- **Python**: Uses debugpy with automatic port forwarding
+- **JavaScript/TypeScript**: Node.js debugging with inspect protocol
+- **Go**: Delve debugger integration
+- **Rust**: rust-lldb integration
+- **C/C++**: GDB/LLDB support
+- **Java**: JDB integration
+
+#### Features
+- **Automatic Configuration**: DAP adapters are automatically configured when containers start
+- **Port Forwarding**: Debug ports are automatically forwarded from container to host
+- **Language Detection**: Automatically detects project language for appropriate debugger setup
+- **Session Management**: Multiple concurrent debug sessions with different containers
+
+#### Example Usage
+```lua
+-- Start debugging (auto-detect language)
+:ContainerDapStart
+
+-- Start debugging with specific language
+:ContainerDapStart python
+
+-- Check debugging status
+:ContainerDapStatus
+
+-- List active sessions
+:ContainerDapSessions
+```
+
+#### Requirements
+- nvim-dap plugin must be installed
+- Appropriate debugger tools must be available in the container (e.g., debugpy for Python, dlv for Go)
 
 ### Management
 

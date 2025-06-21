@@ -619,6 +619,56 @@ local function create_commands()
   end, {
     desc = 'Setup test plugin integrations',
   })
+
+  -- DAP (Debug Adapter Protocol) commands
+  vim.api.nvim_create_user_command('ContainerDapStart', function(args)
+    local opts = {}
+    if args.args and args.args ~= '' then
+      opts.language = args.args
+    end
+    require('container').dap_start(opts)
+  end, {
+    desc = 'Start debugging in container',
+    nargs = '?',
+    complete = function()
+      return { 'python', 'javascript', 'typescript', 'go', 'rust', 'cpp', 'java' }
+    end,
+  })
+
+  vim.api.nvim_create_user_command('ContainerDapStop', function()
+    require('container').dap_stop()
+  end, {
+    desc = 'Stop debugging session',
+  })
+
+  vim.api.nvim_create_user_command('ContainerDapStatus', function()
+    local status = require('container').dap_status()
+    print('DAP Status: ' .. status)
+  end, {
+    desc = 'Show DAP debugging status',
+  })
+
+  vim.api.nvim_create_user_command('ContainerDapSessions', function()
+    local sessions = require('container').dap_list_sessions()
+    if #sessions == 0 then
+      print('No active debug sessions')
+    else
+      print('Active Debug Sessions:')
+      for _, session in ipairs(sessions) do
+        print(
+          string.format(
+            '  [%s] %s - %s (started: %s)',
+            session.id,
+            session.container,
+            session.language,
+            os.date('%Y-%m-%d %H:%M:%S', session.started_at)
+          )
+        )
+      end
+    end
+  end, {
+    desc = 'List active debug sessions',
+  })
 end
 
 -- Create autocommand group

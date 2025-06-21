@@ -18,9 +18,10 @@ CONTENTS                                                *container-contents*
     11. API ................................. |container-api|
     12. devcontainer.json ................... |container-json|
     13. Test Integration .................... |container-test-integration|
-    14. Third-Party Plugin Integration ...... |container-plugin-integration|
-    15. User Events ......................... |container-events|
-    16. Contributing ........................ |container-contributing|
+    14. DAP Integration ..................... |container-dap-integration|
+    15. Third-Party Plugin Integration ...... |container-plugin-integration|
+    16. User Events ......................... |container-events|
+    17. Contributing ........................ |container-contributing|
 
 ==============================================================================
 1. INTRODUCTION                                     *container-introduction*
@@ -34,6 +35,7 @@ Key features:
   • Automatic LSP server detection and configuration
   • Enhanced terminal integration with session management
   • Test integration with buffer and terminal output modes
+  • DAP integration for container-based debugging
   • Asynchronous Docker operations
   • Smart port forwarding with dynamic allocation
   • Project-specific container isolation
@@ -45,6 +47,7 @@ Key features:
   • Docker or Podman installed and running
   • Git (for cloning repositories)
   • Optional: nvim-lspconfig for LSP integration
+  • Optional: nvim-dap for debugging integration
 
 ==============================================================================
 3. INSTALLATION                                     *container-installation*
@@ -217,6 +220,32 @@ Port Management~
 :ContainerPortStats
     Show port allocation statistics including usage by project, purpose,
     and dynamic range utilization.
+
+DAP Integration~
+                                                        *:ContainerDapStart*
+:ContainerDapStart [language]
+    Start debugging in the container. If language is not specified, it will
+    be automatically detected based on project files. Requires nvim-dap to
+    be installed and appropriate debugger tools in the container.
+
+    Supported languages: python, javascript, typescript, go, rust, cpp, java
+
+    Example: >vim
+        :ContainerDapStart
+        :ContainerDapStart python
+<
+
+                                                         *:ContainerDapStop*
+:ContainerDapStop
+    Stop the active debugging session in the container.
+
+                                                       *:ContainerDapStatus*
+:ContainerDapStatus
+    Show the current DAP debugging status (ready, debugging, etc.).
+
+                                                     *:ContainerDapSessions*
+:ContainerDapSessions
+    List all active debug sessions with container and language information.
 
 Management~
                                                          *:ContainerReset*
@@ -1518,7 +1547,150 @@ You can add custom test patterns for other languages:
 <
 
 ==============================================================================
-14. THIRD-PARTY PLUGIN INTEGRATION           *container-plugin-integration*
+14. DAP INTEGRATION                              *container-dap-integration*
+
+container.nvim provides seamless debugging integration with nvim-dap, allowing
+you to debug applications running inside containers with automatic port
+forwarding and debugger configuration.
+
+OVERVIEW~
+
+The DAP integration automatically:
+  • Detects project language and configures appropriate debugger
+  • Sets up debug port forwarding between container and host
+  • Configures DAP adapters for container-based debugging
+  • Manages debug sessions across multiple containers
+
+SUPPORTED LANGUAGES~
+
+Python:
+  • Debugger: debugpy
+  • Default port: 5678
+  • Requirements: python -m pip install debugpy
+
+JavaScript/TypeScript:
+  • Debugger: Node.js inspect protocol
+  • Default port: 9229
+  • Requirements: Node.js built-in debugger
+
+Go:
+  • Debugger: Delve (dlv)
+  • Default port: 2345
+  • Requirements: go install github.com/go-delve/delve/cmd/dlv@latest
+
+Rust:
+  • Debugger: rust-lldb
+  • Default port: 9943
+  • Requirements: LLDB installed
+
+C/C++:
+  • Debugger: GDB/LLDB
+  • Default port: varies
+  • Requirements: gdb or lldb installed
+
+Java:
+  • Debugger: JDB
+  • Default port: varies
+  • Requirements: JDK installed
+
+AUTOMATIC SETUP~
+
+When a container starts, the DAP integration:
+
+1. Detects the project language based on file patterns
+2. Configures the appropriate DAP adapter for container execution
+3. Sets up debug port forwarding
+4. Registers debug configurations for the detected language
+
+Language detection patterns:
+  • Python: .py files, requirements.txt, setup.py, pyproject.toml
+  • JavaScript: .js files, package.json, .jsx files
+  • TypeScript: .ts/.tsx files, tsconfig.json
+  • Go: .go files, go.mod, go.sum
+  • Rust: .rs files, Cargo.toml, Cargo.lock
+  • C/C++: .cpp/.c/.h files, CMakeLists.txt
+  • Java: .java files, pom.xml, build.gradle
+
+USAGE EXAMPLES~
+
+Start debugging with auto-detection: >vim
+    :ContainerDapStart
+<
+
+Start debugging with specific language: >vim
+    :ContainerDapStart python
+<
+
+Check debugging status: >vim
+    :ContainerDapStatus
+<
+
+List active debug sessions: >vim
+    :ContainerDapSessions
+<
+
+Stop debugging: >vim
+    :ContainerDapStop
+<
+
+MANUAL CONFIGURATION~
+
+For custom debugger setups, you can override the default configurations
+in your nvim-dap setup after container.nvim loads: >lua
+
+    -- After container.nvim setup
+    local dap = require('dap')
+
+    -- Override Python configuration
+    dap.configurations.python = {
+      {
+        type = 'container_python',
+        request = 'launch',
+        name = 'Custom Python Debug',
+        program = '${file}',
+        -- Additional custom options
+      }
+    }
+<
+
+PORT FORWARDING~
+
+Debug ports are automatically forwarded from container to host:
+  • Ports are dynamically allocated to avoid conflicts
+  • Port mappings are managed per container
+  • Cleanup happens automatically when containers stop
+
+TROUBLESHOOTING~
+
+Debugger not starting:
+  1. Verify nvim-dap is installed: >vim
+        :lua print(vim.inspect(require('dap')))
+<
+  2. Check if debugger is installed in container: >vim
+        :ContainerExec which dlv  " for Go
+        :ContainerExec python -c "import debugpy"  " for Python
+<
+  3. Verify container is running: >vim
+        :ContainerStatus
+<
+
+Port forwarding issues:
+  1. Check port allocation: >vim
+        :ContainerPorts
+<
+  2. Verify no port conflicts: >vim
+        :ContainerPortStats
+<
+
+Language not detected:
+  1. Manually specify language: >vim
+        :ContainerDapStart python
+<
+  2. Check project files are present
+  3. Verify supported file patterns exist
+
+==============================================================================
+15. THIRD-PARTY PLUGIN INTEGRATION           *container-plugin-integration*
 
 container.nvim seamlessly integrates with popular Neovim plugins to enhance
 your development workflow within containers.
