@@ -278,19 +278,36 @@ function M.start()
 
       -- Check for existing containers (async)
       notify.progress('start', 'Step 2: Checking for existing containers...')
-      M._list_containers_async('name=' .. state.current_config.name, function(containers)
+
+      -- Generate the expected container name using the same logic as creation
+      local expected_container_name = docker.generate_container_name(state.current_config)
+      log.info('Looking for container with name: %s', expected_container_name)
+
+      M._list_containers_with_fallback(expected_container_name, function(containers)
         vim.schedule(function()
           local container_id = nil
 
           if #containers > 0 then
             container_id = containers[1].id
-            log.info('Found existing container: %s', container_id)
-            notify.progress('start', 'Step 2: ✓ Found existing container: ' .. container_id:sub(1, 12))
+            local container_status = containers[1].status
+            log.info('Found existing container: %s (status: %s)', container_id, container_status)
+            notify.progress(
+              'start',
+              'Step 2: ✓ Found existing container: ' .. container_id:sub(1, 12) .. ' (' .. container_status .. ')'
+            )
             state.current_container = container_id
             clear_status_cache()
 
-            -- Proceed to container startup
-            M._start_final_step(container_id)
+            -- Check if container is already running
+            if container_status:match('^Up') then
+              -- Container is already running, proceed directly to final setup
+              notify.progress('start', 'Step 3: Container already running, setting up features...')
+              M._start_final_step(container_id)
+            else
+              -- Container exists but is not running, start it first
+              notify.progress('start', 'Step 3: Starting existing container...')
+              M._start_stopped_container(container_id)
+            end
           else
             -- Create new container (async)
             notify.progress('start', 'Step 3: Creating new container...')
@@ -320,60 +337,97 @@ function M.start()
   return true
 end
 
--- Final step: Container startup and setup
-function M._start_final_step(container_id)
-  notify.progress('start', 'Step 4: Starting container...')
+-- Start a stopped container and proceed to final setup
+function M._start_stopped_container(container_id)
   docker = docker or require('container.docker.init')
 
   docker.start_container_async(container_id, function(success, error_msg)
     vim.schedule(function()
       if success then
-        notify.container('Container started successfully!', 'info')
-        log.info('Container is ready: %s', container_id)
-
-        -- Trigger ContainerStarted event
-        vim.api.nvim_exec_autocmds('User', {
-          pattern = 'ContainerStarted',
-          data = {
-            container_id = container_id,
-            container_name = state.current_config and state.current_config.name or 'unknown',
-          },
-        })
-
-        -- Setup core features with graceful degradation
-        M._setup_container_features_gracefully(container_id)
-
-        -- Setup test integration
-        local test_config = config.get()
-        if
-          test_config.test_integration
-          and test_config.test_integration.enabled
-          and test_config.test_integration.auto_setup
-        then
-          log.debug('Setting up test integration...')
-          vim.defer_fn(function()
-            local test_runner = require('container.test_runner')
-            if test_runner.setup() then
-              log.info('Test integration setup complete')
-            end
-          end, 500) -- Small delay to ensure everything is loaded
-        end
-
-        -- Execute post-start command (existing)
-        if state.current_config.post_start_command then
-          notify.progress('start', 'Step 6: Running post-start command...')
-          M.exec(state.current_config.post_start_command)
-        end
-
-        notify.container('DevContainer is ready!', 'info')
-        notify.clear_progress('start') -- Clear progress messages
+        notify.progress('start', 'Step 3: ✓ Container started successfully')
+        log.info('Stopped container started successfully: %s', container_id)
+        -- Proceed to final setup
+        M._start_final_step(container_id)
       else
-        log.error('Failed to start container')
-        notify.critical('Failed to start container: ' .. (error_msg or 'unknown'))
-        notify.clear_progress('start') -- Clear progress messages
+        log.error('Failed to start stopped container: %s', error_msg or 'unknown')
+        notify.critical('Failed to start existing container: ' .. (error_msg or 'unknown'))
+        notify.clear_progress('start')
       end
     end)
   end)
+end
+
+-- Final step: Container feature setup (assumes container is already running)
+function M._start_final_step(container_id)
+  notify.progress('start', 'Step 4: Setting up container features...')
+
+  -- Check if container is actually running before proceeding
+  docker = docker or require('container.docker.init')
+  local container_status = docker.get_container_status(container_id)
+
+  if container_status ~= 'running' then
+    -- Container is not running, try to start it first
+    notify.progress('start', 'Step 4: Container not running, starting it...')
+    docker.start_container_async(container_id, function(success, error_msg)
+      vim.schedule(function()
+        if success then
+          log.info('Container started successfully: %s', container_id)
+          M._finalize_container_setup(container_id)
+        else
+          log.error('Failed to start container: %s', error_msg or 'unknown')
+          notify.critical('Failed to start container: ' .. (error_msg or 'unknown'))
+          notify.clear_progress('start')
+        end
+      end)
+    end)
+  else
+    -- Container is already running, proceed with setup
+    log.info('Container is already running: %s', container_id)
+    M._finalize_container_setup(container_id)
+  end
+end
+
+-- Finalize container setup after ensuring it's running
+function M._finalize_container_setup(container_id)
+  notify.container('Container is running!', 'info')
+  log.info('Container is ready: %s', container_id)
+
+  -- Trigger ContainerStarted event
+  vim.api.nvim_exec_autocmds('User', {
+    pattern = 'ContainerStarted',
+    data = {
+      container_id = container_id,
+      container_name = state.current_config and state.current_config.name or 'unknown',
+    },
+  })
+
+  -- Setup core features with graceful degradation
+  M._setup_container_features_gracefully(container_id)
+
+  -- Setup test integration
+  local test_config = config.get()
+  if
+    test_config.test_integration
+    and test_config.test_integration.enabled
+    and test_config.test_integration.auto_setup
+  then
+    log.debug('Setting up test integration...')
+    vim.defer_fn(function()
+      local test_runner = require('container.test_runner')
+      if test_runner.setup() then
+        log.info('Test integration setup complete')
+      end
+    end, 500) -- Small delay to ensure everything is loaded
+  end
+
+  -- Execute post-start command (existing)
+  if state.current_config.post_start_command then
+    notify.progress('start', 'Step 6: Running post-start command...')
+    M.exec(state.current_config.post_start_command)
+  end
+
+  notify.container('DevContainer is ready!', 'info')
+  notify.clear_progress('start') -- Clear progress messages
 end
 
 -- Full container creation (fully async version)
@@ -492,20 +546,54 @@ function M._pull_and_create_container(config, callback)
   end
 end
 
--- Direct container creation
+-- Direct container creation with conflict handling
 function M._create_container_direct(config, callback)
   local docker = require('container.docker.init')
 
   notify.progress('start', 'Step 3c: Creating container...')
+
+  -- First attempt to create the container
   docker.create_container_async(config, function(container_id, error_msg)
     if container_id then
       notify.progress('start', 'Step 3c: ✓ Container created successfully: ' .. container_id:sub(1, 12))
       log.info('Container created successfully: %s', container_id)
+      callback(container_id, error_msg)
     else
-      notify.critical('Container creation failed: ' .. (error_msg or 'unknown'))
-      log.error('Container creation failed: %s', error_msg or 'unknown')
+      -- Check if error is due to name conflict
+      if error_msg and error_msg:match('already in use') then
+        log.warn('Container name conflict detected, attempting to handle existing container')
+        notify.progress('start', 'Step 3c: Name conflict detected, checking existing container...')
+
+        -- Try to find and reuse the existing container
+        local expected_name = docker.generate_container_name(config)
+        M._list_containers_with_fallback(expected_name, function(existing_containers)
+          vim.schedule(function()
+            if #existing_containers > 0 then
+              local existing_container = existing_containers[1]
+              log.info(
+                'Found existing conflicting container: %s (status: %s)',
+                existing_container.id,
+                existing_container.status
+              )
+              notify.progress('start', 'Step 3c: ✓ Using existing container: ' .. existing_container.id:sub(1, 12))
+
+              -- Return the existing container instead of creating a new one
+              callback(existing_container.id, nil)
+            else
+              -- Existing container not found via our search, still fail
+              notify.critical('Container creation failed: ' .. (error_msg or 'unknown'))
+              log.error('Container creation failed: %s', error_msg or 'unknown')
+              callback(nil, error_msg)
+            end
+          end)
+        end)
+      else
+        -- Other creation error, propagate it
+        notify.critical('Container creation failed: ' .. (error_msg or 'unknown'))
+        log.error('Container creation failed: %s', error_msg or 'unknown')
+        callback(container_id, error_msg)
+      end
     end
-    callback(container_id, error_msg)
   end)
 end
 
@@ -896,6 +984,69 @@ function M.stop_container(container_name)
       notify.critical('Failed to stop: ' .. error_msg)
     end
   end)
+end
+
+-- Restart the current DevContainer
+function M.restart()
+  log = log or require('container.utils.log')
+
+  if not state.current_container then
+    log.error('No active container to restart')
+    notify.error('No active container to restart')
+    return false
+  end
+
+  local container_id = state.current_container
+  notify.container('Restarting DevContainer...', 'info')
+  log.info('Restarting current container: %s', container_id)
+
+  docker = docker or require('container.docker.init')
+
+  -- First stop the container
+  docker.stop_container_async(container_id, function(stop_success, stop_error)
+    vim.schedule(function()
+      if stop_success then
+        log.info('Container stopped for restart: %s', container_id)
+        notify.progress('restart', 'Step 1: ✓ Container stopped')
+
+        -- Wait a moment then start again
+        vim.defer_fn(function()
+          notify.progress('restart', 'Step 2: Starting container...')
+          docker.start_container_async(container_id, function(start_success, start_error)
+            vim.schedule(function()
+              if start_success then
+                notify.progress('restart', 'Step 2: ✓ Container started')
+                log.info('Container restarted successfully: %s', container_id)
+
+                -- Trigger ContainerStarted event
+                vim.api.nvim_exec_autocmds('User', {
+                  pattern = 'ContainerStarted',
+                  data = {
+                    container_id = container_id,
+                    container_name = state.current_config and state.current_config.name or 'unknown',
+                    restarted = true,
+                  },
+                })
+
+                notify.container('DevContainer restarted successfully!', 'info')
+                notify.clear_progress('restart')
+              else
+                log.error('Failed to start container after stop: %s', start_error or 'unknown')
+                notify.critical('Failed to start container after restart: ' .. (start_error or 'unknown'))
+                notify.clear_progress('restart')
+              end
+            end)
+          end)
+        end, 1000) -- Wait 1 second between stop and start
+      else
+        log.error('Failed to stop container for restart: %s', stop_error or 'unknown')
+        notify.critical('Failed to stop container for restart: ' .. (stop_error or 'unknown'))
+        notify.clear_progress('restart')
+      end
+    end)
+  end)
+
+  return true
 end
 
 -- Restart a specific container by name
@@ -1505,6 +1656,52 @@ function M.get_state()
   }
 end
 
+-- Enhanced container search with fallback methods
+function M._list_containers_with_fallback(expected_name, callback)
+  log.debug('Searching for container: %s', expected_name)
+
+  -- Method 1: Try name filter first
+  M._list_containers_async('name=' .. expected_name, function(containers)
+    if #containers > 0 then
+      log.info('Found container using name filter: %s', expected_name)
+      callback(containers)
+      return
+    end
+
+    log.debug('No containers found with name filter, trying full list search...')
+
+    -- Method 2: Get all containers and search manually
+    M._list_containers_async(nil, function(all_containers)
+      local matched_containers = {}
+
+      for _, container in ipairs(all_containers) do
+        local container_name = container.name
+        -- Remove leading slash if present (Docker sometimes returns /container_name)
+        if container_name:sub(1, 1) == '/' then
+          container_name = container_name:sub(2)
+        end
+
+        log.debug('Checking container: %s (original: %s)', container_name, container.name)
+
+        if container_name == expected_name then
+          log.info('Found matching container: %s (ID: %s, Status: %s)', container_name, container.id, container.status)
+          table.insert(matched_containers, container)
+        end
+      end
+
+      if #matched_containers == 0 then
+        log.info('No containers found matching name: %s', expected_name)
+        log.debug('Available containers:')
+        for _, container in ipairs(all_containers) do
+          log.debug('  - %s (ID: %s)', container.name, container.id)
+        end
+      end
+
+      callback(matched_containers)
+    end)
+  end)
+end
+
 -- Get container list asynchronously
 function M._list_containers_async(filter, callback)
   local args = { 'ps', '-a', '--format', '{{.ID}}\\t{{.Names}}\\t{{.Status}}\\t{{.Image}}' }
@@ -1740,7 +1937,7 @@ function M._try_reconnect_existing_container()
   log.info('Looking for existing container: %s', expected_container_name)
 
   -- Search for existing containers
-  M._list_containers_async('name=' .. expected_container_name, function(containers)
+  M._list_containers_with_fallback(expected_container_name, function(containers)
     vim.schedule(function()
       if #containers > 0 then
         local container = containers[1]

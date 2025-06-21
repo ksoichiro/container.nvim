@@ -113,12 +113,9 @@ local function create_commands()
   })
 
   vim.api.nvim_create_user_command('ContainerRestart', function()
-    require('container').stop()
-    vim.defer_fn(function()
-      require('container').start()
-    end, 1000)
+    require('container').restart()
   end, {
-    desc = 'Restart container',
+    desc = 'Restart current DevContainer',
   })
 
   -- Execution and access commands
