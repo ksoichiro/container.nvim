@@ -11,8 +11,7 @@
   },
   "forwardPorts": [
     8080,
-    2345,
-    3456
+    2345
   ],
   "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
   "name": "Go Test Integration Example",
