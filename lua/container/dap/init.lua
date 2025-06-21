@@ -55,6 +55,14 @@ function M._setup_autocmds()
 end
 
 function M._configure_for_container(container_id)
+  local dap_config = config.get().dap
+
+  -- Check if DAP auto-setup is enabled
+  if not dap_config.auto_setup then
+    log.debug('DAP auto-setup is disabled')
+    return
+  end
+
   log.debug('Configuring DAP for container: ' .. container_id)
 
   local container_config = M._get_container_config(container_id)
@@ -73,50 +81,58 @@ function M._configure_for_container(container_id)
     M._register_adapter(language, adapter_config)
     M._register_configuration(language, container_id)
 
-    -- Auto-start dlv server for Go language
-    if language == 'go' then
-      M._start_dlv_server(container_id)
+    -- Auto-start debugger server if enabled and supported
+    if dap_config.auto_start_debugger then
+      if language == 'go' then
+        M._start_dlv_server(container_id)
+      end
+      -- Add support for other languages here in the future
     end
   end
 end
 
 -- Start dlv debugger server in container
 function M._start_dlv_server(container_id)
-  log.debug('Checking dlv server in container: ' .. container_id)
+  local dap_config = config.get().dap
+  local port = dap_config.ports.go
 
-  -- Check for existing dlv processes
-  local check_result = docker.run_docker_command({ 'exec', container_id, 'pgrep', '-f', 'dlv.*listen.*2345' })
+  log.debug('Checking dlv server in container: ' .. container_id .. ' on port ' .. port)
+
+  -- Check for existing dlv processes on the configured port
+  local check_result = docker.run_docker_command({ 'exec', container_id, 'pgrep', '-f', 'dlv.*listen.*:' .. port })
 
   if check_result.success and check_result.stdout ~= '' then
-    log.debug('dlv server already running on port 2345')
-    notify.info('Debug server ready. Use :DapNew to start debugging')
+    log.debug('dlv server already running on port ' .. port)
+    notify.info('Debug server ready on port ' .. port .. '. Use :DapNew to start debugging')
     return
   end
 
-  log.debug('Starting new dlv server...')
+  log.debug('Starting new dlv server on port ' .. port .. '...')
 
   -- Cleanup old dlv processes
   docker.run_docker_command({ 'exec', container_id, 'pkill', '-f', 'dlv' })
   vim.fn.system('sleep 1')
 
-  -- Start dlv server
+  local workspace = dap_config.path_mappings.container_workspace
+
+  -- Start dlv server with configured port
   local result = docker.run_docker_command({
     'exec',
     '-d',
     '-w',
-    '/workspace',
+    workspace,
     container_id,
     'dlv',
     'debug',
     '--headless',
-    '--listen=:2345',
+    '--listen=:' .. port,
     '--api-version=2',
     '--accept-multiclient',
   })
 
   if result.success then
-    log.info('dlv server started on port 2345')
-    notify.info('Debug server ready. Use :DapNew to start debugging')
+    log.info('dlv server started on port ' .. port)
+    notify.info('Debug server ready on port ' .. port .. '. Use :DapNew to start debugging')
   else
     log.error('Failed to start dlv server: ' .. (result.stderr or ''))
   end
@@ -168,6 +184,8 @@ function M._detect_language(container_id)
 end
 
 function M._get_adapter_config(language, container_id)
+  local dap_config = config.get().dap
+
   local adapters = {
     python = {
       type = 'executable',
@@ -186,7 +204,7 @@ function M._get_adapter_config(language, container_id)
       return {
         type = 'server',
         host = '127.0.0.1',
-        port = 2345,
+        port = dap_config.ports.go,
       }
     end,
     -- For JavaScript/TypeScript, we'll need special handling
@@ -250,8 +268,14 @@ function M._register_configuration(language, container_id)
     return
   end
 
-  -- Get workspace path
-  local workspace_path = '/workspaces/' .. vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
+  local dap_config = config.get().dap
+
+  -- Get workspace path from configuration
+  local workspace_path = dap_config.path_mappings.container_workspace
+  if dap_config.path_mappings.auto_detect_workspace then
+    -- Try to detect from devcontainer or fallback to default
+    workspace_path = '/workspaces/' .. vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
+  end
 
   local configurations = {
     python = {
@@ -278,15 +302,15 @@ function M._register_configuration(language, container_id)
         request = 'attach',
         name = 'Container: Attach to dlv',
         mode = 'remote',
-        port = 2345,
+        port = dap_config.ports.go,
         host = '127.0.0.1',
         substitutePath = {
           {
             from = vim.fn.getcwd(), -- Host path
-            to = '/workspace', -- Container path
+            to = workspace_path, -- Container path from config
           },
         },
-        remotePath = '/workspace',
+        remotePath = workspace_path,
         localPath = vim.fn.getcwd(),
       },
       {

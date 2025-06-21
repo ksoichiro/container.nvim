@@ -137,6 +137,23 @@ M.defaults = {
     },
   },
 
+  -- DAP (Debug Adapter Protocol) settings
+  dap = {
+    auto_setup = true, -- Automatically setup DAP adapters when container starts
+    auto_start_debugger = true, -- Auto-start debugger servers (like dlv for Go)
+    ports = {
+      go = 2345, -- Default port for Go/delve debugger
+      python = 5678, -- Default port for Python debugger
+      node = 9229, -- Default port for Node.js debugger
+      java = 5005, -- Default port for Java debugger
+    },
+    path_mappings = {
+      -- Default path mappings (can be overridden per language)
+      container_workspace = '/workspace',
+      auto_detect_workspace = true,
+    },
+  },
+
   -- Port forwarding
   port_forwarding = {
     auto_forward = true,

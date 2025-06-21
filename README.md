@@ -258,28 +258,103 @@ container.nvim provides seamless debugging integration with nvim-dap for running
 
 #### Features
 - **Automatic Configuration**: DAP adapters are automatically configured when containers start
+- **Configurable Debug Ports**: Customizable ports for different languages to avoid conflicts
 - **Port Forwarding**: Debug ports are automatically forwarded from container to host
 - **Language Detection**: Automatically detects project language for appropriate debugger setup
 - **Session Management**: Multiple concurrent debug sessions with different containers
+- **Path Mapping**: Automatic path mapping between host and container for breakpoints
+
+#### Configuration
+
+The DAP integration can be customized with various options:
+
+```lua
+require('container').setup({
+  dap = {
+    auto_setup = true,           -- Auto-setup DAP adapters on container start
+    auto_start_debugger = true,  -- Auto-start debugger servers (e.g., dlv for Go)
+    ports = {
+      go = 2345,      -- Port for Go/delve debugger
+      python = 5678,  -- Port for Python debugger  
+      node = 9229,    -- Port for Node.js debugger
+      java = 5005,    -- Port for Java debugger
+    },
+    path_mappings = {
+      container_workspace = '/workspace',  -- Container workspace path
+      auto_detect_workspace = true,        -- Auto-detect workspace path
+    },
+  },
+})
+```
+
+**Important**: Add debug ports to your `.devcontainer/devcontainer.json` file:
+
+```json
+{
+  "forwardPorts": [8080, 2345],  // 2345 for Go debugging
+  // ... other settings
+}
+```
 
 #### Example Usage
-```lua
--- Start debugging (auto-detect language)
+```vim
+" Start debugging (auto-detect language)
 :ContainerDapStart
 
--- Start debugging with specific language
+" Start debugging with specific language
 :ContainerDapStart python
 
--- Check debugging status
+" Check debugging status
 :ContainerDapStatus
 
--- List active sessions
+" List active sessions
 :ContainerDapSessions
+```
+
+#### Go Debugging Example
+
+For Go projects, delve is automatically configured:
+
+1. **Install delve in your container**:
+   ```bash
+   go install github.com/go-delve/delve/cmd/dlv@latest
+   ```
+
+2. **Configure port forwarding** in `.devcontainer/devcontainer.json`:
+   ```json
+   {
+     "forwardPorts": [2345],
+     // ... other settings
+   }
+   ```
+
+3. **Start debugging**:
+   ```vim
+   :ContainerDapStart go
+   " Or use :DapNew and select "Container: Attach to dlv"
+   ```
+
+#### Port Conflicts
+
+If default ports conflict with your services, customize them:
+
+```lua
+require('container').setup({
+  dap = {
+    ports = { go = 3456 }  -- Use different port
+  }
+})
+```
+
+Update your devcontainer.json accordingly:
+```json
+{ "forwardPorts": [8080, 3456] }
 ```
 
 #### Requirements
 - nvim-dap plugin must be installed
 - Appropriate debugger tools must be available in the container (e.g., debugpy for Python, dlv for Go)
+- Debug ports must be forwarded in devcontainer.json
 
 ### Management
 

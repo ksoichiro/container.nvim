@@ -200,6 +200,25 @@ M.schema = {
     on_attach = validators.optional(validators.func()),
   },
 
+  -- DAP settings
+  dap = {
+    auto_setup = validators.type('boolean'),
+    auto_start_debugger = validators.type('boolean'),
+    ports = {
+      go = validators.all(validators.type('number'), validators.range(1024, 65535)),
+      python = validators.all(validators.type('number'), validators.range(1024, 65535)),
+      node = validators.all(validators.type('number'), validators.range(1024, 65535)),
+      java = validators.all(validators.type('number'), validators.range(1024, 65535)),
+    },
+    path_mappings = {
+      container_workspace = validators.all(
+        validators.type('string'),
+        validators.pattern('^/', 'Must be an absolute path')
+      ),
+      auto_detect_workspace = validators.type('boolean'),
+    },
+  },
+
   -- Terminal settings
   terminal = {
     default_shell = validators.type('string'),
