@@ -495,10 +495,10 @@ The plugin provides a robust configuration system with multiple ways to customiz
 :ContainerConfig env
 
 " Save configuration to file
-:ContainerConfig save ~/.config/devcontainer/config.lua
+:ContainerConfig save ~/.config/container/config.lua
 
 " Load configuration from file
-:ContainerConfig load ~/.config/devcontainer/config.lua
+:ContainerConfig load ~/.config/container/config.lua
 
 " Watch configuration file for changes
 :ContainerConfig watch
