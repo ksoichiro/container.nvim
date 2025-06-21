@@ -926,7 +926,7 @@ function M.start_container_simple(container_id)
   return status == 'running', status
 end
 
--- Container stop
+-- Container stop (synchronous version - kept for compatibility)
 function M.stop_container(container_id, timeout)
   timeout = timeout or 30
   log.info('Stopping container: %s', container_id)
@@ -947,6 +947,33 @@ function M.stop_container(container_id, timeout)
       log.error('Failed to stop container: %s', result.stderr)
     end
   end, 100)
+end
+
+-- Container stop (async version)
+function M.stop_container_async(container_id, callback, timeout)
+  timeout = timeout or 30
+  log.info('Stopping container: %s', container_id)
+
+  local args = { 'stop' }
+  if timeout then
+    table.insert(args, '-t')
+    table.insert(args, tostring(timeout))
+  end
+  table.insert(args, container_id)
+
+  M.run_docker_command_async(args, {}, function(result)
+    if result.success then
+      log.info('Successfully stopped container: %s', container_id)
+      if callback then
+        callback(true)
+      end
+    else
+      log.error('Failed to stop container: %s', result.stderr)
+      if callback then
+        callback(false, result.stderr)
+      end
+    end
+  end)
 end
 
 -- Container kill (immediate termination)

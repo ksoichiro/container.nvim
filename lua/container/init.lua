@@ -518,7 +518,8 @@ function M.stop()
     return false
   end
 
-  docker = docker or require('container.docker')
+  docker = docker or require('container.docker.init')
+  local notify = require('container.utils.notify')
 
   -- Stop LSP clients
   if lsp then
@@ -532,16 +533,34 @@ function M.stop()
   end
 
   log.info('Stopping container: %s', state.current_container)
-  docker.stop_container(state.current_container)
+  notify.container('Stopping container...', 'info')
 
-  -- Trigger ContainerStopped event
-  vim.api.nvim_exec_autocmds('User', {
-    pattern = 'ContainerStopped',
-    data = {
-      container_id = state.current_container,
-      container_name = state.current_config and state.current_config.name or 'unknown',
-    },
-  })
+  -- Use async version to prevent freezing
+  docker.stop_container_async(state.current_container, function(success, error_msg)
+    vim.schedule(function()
+      if success then
+        notify.container('Container stopped successfully', 'info')
+        log.info('Container stopped successfully: %s', state.current_container)
+
+        -- Trigger ContainerStopped event
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'ContainerStopped',
+          data = {
+            container_id = state.current_container,
+            container_name = state.current_config and state.current_config.name or 'unknown',
+          },
+        })
+
+        -- Clear state after successful stop
+        state.current_container = nil
+        clear_status_cache()
+        state.current_config = nil
+      else
+        notify.critical('Failed to stop container: ' .. (error_msg or 'unknown'))
+        log.error('Failed to stop container: %s', error_msg or 'unknown')
+      end
+    end)
+  end)
 
   return true
 end
