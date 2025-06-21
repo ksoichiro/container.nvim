@@ -293,7 +293,51 @@ chdir /Users/ksoichiro/.../go-test-example: no such file or directory
 2. 📊 **初期診断エラーの解決** - パス変換修正後の診断内容確認
 3. 🎯 **フェーズ2への移行準備** - 正常なcontainer_gopls動作の確立
 
+#### フェーズ1: 根本原因を特定 🎯
+
+**問題の因果関係を解明:**
+
+1. **LSP初期化シーケンス（Neovim仕様）:**
+   ```
+   vim.lsp.start_client() → initialize request → server response → buffer attach → LspAttach event
+   ```
+
+2. **パス変換システム（現在の実装）:**
+   ```
+   LspAttach event → client.request オーバーライド → パス変換適用
+   ```
+
+3. **タイミング問題:**
+   - `initialize`リクエスト（workspaceFoldersを含む）は**LspAttach前**に送信
+   - パス変換は**LspAttach後**に設定
+   - **結果**: workspaceFoldersがローカルパスのまま送信される
+
+4. **エラーの発生メカニズム:**
+   ```
+   workspaceFolders: ["/Users/ksoichiro/.../go-test-example"]
+   → container内で処理 → chdir error: no such file or directory
+   ```
+
+**根本原因確定:**
+パス変換タイミングが遅すぎるため、initializeリクエストでローカルパスが送信される
+
+### フェーズ2: 解決策の実装 🔧
+
+**解決方針:**
+LSP設定時点（`vim.lsp.start_client()`呼び出し前）でworkspaceFoldersをコンテナパスに変換
+
+**実装アプローチ:**
+1. `_prepare_lsp_config()`でworkspaceFoldersをコンテナパスに設定
+2. root_dirもコンテナパスに変換
+3. LspAttach後のパス変換は継続（その他のメッセージ用）
+
+**期待される結果:**
+- initializeリクエストでコンテナパス送信: `["/workspace"]`
+- container_goplsが正しいworkspaceで初期化
+- 初期診断エラーの解消
+
 #### 次のアクション
-1. ✅ **重複起動解決の成果をコミット** - 安定したLSP状態管理の実装
-2. 🔄 **パス変換システムの調査開始** - LspAttachタイミングとworkspace設定の検証
-3. 📊 **初期診断エラーの根本解決** - パス変換修正によるエラー解消
+1. ✅ **フェーズ1完了** - 根本原因と因果関係を完全解明
+2. 🔄 **workspaceFolders修正の実装** - LSP設定段階でのパス変換
+3. 🧪 **動作検証** - 初期診断エラーの解消確認
+4. 🎯 **フェーズ2完了** - container_goplsの正常動作確立
