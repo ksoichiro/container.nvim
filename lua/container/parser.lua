@@ -142,8 +142,6 @@ end
 function M.find_devcontainer_json(start_path)
   start_path = start_path or vim.fn.getcwd()
 
-  log.debug('Searching for devcontainer.json from: %s', start_path)
-
   -- Search for .devcontainer/devcontainer.json
   local devcontainer_path = fs.find_file_upward(start_path, '.devcontainer/devcontainer.json')
   if devcontainer_path then
