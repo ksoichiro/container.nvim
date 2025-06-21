@@ -159,9 +159,33 @@ Basic Operations~
 Execution & Access~
                                                           *:ContainerExec*
 :ContainerExec {command}
-    Execute a command inside the running container.
+    Execute a command inside the running container with synchronous execution.
+    Returns output immediately when command completes.
     Example: >vim
+        :ContainerExec ls -la
         :ContainerExec npm install
+<
+
+                                                        *:ContainerRun*
+:ContainerRun [options] {command}
+    Execute a command with advanced options and control.
+
+    Options:
+      --workdir, -w <dir>    Working directory in container
+      --user, -u <user>      User to run command as
+      --env, -e <key=value>  Environment variable
+      --shell <shell>        Shell to use (default: bash)
+      --timeout <seconds>    Timeout for command execution
+      --async                Run asynchronously with callback
+      --bg                   Run in background (fire-and-forget)
+      --stream               Stream output in real-time
+
+    Examples: >vim
+        :ContainerRun ls -la
+        :ContainerRun --workdir /app --user node npm test
+        :ContainerRun --env NODE_ENV=production --async npm run build
+        :ContainerRun --stream --timeout 300 npm run test:watch
+        :ContainerRun --bg npm run dev
 <
 
 
@@ -957,18 +981,127 @@ devcontainer.stop()
     Stop the container.
 
 Command Execution~
-                                                          *devcontainer.exec()*
-devcontainer.exec(command, [opts])
-    Execute a command in the container.
+
+                                                      *devcontainer.execute()*
+devcontainer.execute(command, [opts])
+    Execute a command in the container with advanced options.
 
     Parameters:
-      • {command} (string) Command to execute
+      • {command} (string|table) Command to execute as string or array
+      • {opts} (table, optional) Options table with fields:
+        - mode (string): 'sync', 'async', or 'fire_and_forget'
+        - workdir (string): Working directory in container
+        - user (string): User to run command as
+        - env (table): Environment variables
+        - shell (string): Shell to use (default: 'bash')
+        - timeout (number): Timeout in milliseconds (sync mode)
+        - callback (function): Callback for async mode
+        - interactive (boolean): Interactive mode
+        - tty (boolean): Allocate TTY
+        - detach (boolean): Run in detached mode
+
+    Returns:
+      • Sync mode: stdout (string), error (string)
+      • Async mode: job_id (number)
+      • Fire and forget: job_id (number)
+
+    Examples: >lua
+        -- Sync execution
+        local output, err = require('container').execute('ls -la')
+
+        -- Async execution with callback
+        require('container').execute('npm test', {
+          mode = 'async',
+          callback = function(result)
+            if result.success then
+              print("Test passed!")
+            else
+              print("Test failed: " .. result.stderr)
+            end
+          end
+        })
+
+        -- Fire and forget
+        require('container').execute('npm run dev', {
+          mode = 'fire_and_forget',
+          workdir = '/workspace/app'
+        })
+<
+
+                                                *devcontainer.execute_stream()*
+devcontainer.execute_stream(command, [opts])
+    Execute a command with streaming output.
+
+    Parameters:
+      • {command} (string|table) Command to execute
+      • {opts} (table, optional) Options table with fields:
+        - on_stdout (function): Called for each stdout line
+        - on_stderr (function): Called for each stderr line
+        - on_exit (function): Called when command exits
+        - workdir (string): Working directory
+        - user (string): User to run as
+        - env (table): Environment variables
+        - shell (string): Shell to use
+
+    Returns:
+      • job_id (number): Job ID for control
+
+    Example: >lua
+        require('container').execute_stream('npm run build', {
+          on_stdout = function(line)
+            print("[BUILD] " .. line)
+          end,
+          on_stderr = function(line)
+            print("[ERROR] " .. line)
+          end,
+          on_exit = function(exit_code)
+            if exit_code == 0 then
+              print("Build successful!")
+            else
+              print("Build failed with code: " .. exit_code)
+            end
+          end
+        })
+<
+
+                                                  *devcontainer.build_command()*
+devcontainer.build_command(base_command, [opts])
+    Build a complex command with environment setup.
+
+    Parameters:
+      • {base_command} (string|table) Base command
+      • {opts} (table, optional) Options table with fields:
+        - setup_env (boolean): Source ~/.bashrc first
+        - cd (string): Change to directory before command
+
+    Returns:
+      • command (string): Built command string
+
+    Example: >lua
+        local cmd = require('container').build_command('npm test', {
+          setup_env = true,
+          cd = '/workspace/app'
+        })
+        -- Result: "source ~/.bashrc 2>/dev/null || true && cd /workspace/app && npm test"
+<
+
+                                                     *devcontainer.run_test()*
+devcontainer.run_test(test_cmd, [opts])
+    Run test command with appropriate output mode.
+
+    Parameters:
+      • {test_cmd} (string) Test command to run
       • {opts} (table, optional) Options table
 
     Example: >lua
-        require('container').exec('npm test')
+        require('container').run_test('npm test', {
+          on_complete = function(result)
+            if result.success then
+              print("All tests passed!")
+            end
+          end
+        })
 <
-
 
 Enhanced Terminal~
                                                       *devcontainer.terminal()*

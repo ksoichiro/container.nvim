@@ -759,82 +759,6 @@ function M.stop_and_remove()
   return true
 end
 
--- Execute command in container
-function M.exec(command, opts)
-  log = log or require('container.utils.log')
-
-  if not state.current_container then
-    notify.critical('No active container')
-    log.error('No active container')
-    return false
-  end
-
-  docker = docker or require('container.docker.init')
-  opts = opts or {}
-
-  -- Use the remote user from devcontainer config if available
-  if state.current_config and state.current_config.remote_user and not opts.user then
-    opts.user = state.current_config.remote_user
-  end
-
-  -- Set environment variables from configuration
-  if state.current_config then
-    local environment = require('container.environment')
-    opts.env = environment.get_exec_environment(state.current_config)
-  end
-
-  notify.status('Executing in container: ' .. command, 'info')
-  log.info('Executing command in container: %s', command)
-  if opts.user then
-    log.debug('Command will run as user: %s', opts.user)
-  end
-
-  -- Track start time for duration
-  local start_time = vim.loop.hrtime()
-
-  -- Add callback to display output
-  opts.on_complete = function(result)
-    vim.schedule(function()
-      local duration = (vim.loop.hrtime() - start_time) / 1e9
-
-      -- Add to history
-      local history = require('container.history')
-      history.add_exec_command(command, state.current_container, result.code or -1, result.stdout, duration)
-
-      if result.success then
-        if result.stdout and result.stdout ~= '' then
-          notify.status('Command completed with output', 'info')
-          log.info('Command output: %s', result.stdout)
-          -- For exec commands, we might want to show output directly
-          -- since users expect to see the result
-          notify.info('=== Command Output ===')
-          for line in result.stdout:gmatch('[^\n]+') do
-            notify.info(line)
-          end
-        else
-          notify.status('Command completed (no output)', 'info')
-          log.info('Command completed with no output')
-        end
-      else
-        notify.critical('Command failed')
-        log.error('Command failed with code %d', result.code or -1)
-        if result.stderr and result.stderr ~= '' then
-          log.error('Command stderr: %s', result.stderr)
-          -- Show error output directly for debugging
-          notify.critical('✗ Command failed:')
-          for line in result.stderr:gmatch('[^\n]+') do
-            notify.critical('Error: ' .. line)
-          end
-        else
-          notify.status('No error details available', 'warn')
-        end
-      end
-    end)
-  end
-
-  return docker.exec_command(state.current_container, command, opts)
-end
-
 -- Enhanced terminal functions
 
 -- Create or switch to terminal session
@@ -1116,6 +1040,140 @@ end
 -- Get current container ID
 function M.get_container_id()
   return state.current_container
+end
+
+-- Execute command in container
+function M.execute(command, opts)
+  log = log or require('container.utils.log')
+  docker = docker or require('container.docker')
+
+  if not state.current_container then
+    log.error('No active container')
+    return nil, 'No active container'
+  end
+
+  opts = opts or {}
+
+  -- Set default working directory from config if not specified
+  if not opts.workdir and state.current_config and state.current_config.workspace_folder then
+    opts.workdir = state.current_config.workspace_folder
+  end
+
+  -- Set default user from config if not specified
+  if not opts.user and state.current_config and state.current_config.remote_user then
+    opts.user = state.current_config.remote_user
+  end
+
+  -- Log command execution
+  local command_str = type(command) == 'string' and command or table.concat(command, ' ')
+  log.info('Executing command in container: %s', command_str)
+
+  -- Execute command
+  local result = docker.execute_command(state.current_container, command, opts)
+
+  -- Handle result based on mode
+  if opts.mode == 'async' or opts.mode == 'fire_and_forget' then
+    return result -- Job ID or nil
+  else
+    -- Sync mode returns result
+    if result and result.success then
+      log.debug('Command executed successfully')
+      return result.stdout, nil
+    else
+      local error_msg = result and result.stderr or 'Command execution failed'
+      log.error('Command execution failed: %s', error_msg)
+      return nil, error_msg
+    end
+  end
+end
+
+-- Execute command with streaming output
+function M.execute_stream(command, opts)
+  log = log or require('container.utils.log')
+  docker = docker or require('container.docker')
+
+  if not state.current_container then
+    log.error('No active container')
+    return nil, 'No active container'
+  end
+
+  opts = opts or {}
+
+  -- Set default working directory from config if not specified
+  if not opts.workdir and state.current_config and state.current_config.workspace_folder then
+    opts.workdir = state.current_config.workspace_folder
+  end
+
+  -- Set default user from config if not specified
+  if not opts.user and state.current_config and state.current_config.remote_user then
+    opts.user = state.current_config.remote_user
+  end
+
+  -- Log command execution
+  local command_str = type(command) == 'string' and command or table.concat(command, ' ')
+  log.info('Executing streaming command in container: %s', command_str)
+
+  -- Execute command with streaming
+  return docker.execute_command_stream(state.current_container, command, opts)
+end
+
+-- Build complex command with environment setup
+function M.build_command(base_command, opts)
+  docker = docker or require('container.docker')
+  return docker.build_command(base_command, opts)
+end
+
+-- Run test command in container
+function M.run_test(test_cmd, opts)
+  log = log or require('container.utils.log')
+
+  opts = opts or {}
+  local config_data = config.get()
+
+  -- Set appropriate output mode
+  if config_data.test_integration.output_mode == 'terminal' then
+    -- Use terminal for interactive output
+    local terminal = require('container.terminal')
+    return terminal.execute(
+      test_cmd,
+      vim.tbl_extend('force', {
+        name = 'test',
+        close_on_exit = false,
+      }, opts)
+    )
+  else
+    -- Use buffer mode with streaming
+    local stdout_lines = {}
+    local stderr_lines = {}
+
+    local stream_opts = vim.tbl_extend('force', {
+      on_stdout = function(line)
+        table.insert(stdout_lines, line)
+        if opts.on_stdout then
+          opts.on_stdout(line)
+        end
+      end,
+      on_stderr = function(line)
+        table.insert(stderr_lines, line)
+        if opts.on_stderr then
+          opts.on_stderr(line)
+        end
+      end,
+      on_exit = function(exit_code)
+        local result = {
+          success = exit_code == 0,
+          code = exit_code,
+          stdout = table.concat(stdout_lines, '\n'),
+          stderr = table.concat(stderr_lines, '\n'),
+        }
+        if opts.on_complete then
+          opts.on_complete(result)
+        end
+      end,
+    }, opts)
+
+    return M.execute_stream(test_cmd, stream_opts)
+  end
 end
 
 -- Reset plugin state

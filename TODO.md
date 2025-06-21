@@ -96,7 +96,11 @@ Priority: Seamless integration with popular Neovim development plugins
   - [x] Automatic dlv server startup on container start ✅ **COMPLETED**
 
 #### Low Priority - General Integration
-- [ ] **General Command Execution API** (Week 7-8)
+- [x] **General Command Execution API** (Week 7-8) ✅ **COMPLETED**
+  - [x] Advanced command execution API with sync/async/fire-and-forget modes ✅ **COMPLETED**
+  - [x] Streaming output support for real-time command monitoring ✅ **COMPLETED**
+  - [x] Enhanced command building utilities and environment setup ✅ **COMPLETED**
+  - [x] Comprehensive command-line interface with advanced options ✅ **COMPLETED**
   - [ ] Plugin integration framework (`container.integrate_command_plugin`)
   - [ ] Command wrapping utilities for container execution
   - [ ] Documentation for third-party plugin integration
@@ -200,11 +204,48 @@ Debuggers also need to run within containers, requiring:
 - Debugger startup within container
 
 ### General Command Execution Integration
-Other plugins can be integrated using similar patterns:
+The General Command Execution API is now implemented with comprehensive command execution capabilities:
 
-**Design Pattern:**
+**Current Implementation (v0.5.0):**
 ```lua
--- API for plugin integration
+-- Sync execution
+local output, err = require('container').execute('npm test')
+
+-- Async execution with callback
+require('container').execute('npm run build', {
+  mode = 'async',
+  callback = function(result)
+    if result.success then
+      print("Build completed successfully!")
+    end
+  end
+})
+
+-- Streaming output
+require('container').execute_stream('npm run dev', {
+  on_stdout = function(line) print("[OUT] " .. line) end,
+  on_stderr = function(line) print("[ERR] " .. line) end,
+  on_exit = function(code) print("Exited with code: " .. code) end
+})
+
+-- Background execution
+require('container').execute('npm run serve', { mode = 'fire_and_forget' })
+```
+
+**Command Interface:**
+```vim
+" Basic synchronous execution
+:ContainerExec npm test
+
+" Advanced execution with options
+:ContainerRun --workdir /app --user node --env NODE_ENV=production npm run build
+:ContainerRun --stream --timeout 300 npm run test:watch
+:ContainerRun --bg npm run dev
+```
+
+**Future Plugin Integration API:**
+```lua
+-- API for plugin integration (planned)
 container.integrate_command_plugin({
   plugin_name = "nvim-test",
   command_patterns = {"Test*"},
@@ -314,7 +355,7 @@ User interface improvements with Telescope integration and configuration enhance
 2. **Medium**: Advanced features and multi-container support (v0.6.0)
 3. **Low**: Platform optimization and infrastructure (v1.0.0)
 
-**Last Updated**: 2025-06-16  
-**Next Review Scheduled**: During v0.4.0 planning
+**Last Updated**: 2025-06-21  
+**Next Review Scheduled**: During v0.6.0 planning
 
 This roadmap is regularly updated based on user feedback and development progress.

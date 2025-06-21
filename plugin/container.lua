@@ -123,10 +123,141 @@ local function create_commands()
 
   -- Execution and access commands
   vim.api.nvim_create_user_command('ContainerExec', function(args)
-    require('container').exec(args.args)
+    local command_args = vim.split(args.args, ' ', { plain = false, trimempty = true })
+    local command = table.concat(command_args, ' ')
+
+    local output, err = require('container').execute(command)
+    if output then
+      print(output)
+    else
+      print('Error: ' .. (err or 'Command failed'))
+    end
   end, {
     nargs = '+',
-    desc = 'Execute command in container',
+    desc = 'Execute command in container (sync)',
+  })
+
+  vim.api.nvim_create_user_command('ContainerRun', function(args)
+    local opts = {}
+    local command_parts = {}
+    local i = 1
+    local args_list = vim.split(args.args, ' ', { plain = false, trimempty = true })
+
+    -- Parse options
+    while i <= #args_list do
+      local arg = args_list[i]
+      if arg == '--workdir' or arg == '-w' then
+        i = i + 1
+        if i <= #args_list then
+          opts.workdir = args_list[i]
+        end
+      elseif arg == '--user' or arg == '-u' then
+        i = i + 1
+        if i <= #args_list then
+          opts.user = args_list[i]
+        end
+      elseif arg == '--env' or arg == '-e' then
+        i = i + 1
+        if i <= #args_list then
+          opts.env = opts.env or {}
+          local env_pair = args_list[i]
+          local key, value = env_pair:match('([^=]+)=(.*)')
+          if key and value then
+            opts.env[key] = value
+          end
+        end
+      elseif arg == '--shell' then
+        i = i + 1
+        if i <= #args_list then
+          opts.shell = args_list[i]
+        end
+      elseif arg == '--timeout' then
+        i = i + 1
+        if i <= #args_list then
+          opts.timeout = tonumber(args_list[i]) * 1000 -- Convert to milliseconds
+        end
+      elseif arg == '--async' then
+        opts.mode = 'async'
+        opts.callback = function(result)
+          if result.success then
+            print('Command completed successfully')
+            if result.stdout and result.stdout ~= '' then
+              print(result.stdout)
+            end
+          else
+            print('Command failed: ' .. (result.stderr or 'unknown error'))
+          end
+        end
+      elseif arg == '--bg' then
+        opts.mode = 'fire_and_forget'
+      elseif arg == '--stream' then
+        opts.stream = true
+      elseif not arg:match('^%-') then
+        -- This is part of the command
+        table.insert(command_parts, arg)
+      end
+      i = i + 1
+    end
+
+    local command = table.concat(command_parts, ' ')
+    if command == '' then
+      print('Error: No command specified')
+      return
+    end
+
+    if opts.stream then
+      local job_id = require('container').execute_stream(
+        command,
+        vim.tbl_extend('force', opts, {
+          on_stdout = function(line)
+            print('[OUT] ' .. line)
+          end,
+          on_stderr = function(line)
+            print('[ERR] ' .. line)
+          end,
+          on_exit = function(exit_code)
+            print('Command exited with code: ' .. exit_code)
+          end,
+        })
+      )
+      if job_id then
+        print('Started streaming job: ' .. job_id)
+      end
+    else
+      local result = require('container').execute(command, opts)
+      if opts.mode == 'sync' or not opts.mode then
+        -- Sync mode - result is output
+        if result then
+          print(result)
+        end
+      else
+        -- Async/bg mode - result is job ID
+        if result then
+          print('Started job: ' .. result)
+        end
+      end
+    end
+  end, {
+    nargs = '+',
+    desc = 'Execute command with advanced options',
+    complete = function(arg_lead, cmd_line, cursor_pos)
+      local completions = {
+        '--workdir',
+        '-w',
+        '--user',
+        '-u',
+        '--env',
+        '-e',
+        '--shell',
+        '--timeout',
+        '--async',
+        '--bg',
+        '--stream',
+      }
+      return vim.tbl_filter(function(item)
+        return item:match('^' .. vim.pesc(arg_lead))
+      end, completions)
+    end,
   })
 
   -- Enhanced terminal commands

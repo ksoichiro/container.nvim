@@ -1196,6 +1196,272 @@ function M.exec_command(container_id, command, opts)
   end, 100)
 end
 
+-- Execute command in container (async version with enhanced options)
+function M.exec_command_async(container_id, command, opts, callback)
+  opts = opts or {}
+  log.debug('Executing command in container (async) %s: %s', container_id, vim.inspect(command))
+
+  local args = { 'exec' }
+
+  -- Interactive mode
+  if opts.interactive then
+    table.insert(args, '-it')
+  else
+    table.insert(args, '-i')
+  end
+
+  -- Working directory
+  if opts.workdir then
+    table.insert(args, '-w')
+    table.insert(args, opts.workdir)
+  end
+
+  -- User specification
+  if opts.user then
+    table.insert(args, '--user')
+    table.insert(args, opts.user)
+  end
+
+  -- Environment variables
+  if opts.env then
+    for key, value in pairs(opts.env) do
+      table.insert(args, '-e')
+      table.insert(args, string.format('%s=%s', key, value))
+    end
+  end
+
+  -- Detached mode
+  if opts.detach then
+    table.insert(args, '-d')
+  end
+
+  -- TTY allocation
+  if opts.tty then
+    table.insert(args, '-t')
+  end
+
+  table.insert(args, container_id)
+
+  -- Split command
+  if type(command) == 'string' then
+    -- Detect shell
+    local shell = opts.shell or 'bash'
+    table.insert(args, shell)
+    table.insert(args, '-c')
+    table.insert(args, command)
+  elseif type(command) == 'table' then
+    -- Execute as command array
+    for _, cmd_part in ipairs(command) do
+      table.insert(args, cmd_part)
+    end
+  end
+
+  -- Use async version
+  M.run_docker_command_async(args, opts, function(result)
+    if callback then
+      vim.schedule(function()
+        callback(result)
+      end)
+    end
+  end)
+end
+
+-- General command execution API
+function M.execute_command(container_id, command, opts)
+  opts = opts or {}
+
+  -- Determine execution mode
+  local mode = opts.mode or 'sync' -- 'sync', 'async', 'fire_and_forget'
+
+  -- Build options for exec_command
+  local exec_opts = {
+    interactive = opts.interactive or false,
+    workdir = opts.workdir,
+    user = opts.user,
+    env = opts.env,
+    detach = opts.detach or false,
+    tty = opts.tty or false,
+    shell = opts.shell or 'bash',
+    timeout = opts.timeout,
+    cwd = opts.cwd, -- For run_docker_command compatibility
+  }
+
+  -- Handle different execution modes
+  if mode == 'async' then
+    -- Async execution with callback
+    return M.exec_command_async(container_id, command, exec_opts, opts.callback)
+  elseif mode == 'fire_and_forget' then
+    -- Fire and forget (detached execution)
+    exec_opts.detach = true
+    return M.exec_command_async(container_id, command, exec_opts, function(result)
+      if result.success then
+        log.debug('Command launched in background: %s', vim.inspect(command))
+      else
+        log.error('Failed to launch background command: %s', result.stderr or 'unknown error')
+      end
+    end)
+  else
+    -- Sync execution (default)
+    local result_container = {}
+    local completed = false
+
+    M.exec_command_async(container_id, command, exec_opts, function(result)
+      result_container.result = result
+      completed = true
+    end)
+
+    -- Wait for completion with timeout
+    local timeout = opts.timeout or 30000 -- 30 seconds default
+    local start_time = vim.loop.hrtime()
+
+    while not completed do
+      vim.wait(100) -- Wait 100ms
+      local elapsed = (vim.loop.hrtime() - start_time) / 1e6 -- Convert to milliseconds
+      if elapsed > timeout then
+        log.error('Command execution timed out: %s', vim.inspect(command))
+        return {
+          success = false,
+          code = -1,
+          stdout = '',
+          stderr = 'Command execution timed out',
+          timeout = true,
+        }
+      end
+    end
+
+    return result_container.result
+  end
+end
+
+-- Execute command with output streaming
+function M.execute_command_stream(container_id, command, opts)
+  opts = opts or {}
+  log.debug('Executing command with streaming in container %s: %s', container_id, vim.inspect(command))
+
+  local cmd_args = { 'docker', 'exec' }
+
+  -- Interactive mode
+  if opts.interactive then
+    table.insert(cmd_args, '-it')
+  else
+    table.insert(cmd_args, '-i')
+  end
+
+  -- Working directory
+  if opts.workdir then
+    table.insert(cmd_args, '-w')
+    table.insert(cmd_args, opts.workdir)
+  end
+
+  -- User specification
+  if opts.user then
+    table.insert(cmd_args, '--user')
+    table.insert(cmd_args, opts.user)
+  end
+
+  -- Environment variables
+  if opts.env then
+    for key, value in pairs(opts.env) do
+      table.insert(cmd_args, '-e')
+      table.insert(cmd_args, string.format('%s=%s', key, value))
+    end
+  end
+
+  table.insert(cmd_args, container_id)
+
+  -- Split command
+  if type(command) == 'string' then
+    local shell = opts.shell or 'bash'
+    table.insert(cmd_args, shell)
+    table.insert(cmd_args, '-c')
+    table.insert(cmd_args, command)
+  elseif type(command) == 'table' then
+    for _, cmd_part in ipairs(command) do
+      table.insert(cmd_args, cmd_part)
+    end
+  end
+
+  -- Setup streaming callbacks
+  local job_opts = {
+    on_stdout = function(_, data, _)
+      if data and opts.on_stdout then
+        for _, line in ipairs(data) do
+          if line ~= '' then
+            opts.on_stdout(line)
+          end
+        end
+      end
+    end,
+    on_stderr = function(_, data, _)
+      if data and opts.on_stderr then
+        for _, line in ipairs(data) do
+          if line ~= '' then
+            opts.on_stderr(line)
+          end
+        end
+      end
+    end,
+    on_exit = function(_, exit_code, _)
+      if opts.on_exit then
+        opts.on_exit(exit_code)
+      end
+    end,
+    stdout_buffered = false,
+    stderr_buffered = false,
+  }
+
+  if opts.cwd then
+    job_opts.cwd = opts.cwd
+  end
+
+  -- Start job and return job ID for control
+  local job_id = vim.fn.jobstart(cmd_args, job_opts)
+
+  if job_id == 0 then
+    log.error('Failed to start command stream job')
+    if opts.on_exit then
+      opts.on_exit(-1)
+    end
+    return nil
+  elseif job_id == -1 then
+    log.error('Invalid arguments for command stream job')
+    if opts.on_exit then
+      opts.on_exit(-1)
+    end
+    return nil
+  end
+
+  log.debug('Started command stream job with ID: %d', job_id)
+  return job_id
+end
+
+-- Helper function to build complex commands
+function M.build_command(base_command, opts)
+  opts = opts or {}
+
+  local command_parts = {}
+
+  -- Add environment setup if needed
+  if opts.setup_env then
+    table.insert(command_parts, 'source ~/.bashrc 2>/dev/null || true')
+  end
+
+  -- Add directory change if needed
+  if opts.cd then
+    table.insert(command_parts, string.format('cd %s', vim.fn.shellescape(opts.cd)))
+  end
+
+  -- Add the main command
+  if type(base_command) == 'string' then
+    table.insert(command_parts, base_command)
+  elseif type(base_command) == 'table' then
+    table.insert(command_parts, table.concat(base_command, ' '))
+  end
+
+  -- Combine with && to ensure proper execution order
+  return table.concat(command_parts, ' && ')
+end
+
 -- Get container status
 function M.get_container_status(container_id)
   -- Removed verbose debug log that was called every second
