@@ -643,7 +643,7 @@ local function create_commands()
 
   vim.api.nvim_create_user_command('ContainerDapStatus', function()
     local status = require('container').dap_status()
-    print('DAP Status: ' .. status)
+    require('container.utils.notify').info('DAP Status: ' .. status)
   end, {
     desc = 'Show DAP debugging status',
   })
@@ -651,11 +651,12 @@ local function create_commands()
   vim.api.nvim_create_user_command('ContainerDapSessions', function()
     local sessions = require('container').dap_list_sessions()
     if #sessions == 0 then
-      print('No active debug sessions')
+      require('container.utils.notify').info('No active debug sessions')
     else
-      print('Active Debug Sessions:')
+      local notify = require('container.utils.notify')
+      notify.info('Active Debug Sessions:')
       for _, session in ipairs(sessions) do
-        print(
+        notify.info(
           string.format(
             '  [%s] %s - %s (started: %s)',
             session.id,
