@@ -280,8 +280,8 @@ require('container').setup({
       java = 5005,    -- Port for Java debugger
     },
     path_mappings = {
-      container_workspace = '/workspace',  -- Container workspace path
-      auto_detect_workspace = true,        -- Auto-detect workspace path
+      container_workspace = '/workspace',  -- Fallback workspace path  
+      auto_detect_workspace = true,        -- Auto-detect from devcontainer.json
     },
   },
 })

@@ -183,6 +183,40 @@ function M._detect_language(container_id)
   return nil
 end
 
+function M._detect_workspace_path(container_id)
+  -- Try to detect the actual workspace path from the container
+
+  -- Method 1: Check devcontainer.json workspaceFolder setting
+  local container_config = M._get_container_config(container_id)
+  if container_config and container_config.workspaceFolder then
+    log.debug('Using workspaceFolder from devcontainer.json: ' .. container_config.workspaceFolder)
+    return container_config.workspaceFolder
+  end
+
+  -- Method 2: Check container's working directory
+  local pwd_result = docker.run_docker_command({ 'exec', container_id, 'pwd' })
+  if pwd_result.success and pwd_result.stdout then
+    local current_dir = vim.trim(pwd_result.stdout)
+    if current_dir ~= '/' and current_dir ~= '' then
+      log.debug('Using container working directory: ' .. current_dir)
+      return current_dir
+    end
+  end
+
+  -- Method 3: Look for common workspace patterns
+  local common_paths = { '/workspace', '/workspaces/' .. vim.fn.fnamemodify(vim.fn.getcwd(), ':t'), '/app', '/src' }
+  for _, path in ipairs(common_paths) do
+    local test_result = docker.run_docker_command({ 'exec', container_id, 'test', '-d', path })
+    if test_result.success then
+      log.debug('Found workspace at: ' .. path)
+      return path
+    end
+  end
+
+  log.debug('Could not detect workspace path, using configured default')
+  return nil
+end
+
 function M._get_adapter_config(language, container_id)
   local dap_config = config.get().dap
 
@@ -273,8 +307,12 @@ function M._register_configuration(language, container_id)
   -- Get workspace path from configuration
   local workspace_path = dap_config.path_mappings.container_workspace
   if dap_config.path_mappings.auto_detect_workspace then
-    -- Try to detect from devcontainer or fallback to default
-    workspace_path = '/workspaces/' .. vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
+    -- Try to detect workspace path from devcontainer configuration
+    local detected_path = M._detect_workspace_path(container_id)
+    if detected_path then
+      workspace_path = detected_path
+    end
+    -- If detection fails, use the configured default path
   end
 
   local configurations = {

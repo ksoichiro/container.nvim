@@ -148,8 +148,10 @@ M.defaults = {
       java = 5005, -- Default port for Java debugger
     },
     path_mappings = {
-      -- Default path mappings (can be overridden per language)
+      -- Default container workspace path (fallback if auto-detection fails)
       container_workspace = '/workspace',
+      -- Auto-detect workspace path from devcontainer.json, container pwd, or common patterns
+      -- Detection priority: workspaceFolder > container pwd > common paths (/workspace, /workspaces/*, /app, /src)
       auto_detect_workspace = true,
     },
   },

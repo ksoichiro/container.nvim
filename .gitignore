@@ -22,3 +22,4 @@ Thumbs.db
 # Dependencies
 node_modules/
 .luarocks/
+__debug_bin*

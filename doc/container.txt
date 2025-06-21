@@ -242,8 +242,8 @@ The DAP integration can be configured with the following options: >lua
           java = 5005,    -- Port for Java debugger
         },
         path_mappings = {
-          container_workspace = '/workspace',  -- Container workspace path
-          auto_detect_workspace = true,        -- Auto-detect workspace path
+          container_workspace = '/workspace',  -- Fallback workspace path
+          auto_detect_workspace = true,        -- Auto-detect from devcontainer.json
         },
       },
     })
@@ -324,7 +324,24 @@ Debugger Not Found:
 
 Path Mapping Issues:
   If breakpoints show as "unverified", check path mapping configuration.
-  The container workspace path must match your actual container setup.
+
+  Auto-detection priority (when auto_detect_workspace = true):
+  1. workspaceFolder from devcontainer.json
+  2. Container's current working directory (pwd)
+  3. Common patterns: /workspace, /workspaces/*, /app, /src
+  4. Fallback to configured container_workspace
+
+  To use a specific path, disable auto-detection: >lua
+
+    require('container').setup({
+      dap = {
+        path_mappings = {
+          container_workspace = '/my/custom/path',
+          auto_detect_workspace = false,
+        }
+      }
+    })
+<
 
 Management~
                                                          *:ContainerReset*
