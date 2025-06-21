@@ -31,10 +31,16 @@ function M.to_container_path(local_path)
   local abs_path = vim.fn.fnamemodify(local_path, ':p')
 
   -- Check if path is within workspace
-  if vim.startswith(abs_path, path_mappings.workspace_folder) then
+  if path_mappings.workspace_folder and vim.startswith(abs_path, path_mappings.workspace_folder) then
     local relative = string.sub(abs_path, #path_mappings.workspace_folder + 1)
+    -- Remove leading slash if present
+    if vim.startswith(relative, '/') then
+      relative = string.sub(relative, 2)
+    end
     local container_path = path_mappings.container_workspace .. '/' .. relative
     container_path = container_path:gsub('/+', '/')
+    -- Remove trailing slash
+    container_path = container_path:gsub('/$', '')
     log.debug('Path: Local to container - ' .. abs_path .. ' -> ' .. container_path)
     return container_path
   end
@@ -72,10 +78,16 @@ function M.to_local_path(container_path)
   end
 
   -- Check if path is within container workspace
-  if vim.startswith(container_path, path_mappings.container_workspace) then
+  if path_mappings.container_workspace and vim.startswith(container_path, path_mappings.container_workspace) then
     local relative = string.sub(container_path, #path_mappings.container_workspace + 1)
+    -- Remove leading slash if present
+    if vim.startswith(relative, '/') then
+      relative = string.sub(relative, 2)
+    end
     local local_path = path_mappings.workspace_folder .. '/' .. relative
     local_path = local_path:gsub('/+', '/')
+    -- Remove trailing slash
+    local_path = local_path:gsub('/$', '')
     log.debug('Path: Container to local - ' .. container_path .. ' -> ' .. local_path)
     return local_path
   end

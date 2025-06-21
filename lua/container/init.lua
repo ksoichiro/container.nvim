@@ -95,6 +95,16 @@ function M.setup(user_config)
     log.debug('Failed to initialize DAP integration: %s', dap_err)
   end
 
+  -- Initialize LSP integration
+  local lsp_ok, lsp_err = pcall(function()
+    lsp = require('container.lsp.init')
+    lsp.setup(config.get_value('lsp') or {})
+  end)
+
+  if not lsp_ok then
+    log.warn('Failed to initialize LSP integration: %s', lsp_err)
+  end
+
   state.initialized = true
   log.debug('container.nvim initialized successfully')
 
