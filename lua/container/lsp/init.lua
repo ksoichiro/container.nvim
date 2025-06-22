@@ -407,6 +407,22 @@ function M.create_lsp_client(name, server_config)
 
   log.info('LSP: Started client for %s with ID %s', name, client_id)
 
+  -- Get the client immediately to set up transformation
+  local client = vim.lsp.get_client_by_id(client_id)
+  if not client then
+    log.error('LSP: Failed to get client immediately after creation')
+    return
+  end
+
+  -- Add container metadata
+  client.config.container_id = state.container_id
+  client.config.container_managed = true
+
+  -- Setup path transformation IMMEDIATELY (no defer)
+  local transform = require('container.lsp.transform')
+  transform.setup_path_transformation(client)
+  log.info('LSP: Path transformation setup completed for %s', name)
+
   -- Update state with actual client ID
   state.clients[name] = {
     client_id = client_id,
@@ -414,24 +430,36 @@ function M.create_lsp_client(name, server_config)
     server_config = server_config,
   }
 
-  -- Attach to current buffer and existing Go buffers
-  local bufnr = vim.api.nvim_get_current_buf()
-  local ft = vim.api.nvim_buf_get_option(bufnr, 'filetype')
+  -- Delay buffer attachment to ensure path transformation is fully set up
+  vim.defer_fn(function()
+    -- Verify client and transformation are ready
+    local client = vim.lsp.get_client_by_id(client_id)
+    if not client then
+      log.error('LSP: Client %s (ID: %d) not found for buffer attachment', name, client_id)
+      return
+    end
 
-  -- Check if this filetype should trigger the LSP
-  local supported_filetypes = server_config.filetypes or server_config.languages or {}
-  local should_attach = vim.tbl_contains(supported_filetypes, ft)
+    log.debug('LSP: Proceeding with buffer attachment for %s', name)
 
-  if should_attach then
-    vim.lsp.buf_attach_client(bufnr, client_id)
-    log.info('LSP: Attached %s to current buffer %s', name, bufnr)
-  end
+    -- Attach to current buffer and existing Go buffers
+    local bufnr = vim.api.nvim_get_current_buf()
+    local ft = vim.api.nvim_buf_get_option(bufnr, 'filetype')
 
-  -- Setup autocommand for automatic attachment to new buffers
-  M._setup_auto_attach(name, server_config, client_id)
+    -- Check if this filetype should trigger the LSP
+    local supported_filetypes = server_config.filetypes or server_config.languages or {}
+    local should_attach = vim.tbl_contains(supported_filetypes, ft)
 
-  -- Attach to existing loaded buffers with matching filetypes
-  M._attach_to_existing_buffers(name, server_config, client_id)
+    if should_attach then
+      vim.lsp.buf_attach_client(bufnr, client_id)
+      log.info('LSP: Attached %s to current buffer %s', name, bufnr)
+    end
+
+    -- Setup autocommand for automatic attachment to new buffers
+    M._setup_auto_attach(name, server_config, client_id)
+
+    -- Attach to existing loaded buffers with matching filetypes
+    M._attach_to_existing_buffers(name, server_config, client_id)
+  end, 100) -- 100ms delay ensures transformation setup completes
 
   log.info('LSP: Successfully started %s client directly', name)
 end
@@ -465,16 +493,70 @@ function M._prepare_lsp_config(name, server_config)
       end
     end,
 
-    -- Capabilities
-    capabilities = vim.lsp.protocol.make_client_capabilities(),
+    -- Capabilities - enable workspace configuration
+    capabilities = vim.tbl_deep_extend('force', vim.lsp.protocol.make_client_capabilities(), {
+      workspace = {
+        configuration = true,
+        didChangeConfiguration = {
+          dynamicRegistration = true,
+        },
+      },
+    }),
 
-    -- Workspace folders - explicitly set to container workspace
-    workspaceFolders = {
+    -- Initial workspace folders - will be overridden in on_init
+    workspace_folders = {
       {
         uri = 'file://' .. path_utils.get_container_workspace(),
-        name = 'devcontainer-workspace',
+        name = 'workspace',
       },
     },
+
+    -- Before init callback - setup path transformation BEFORE initialize request
+    before_init = function(initialize_params, config)
+      log.debug('LSP: before_init called for ' .. name)
+
+      -- Ensure workspaceFolders use container paths
+      if initialize_params.workspaceFolders then
+        for i, folder in ipairs(initialize_params.workspaceFolders) do
+          -- Force container workspace path
+          folder.uri = 'file://' .. path_utils.get_container_workspace()
+          folder.name = 'container-workspace'
+          log.debug('LSP: Set workspace folder %d to %s', i, folder.uri)
+        end
+      end
+
+      -- Set root paths to container paths
+      initialize_params.rootUri = 'file://' .. path_utils.get_container_workspace()
+      initialize_params.rootPath = path_utils.get_container_workspace()
+
+      log.debug('LSP: Initialize params adjusted for container paths')
+    end,
+
+    -- On init callback - called after initialize response
+    on_init = function(client, initialize_result)
+      log.debug('LSP: on_init called for ' .. name)
+
+      -- Force workspace folders to container paths
+      if client.workspace_folders then
+        client.workspace_folders = {
+          {
+            uri = 'file://' .. path_utils.get_container_workspace(),
+            name = 'workspace',
+          },
+        }
+        log.debug('LSP: Set client.workspace_folders to container paths')
+      end
+
+      -- Send workspace/didChangeConfiguration if supported
+      if client.server_capabilities.workspace and client.server_capabilities.workspace.didChangeConfiguration then
+        client.notify('workspace/didChangeConfiguration', { settings = {} })
+        log.debug('LSP: Sent workspace/didChangeConfiguration')
+      end
+
+      if M.config.on_init then
+        return M.config.on_init(client, initialize_result)
+      end
+    end,
 
     -- On attach callback
     on_attach = function(client, bufnr)
@@ -490,6 +572,12 @@ function M._prepare_lsp_config(name, server_config)
         path_mappings_initialized = true
         log.debug('LSP: Initialized path mappings for %s', name)
       end
+
+      -- Setup path transformation for this client
+      client.config.container_id = state.container_id
+      client.config.container_managed = true
+      local transform = require('container.lsp.transform')
+      transform.setup_path_transformation(client)
 
       if M.config.on_attach then
         M.config.on_attach(client, bufnr)

@@ -34,6 +34,11 @@ function M.is_container_lsp_client(client)
     return true
   end
 
+  -- Check client name
+  if client.name and client.name:find('container_') then
+    return true
+  end
+
   -- Fallback: check if command contains docker
   if client.config.cmd then
     local cmd_str = table.concat(client.config.cmd, ' ')
@@ -47,15 +52,28 @@ end
 
 -- Setup path transformation for a container LSP client
 function M.setup_path_transformation(client)
+  log.info('LSP Transform: setup_path_transformation called for client %s', client.name or 'unknown')
+
+  if not client then
+    log.error('LSP Transform: Client is nil')
+    return
+  end
+
+  if not client.config then
+    log.error('LSP Transform: Client config is nil')
+    return
+  end
+
   if not client.config.container_id then
     log.warn('LSP Transform: No container_id found for client %s', client.name)
+    log.warn('LSP Transform: Client config: %s', vim.inspect(client.config))
     return
   end
 
   local path_utils = require('container.lsp.path')
   local container_id = client.config.container_id
 
-  log.debug('LSP Transform: Setting up transformation for container %s', container_id)
+  log.info('LSP Transform: Setting up transformation for container %s', container_id)
 
   -- Override client.notify for outgoing notifications
   local original_notify = client.notify

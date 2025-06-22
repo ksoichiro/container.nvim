@@ -338,6 +338,75 @@ LSP設定時点（`vim.lsp.start_client()`呼び出し前）でworkspaceFolders�
 
 #### 次のアクション
 1. ✅ **フェーズ1完了** - 根本原因と因果関係を完全解明
-2. 🔄 **workspaceFolders修正の実装** - LSP設定段階でのパス変換
-3. 🧪 **動作検証** - 初期診断エラーの解消確認
-4. 🎯 **フェーズ2完了** - container_goplsの正常動作確立
+2. ✅ **統合デバッグツール作成** - より簡単な検証手順の提供
+3. ✅ **workspaceFolders修正の実装** - LSP設定段階でのパス変換
+4. ✅ **動作検証** - 初期診断エラーの解消確認
+5. ✅ **フェーズ2完了** - container_goplsの正常動作確立
+
+#### 2025-06-22 - 統合デバッグツール作成
+
+**問題の解決:**
+- ✅ **実行手順の簡素化** - 複雑な手順を統合デバッグツールに集約
+- ✅ **自動トレース開始** - nvim起動と同時にLSP初期化を記録
+- ✅ **タイミング分析機能** - Initialize vs LspAttach の順序を自動判定
+
+**統合デバッグツールの機能:**
+- container_gopls初期化の自動追跡
+- workspaceFoldersの内容確認
+- タイミング問題の自動検出
+- 推奨対策の表示
+
+**実行方法:**
+```bash
+cd /Users/ksoichiro/src/github.com/ksoichiro/container.nvim/examples/go-test-example
+nvim -u /tmp/lsp_debug_integrated.lua main.go
+# 数秒後に :DebugAnalysis を実行
+```
+
+## パス変換問題の根本解決に向けた新戦略
+
+### 2025-06-22 - 調査結果サマリー
+
+**最終的な問題判明:**
+- Neovim LSPクライアントは `vim.lsp.buf_attach_client()` 時に即座に `textDocument/didOpen` を送信
+- この時点では、どんなパス変換設定も間に合わない（Neovimの内部実装制約）
+- 既存アプローチ（transform.lua、workspaceFolders修正）はこの制約を回避できない
+
+**検証済み事実:**
+- ✅ workspaceFolders は正しく設定される (`file:///workspace`)
+- ✅ パス変換ロジック自体は動作する
+- ❌ `textDocument/didOpen` でローカルパス (`/Users/ksoichiro/...`) が送信される
+- ❌ メソッドラップ (notify/request override) のタイミングが間に合わない
+
+### 新戦略: 段階的実装アプローチ
+
+**短期解 (Strategy A): シンボリックリンク方式**
+- コンテナ内でホストパスと同構造のシンボリックリンクを作成
+- 利点: シンプル、高速、LSPに透過的
+- 制約: 動的パス対応、権限管理が必要
+
+**長期解 (Strategy B): LSPプロキシ方式**
+- コンテナ内に汎用LSPプロキシを配置し、JSON-RPC通信を中継・変換
+- 利点: 汎用性高、すべてのLSPで動作、柔軟性
+- 制約: 実装複雑、パフォーマンス考慮が必要
+
+### Strategy A実装計画: シンボリックリンク方式
+
+**実装ステップ:**
+1. コンテナ起動時にホストパス構造を再現
+2. `/workspace` への適切なシンボリックリンクを作成
+3. 権限とユーザーIDマッピングの調整
+4. 動的パス作成の自動化
+
+**期待効果:**
+```
+/Users/ksoichiro/.../main.go → symlink → /workspace/main.go
+gopls receives: /Users/ksoichiro/.../main.go
+resolves to: /workspace/main.go ✅
+```
+
+**次のアクション:**
+1. 🚀 **Strategy A実装** - シンボリックリンク方式の実装
+2. 🧪 **動作検証** - パスエラー解消の確認
+3. 📝 **制約の文書化** - プラットフォーム別の制限事項
+4. 🔬 **Strategy B設計** - LSPプロキシ方式の詳細設計
