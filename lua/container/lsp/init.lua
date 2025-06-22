@@ -383,7 +383,9 @@ function M.create_lsp_client(name, server_config)
   if cmd then
     log.debug('LSP command: %s', table.concat(cmd, ' '))
     lsp_config.cmd = cmd
-    lsp_config.handlers = forwarding.create_client_middleware()
+    -- Strategy A (symlink): No path transformation handlers needed
+    -- Paths are already unified between host and container
+    log.debug('LSP: Using Strategy A (symlinks) - no path transformation middleware needed')
   else
     print('ERROR: Failed to setup communication for ' .. name)
     log.error('LSP: Failed to setup communication for ' .. name)
@@ -476,21 +478,20 @@ function M._prepare_lsp_config(name, server_config)
     -- Command will be overridden by forwarding module
     cmd = { 'echo', 'LSP server not properly configured' },
 
-    -- Root directory pattern - ensure we use container paths
+    -- Root directory pattern - Strategy A: use host paths (unified via symlinks)
     root_dir = function(fname)
       local util = require('lspconfig.util')
-      -- Convert local path to container path for LSP server
-      local container_path = path_utils.to_container_path(fname)
-
-      if container_path then
-        -- Use container workspace as root for consistency
-        local workspace = path_utils.get_container_workspace()
-        log.debug('LSP: Using container workspace as root: %s for file %s', workspace, fname)
-        return workspace
-      else
-        -- Fallback to original logic
-        return util.find_git_ancestor(fname) or util.path.dirname(fname)
+      -- Strategy A: For Go, find go.mod first, then fall back to git root
+      if name == 'gopls' then
+        -- Look for go.mod in current and parent directories
+        local go_root = util.root_pattern('go.mod', 'go.work')(fname)
+        if go_root then
+          log.debug('LSP: Found Go root at %s for %s', go_root, fname)
+          return go_root
+        end
       end
+      -- Fallback: Use git root or file directory
+      return util.find_git_ancestor(fname) or util.path.dirname(fname)
     end,
 
     -- Capabilities - enable workspace configuration
@@ -503,48 +504,72 @@ function M._prepare_lsp_config(name, server_config)
       },
     }),
 
-    -- Initial workspace folders - will be overridden in on_init
+    -- Initial workspace folders - Strategy A: use host workspace path
     workspace_folders = {
       {
-        uri = 'file://' .. path_utils.get_container_workspace(),
+        uri = 'file://' .. vim.fn.getcwd(),
         name = 'workspace',
       },
     },
 
-    -- Before init callback - setup path transformation BEFORE initialize request
+    -- Before init callback - Strategy A: use host paths (unified via symlinks)
     before_init = function(initialize_params, config)
       log.debug('LSP: before_init called for ' .. name)
 
-      -- Ensure workspaceFolders use container paths
+      -- Strategy A: Use the current file to determine correct workspace root
+      local current_file = vim.fn.expand('%:p')
+      local workspace_root = vim.fn.getcwd()
+
+      -- For gopls, try to find the go.mod root if available
+      if name == 'gopls' and current_file ~= '' then
+        local util = require('lspconfig.util')
+        local go_root = util.root_pattern('go.mod', 'go.work')(current_file)
+        if go_root then
+          workspace_root = go_root
+          log.debug('LSP: Using Go project root: %s', workspace_root)
+        end
+      end
+
       if initialize_params.workspaceFolders then
         for i, folder in ipairs(initialize_params.workspaceFolders) do
-          -- Force container workspace path
-          folder.uri = 'file://' .. path_utils.get_container_workspace()
-          folder.name = 'container-workspace'
+          folder.uri = 'file://' .. workspace_root
+          folder.name = 'workspace'
           log.debug('LSP: Set workspace folder %d to %s', i, folder.uri)
         end
       end
 
-      -- Set root paths to container paths
-      initialize_params.rootUri = 'file://' .. path_utils.get_container_workspace()
-      initialize_params.rootPath = path_utils.get_container_workspace()
+      -- Set root paths to determined workspace root
+      initialize_params.rootUri = 'file://' .. workspace_root
+      initialize_params.rootPath = workspace_root
 
-      log.debug('LSP: Initialize params adjusted for container paths')
+      log.debug('LSP: Initialize params set to workspace root: %s (Strategy A)', workspace_root)
     end,
 
     -- On init callback - called after initialize response
     on_init = function(client, initialize_result)
       log.debug('LSP: on_init called for ' .. name)
 
-      -- Force workspace folders to container paths
+      -- Strategy A: Set workspace folders to determined project root
+      local current_file = vim.fn.expand('%:p')
+      local workspace_root = vim.fn.getcwd()
+
+      -- For gopls, use Go project root if available
+      if name == 'gopls' and current_file ~= '' then
+        local util = require('lspconfig.util')
+        local go_root = util.root_pattern('go.mod', 'go.work')(current_file)
+        if go_root then
+          workspace_root = go_root
+        end
+      end
+
       if client.workspace_folders then
         client.workspace_folders = {
           {
-            uri = 'file://' .. path_utils.get_container_workspace(),
+            uri = 'file://' .. workspace_root,
             name = 'workspace',
           },
         }
-        log.debug('LSP: Set client.workspace_folders to container paths')
+        log.debug('LSP: Set client.workspace_folders to project root: %s (Strategy A)', workspace_root)
       end
 
       -- Send workspace/didChangeConfiguration if supported

@@ -1,6 +1,6 @@
 # Makefile for container.nvim
 
-.PHONY: help lint lint-fix format format-check test install-dev clean install-hooks help-tags
+.PHONY: help lint lint-fix format format-check test install-dev clean install-hooks help-tags test-symlink
 
 # Default target
 help:
@@ -16,6 +16,7 @@ help:
 	@echo "  install-dev  Install development dependencies"
 	@echo "  install-hooks Install pre-commit hooks"
 	@echo "  help-tags    Generate Neovim help tags"
+	@echo "  test-symlink Test symlink module integration"
 	@echo "  clean        Clean temporary files"
 
 # Install development dependencies
@@ -160,6 +161,21 @@ help-tags:
 	else \
 		echo "Warning: Neovim not found. Help tags not generated."; \
 		echo "Run ':helptags doc' inside Neovim to generate tags."; \
+	fi
+
+# Test symlink module integration
+test-symlink:
+	@echo "Testing symlink module integration..."
+	@echo "This test should be run in a devcontainer environment"
+	@if [ -f test/test_symlink_integration.lua ]; then \
+		echo "Copying test script to /tmp..."; \
+		cp test/test_symlink_integration.lua /tmp/test_symlink_integration.lua; \
+		echo "Running symlink integration test..."; \
+		nvim --headless -u NONE -l /tmp/test_symlink_integration.lua; \
+	else \
+		echo "Error: test/test_symlink_integration.lua not found"; \
+		echo "Make sure you're running this from the project root directory"; \
+		exit 1; \
 	fi
 
 # Lint and format check before commit (git hook helper)

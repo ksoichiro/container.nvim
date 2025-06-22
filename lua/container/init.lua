@@ -402,6 +402,15 @@ function M._finalize_container_setup(container_id)
   notify.container('Container is running!', 'info')
   log.info('Container is ready: %s', container_id)
 
+  -- Setup symbolic links for LSP path resolution (Strategy A)
+  local symlink = require('container.symlink')
+  local symlink_success = symlink.setup_lsp_symlinks(container_id)
+  if symlink_success then
+    log.info('LSP path resolution (Strategy A) configured successfully')
+  else
+    log.warn('LSP path resolution (Strategy A) setup failed, falling back to existing methods')
+  end
+
   -- Trigger ContainerStarted event
   vim.api.nvim_exec_autocmds('User', {
     pattern = 'ContainerStarted',
@@ -956,6 +965,15 @@ function M.start_container(container_name)
       log.info('Started container: %s', container_name)
       notify.container('Started container: ' .. container_name)
 
+      -- Setup symbolic links for LSP path resolution (Strategy A)
+      local symlink = require('container.symlink')
+      local symlink_success = symlink.setup_lsp_symlinks(container_name)
+      if symlink_success then
+        log.info('LSP path resolution (Strategy A) configured successfully')
+      else
+        log.warn('LSP path resolution (Strategy A) setup failed, falling back to existing methods')
+      end
+
       -- Trigger ContainerStarted event
       vim.api.nvim_exec_autocmds('User', {
         pattern = 'ContainerStarted',
@@ -1027,6 +1045,15 @@ function M.restart()
               if start_success then
                 notify.progress('restart', 'Step 2: ✓ Container started')
                 log.info('Container restarted successfully: %s', container_id)
+
+                -- Setup symbolic links for LSP path resolution (Strategy A)
+                local symlink = require('container.symlink')
+                local symlink_success = symlink.setup_lsp_symlinks(container_id)
+                if symlink_success then
+                  log.info('LSP path resolution (Strategy A) configured successfully')
+                else
+                  log.warn('LSP path resolution (Strategy A) setup failed, falling back to existing methods')
+                end
 
                 -- Trigger ContainerStarted event
                 vim.api.nvim_exec_autocmds('User', {
@@ -1774,6 +1801,15 @@ function M._start_container_step4(container_id)
         notify.success('Container started successfully and is ready!')
         notify.container('Container is now ready for development')
 
+        -- Setup symbolic links for LSP path resolution (Strategy A)
+        local symlink = require('container.symlink')
+        local symlink_success = symlink.setup_lsp_symlinks(container_id)
+        if symlink_success then
+          log.info('LSP path resolution (Strategy A) configured successfully')
+        else
+          log.warn('LSP path resolution (Strategy A) setup failed, falling back to existing methods')
+        end
+
         -- Trigger ContainerStarted event
         vim.api.nvim_exec_autocmds('User', {
           pattern = 'ContainerStarted',
@@ -1962,6 +1998,15 @@ function M._try_reconnect_existing_container()
         notify.container('Status: ' .. container.status)
         notify.info('Use :ContainerStatus for details')
 
+        -- Setup symbolic links for LSP path resolution (Strategy A)
+        local symlink = require('container.symlink')
+        local symlink_success = symlink.setup_lsp_symlinks(container.id)
+        if symlink_success then
+          log.info('LSP path resolution (Strategy A) configured successfully')
+        else
+          log.warn('LSP path resolution (Strategy A) setup failed, falling back to existing methods')
+        end
+
         -- Trigger ContainerDetected event for LSP auto-initialization
         vim.api.nvim_exec_autocmds('User', {
           pattern = 'ContainerDetected',
@@ -1969,6 +2014,7 @@ function M._try_reconnect_existing_container()
             container_id = container.id,
             container_name = normalized_config.name,
             status = container.status,
+            symlink_ready = symlink_success,
           },
         })
 

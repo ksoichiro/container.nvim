@@ -20,15 +20,17 @@ local function get_host_workspace_path()
   -- Look for .devcontainer directory to identify workspace root
   local workspace_root = vim.fn.finddir('.devcontainer', cwd .. ';')
   if workspace_root ~= '' then
-    -- Remove .devcontainer from the path
+    -- Remove .devcontainer from the path and get absolute path
     local host_workspace = vim.fn.fnamemodify(workspace_root, ':h')
+    host_workspace = vim.fn.fnamemodify(host_workspace, ':p'):gsub('/$', '') -- Remove trailing slash
     log.debug('Symlink: Found .devcontainer, using workspace: %s', host_workspace)
     return host_workspace
   end
 
-  -- Fallback: use current working directory
-  log.debug('Symlink: No .devcontainer found, using cwd: %s', cwd)
-  return cwd
+  -- Fallback: use current working directory (absolute path)
+  local abs_cwd = vim.fn.fnamemodify(cwd, ':p'):gsub('/$', '') -- Remove trailing slash
+  log.debug('Symlink: No .devcontainer found, using cwd: %s', abs_cwd)
+  return abs_cwd
 end
 
 -- Create directory structure in container
@@ -44,6 +46,7 @@ local function create_directory_structure(container_id, host_path)
   local cmd = {
     'exec',
     container_id,
+    'sudo',
     'mkdir',
     '-p',
     parent_dir,
@@ -53,6 +56,22 @@ local function create_directory_structure(container_id, host_path)
   if not result or not result.success then
     log.error('Symlink: Failed to create directory %s', parent_dir)
     return false
+  end
+
+  -- Set ownership to vscode user
+  local chown_cmd = {
+    'exec',
+    container_id,
+    'sudo',
+    'chown',
+    '-R',
+    'vscode:vscode',
+    parent_dir,
+  }
+
+  local chown_result = docker.run_docker_command(chown_cmd)
+  if not chown_result or not chown_result.success then
+    log.warn('Symlink: Failed to set ownership for %s, continuing anyway', parent_dir)
   end
 
   return true
@@ -78,6 +97,7 @@ local function create_symlink(container_id, host_path, target_path)
   local remove_cmd = {
     'exec',
     container_id,
+    'sudo',
     'rm',
     '-rf',
     host_path,
@@ -135,10 +155,22 @@ function M.setup_lsp_symlinks(container_id)
   end
 
   -- Create symlink from host path to container workspace
-  local success = create_symlink(container_id, host_workspace, container_workspace)
+  local workspace_success = create_symlink(container_id, host_workspace, container_workspace)
+
+  -- Also create symlink for Go standard library path
+  local go_success = true
+  local go_path = '/usr/local/go'
+  if not vim.loop.fs_stat(go_path) then
+    log.info('Symlink: Creating Go standard library symlink for LSP')
+    go_success = create_symlink(container_id, go_path, go_path)
+  else
+    log.debug('Symlink: Go path %s already exists on host', go_path)
+  end
+
+  local success = workspace_success and go_success
 
   if success then
-    log.info('Symlink: LSP path resolution setup completed')
+    log.info('Symlink: LSP path resolution setup completed (workspace + Go stdlib)')
 
     -- Emit event for other modules
     vim.api.nvim_exec_autocmds('User', {
@@ -150,7 +182,13 @@ function M.setup_lsp_symlinks(container_id)
       },
     })
   else
-    log.error('Symlink: Failed to setup LSP path resolution')
+    log.error('Symlink: Failed to setup complete LSP path resolution')
+    if not workspace_success then
+      log.error('Symlink: Workspace symlink failed')
+    end
+    if not go_success then
+      log.error('Symlink: Go stdlib symlink failed')
+    end
   end
 
   return success
