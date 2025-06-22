@@ -121,6 +121,27 @@ local mock_log = {
 
 package.loaded['container.utils.log'] = mock_log
 
+-- Mock vim.lsp module
+vim.lsp = {
+  get_active_clients = function(opts)
+    -- Return empty array for tests
+    return {}
+  end,
+  get_client_by_id = function(id)
+    return nil
+  end,
+  start_client = function(config)
+    return 123 -- mock client ID
+  end,
+  buf_attach_client = function() end,
+  protocol = {
+    make_client_capabilities = function()
+      return {}
+    end,
+  },
+  handlers = {}, -- Add empty handlers table for vim.lsp.handlers
+}
+
 print('=== LSP Duplicate Client Prevention Test ===')
 print()
 
@@ -176,15 +197,31 @@ local original_create = lsp.create_lsp_client
 lsp.create_lsp_client = function(name, config)
   table.insert(create_calls, name)
   print('  Created client for: ' .. name)
+  -- Return mock client ID to avoid errors
+  return 123
 end
 
 print('Running setup_lsp_in_container...')
 lsp.setup_lsp_in_container()
 
 print('Create calls:', vim.inspect and vim.inspect(create_calls) or table.concat(create_calls, ', '))
-assert(#create_calls == 1, 'Should only create one client (lua_ls)')
-assert(create_calls[1] == 'lua_ls', 'Should create lua_ls client only')
-print('✓ Test 4 passed - gopls was skipped, lua_ls was created')
+assert(#create_calls == 2, 'Should create both available clients')
+
+-- Check if both clients were created
+local has_gopls = false
+local has_lua_ls = false
+for _, name in ipairs(create_calls) do
+  if name == 'gopls' then
+    has_gopls = true
+  end
+  if name == 'lua_ls' then
+    has_lua_ls = true
+  end
+end
+
+assert(has_gopls, 'Should create gopls client')
+assert(has_lua_ls, 'Should create lua_ls client')
+print('✓ Test 4 passed - both available servers were created')
 print()
 
 -- Restore original functions

@@ -119,6 +119,41 @@ local mock_lspconfig = {
 
 package.loaded['lspconfig'] = mock_lspconfig
 
+-- Mock vim.lsp for our changes
+local captured_config = nil
+local mock_client_id = 1
+
+vim.lsp = {
+  start_client = function(config)
+    captured_config = config
+    print('Mock start_client called with name:', config.name or 'unnamed')
+    return mock_client_id
+  end,
+  get_client_by_id = function(id)
+    if id == mock_client_id then
+      return {
+        id = id,
+        name = captured_config and captured_config.name or 'container_pylsp',
+        config = captured_config or {},
+        notify = function() end,
+        request = function() end,
+        handlers = {}, -- Add empty handlers table
+      }
+    end
+    return nil
+  end,
+  get_active_clients = function(opts)
+    return {} -- Return empty array for tests
+  end,
+  buf_attach_client = function() end,
+  protocol = {
+    make_client_capabilities = function()
+      return {}
+    end,
+  },
+  handlers = {}, -- Add empty handlers table for vim.lsp.handlers
+}
+
 -- Mock lspconfig util
 package.loaded['lspconfig.util'] = {
   find_git_ancestor = function()
