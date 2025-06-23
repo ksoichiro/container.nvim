@@ -8,6 +8,13 @@
       "Bash(make lint)",
       "Bash(make test:*)"
     ],
-    "deny": []
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Read(.env.*)",
+      "Read(id_rsa)",
+      "Read(id_ed25519)",
+      "Write(.env*)",
+      "Write(**/secrets/**)"
+    ]
   }
 }
