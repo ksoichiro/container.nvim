@@ -372,32 +372,39 @@ function M.create_lsp_client(name, server_config)
   end
 
   log.debug('Creating LSP client for %s', name)
-  local lsp_config = M._prepare_lsp_config(name, server_config)
 
-  log.debug('Getting forwarding command for %s', name)
-  -- Get forwarding module for communication setup
-  local forwarding = require('container.lsp.forwarding')
+  -- Initialize strategy selector if not already done
+  if not M._strategy_selector_initialized then
+    local strategy = require('container.lsp.strategy')
+    strategy.setup()
+    M._strategy_selector_initialized = true
+  end
 
-  -- Configure the command for container communication
-  local cmd = forwarding.get_client_cmd(name, server_config, state.container_id)
-  if cmd then
-    log.debug('LSP command: %s', table.concat(cmd, ' '))
-    lsp_config.cmd = cmd
-    -- Strategy A (symlink): No path transformation handlers needed
-    -- Paths are already unified between host and container
-    log.debug('LSP: Using Strategy A (symlinks) - no path transformation middleware needed')
-  else
-    print('ERROR: Failed to setup communication for ' .. name)
-    log.error('LSP: Failed to setup communication for ' .. name)
+  -- Select the best strategy for this server
+  local strategy = require('container.lsp.strategy')
+  local chosen_strategy, strategy_config = strategy.select_strategy(name, state.container_id, server_config)
+
+  log.info('LSP: Selected %s strategy for %s', chosen_strategy, name)
+
+  -- Prepare base LSP configuration
+  local base_lsp_config = M._prepare_lsp_config(name, server_config)
+
+  -- Create client using the selected strategy
+  local lsp_config, strategy_error = strategy.create_client_with_strategy(
+    chosen_strategy,
+    name,
+    state.container_id,
+    vim.tbl_extend('force', server_config, base_lsp_config),
+    strategy_config
+  )
+
+  if not lsp_config then
+    print('ERROR: Failed to create client with ' .. chosen_strategy .. ' strategy: ' .. tostring(strategy_error))
+    log.error('LSP: Failed to create client with %s strategy: %s', chosen_strategy, strategy_error)
     return
   end
 
-  log.debug('Setting up LSP client with lspconfig')
-
-  -- Instead of using lspconfig, directly create and start the LSP client
-  -- This avoids the complexity of custom lspconfig registration
-
-  log.debug('LSP: Starting client directly with vim.lsp.start_client')
+  log.debug('LSP: Starting client with %s strategy using vim.lsp.start_client', chosen_strategy)
 
   -- Start client directly using vim.lsp.start_client
   local client_id = vim.lsp.start_client(lsp_config)
@@ -407,9 +414,9 @@ function M.create_lsp_client(name, server_config)
     return
   end
 
-  log.info('LSP: Started client for %s with ID %s', name, client_id)
+  log.info('LSP: Started client for %s with ID %s using %s strategy', name, client_id, chosen_strategy)
 
-  -- Get the client immediately to set up transformation
+  -- Get the client immediately to set up strategy-specific features
   local client = vim.lsp.get_client_by_id(client_id)
   if not client then
     log.error('LSP: Failed to get client immediately after creation')
@@ -420,10 +427,9 @@ function M.create_lsp_client(name, server_config)
   client.config.container_id = state.container_id
   client.config.container_managed = true
 
-  -- Setup path transformation IMMEDIATELY (no defer)
-  local transform = require('container.lsp.transform')
-  transform.setup_path_transformation(client)
-  log.info('LSP: Path transformation setup completed for %s', name)
+  -- Setup strategy-specific path transformation
+  strategy.setup_path_transformation(client, name, state.container_id)
+  log.info('LSP: Strategy-specific setup completed for %s', name)
 
   -- Update state with actual client ID
   state.clients[name] = {
