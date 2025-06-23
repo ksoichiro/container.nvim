@@ -514,7 +514,292 @@ resolves to: /workspace/main.go ✅
 
 ### 次のアクション: Strategy B実装準備
 
-1. 📋 **Strategy B詳細設計** - LSPプロキシアーキテクチャの設計
-2. 🧹 **Strategy A関連コードの整理** - 現在の変更をコミット後、クリーンアップ
+1. ✅ **Strategy A関連コードの整理** - 変更をコミット、作業環境クリーンアップ完了
+2. 🔄 **Strategy B詳細設計** - LSPプロキシアーキテクチャの設計 (進行中)
 3. 🚀 **Strategy B実装開始** - JSON-RPC中継・変換システムの実装
 4. 🔬 **VSCode Dev Containers研究** - 既存実装の参考調査
+
+## Strategy B: LSPプロキシ方式 詳細設計
+
+### 2025-06-23 - アーキテクチャ設計
+
+#### 設計概要
+
+**基本コンセプト:**
+Neovim(ホスト) ↔ LSPプロキシ(コンテナ) ↔ LSPサーバー(コンテナ)
+
+LSPプロキシがNeovimとLSPサーバーの中間に位置し、JSON-RPC通信を中継しながらパス変換を実行。
+
+#### システム構成
+
+```
+┌─────────────────┐    ┌──────────────────────┐    ┌─────────────────┐
+│   Neovim        │    │    LSP Proxy         │    │  LSP Server     │
+│   (Host)        │    │   (Container)        │    │  (Container)    │
+├─────────────────┤    ├──────────────────────┤    ├─────────────────┤
+│ Local paths:    │◄──►│ Path Translation:    │◄──►│ Container paths:│
+│ /Users/.../     │    │ /Users/... ⟷ /workspace│   │ /workspace/...  │
+│                 │    │                      │    │                 │
+│ vim.lsp client  │    │ JSON-RPC Middleware  │    │ gopls, pylsp... │
+│ (stdio/tcp)     │    │ (stdin/stdout)       │    │ (stdio)         │
+└─────────────────┘    └──────────────────────┘    └─────────────────┘
+```
+
+#### アーキテクチャの詳細
+
+**1. LSPプロキシ (lua/container/lsp/proxy.lua)**
+```lua
+-- LSPプロキシの主要機能:
+-- 1. JSON-RPC メッセージの受信・送信
+-- 2. パス変換 (双方向)
+-- 3. ログ記録・デバッグ
+-- 4. エラーハンドリング
+```
+
+**2. 通信レイヤー**
+- **Neovim → プロキシ**: TCP/UnixSocketまたはstdio
+- **プロキシ → LSPサーバー**: stdio (既存LSPサーバーと互換)
+
+**3. パス変換システム**
+- **送信時**: ホストパス → コンテナパス  
+- **受信時**: コンテナパス → ホストパス
+- **対象**: URI、filePath、rootUri、workspaceFolders等
+
+#### JSON-RPC中継方式の選択
+
+**Option A: stdio方式 (推奨)**
+```
+Neovim --[stdio]--> LSPプロキシ --[stdio]--> LSPサーバー
+```
+- 利点: シンプル、既存LSPクライアントと互換
+- 実装: docker exec でプロキシを起動
+
+**Option B: TCP方式**
+```
+Neovim --[TCP]--> LSPプロキシ --[stdio]--> LSPサーバー  
+```
+- 利点: ネットワーク越し対応、デバッグ容易
+- 実装: プロキシがTCPサーバーとして動作
+
+#### パス変換ルール
+
+**1. 基本変換**
+```lua
+-- Host → Container
+/Users/ksoichiro/src/proj/file.go → /workspace/file.go
+
+-- Container → Host  
+/workspace/file.go → /Users/ksoichiro/src/proj/file.go
+```
+
+**2. URI変換**
+```lua
+-- Host → Container
+file:///Users/ksoichiro/src/proj/file.go → file:///workspace/file.go
+
+-- Container → Host
+file:///workspace/file.go → file:///Users/ksoichiro/src/proj/file.go
+```
+
+**3. 変換対象メッセージ**
+- **initialize**: rootUri, workspaceFolders
+- **textDocument/\***: textDocument.uri
+- **workspace/\***: documentChanges[].uri
+- **publishDiagnostics**: uri
+- **textDocument/definition等のレスポンス**: uri, targetUri
+
+#### エラーハンドリング戦略
+
+**1. プロキシ障害時**
+- フォールバック: 直接LSPサーバー接続（パス変換なし）
+- 通知: ユーザーに警告表示
+
+**2. パス変換失敗時**  
+- ログ記録: デバッグ用に詳細記録
+- 継続: 変換失敗でも通信は継続
+
+**3. LSPサーバー障害時**
+- 既存エラーハンドリング: Neovim標準の処理に委譲
+
+#### 実装フェーズ
+
+**Phase 1: 基本プロキシ実装**
+1. JSON-RPC パーサー・シリアライザー
+2. stdio 双方向通信
+3. 基本的なパス変換
+4. 単一言語(Go)での動作確認
+
+**Phase 2: 汎用化・最適化**  
+1. 複数言語対応
+2. 高度なパス変換ルール
+3. パフォーマンス最適化
+4. エラーハンドリング強化
+
+**Phase 3: 統合・デプロイ**
+1. container.nvim統合
+2. 自動プロキシ起動
+3. 設定システム
+4. ドキュメント整備
+
+### 技術要件定義
+
+**1. 機能要件**
+- ✅ JSON-RPC 1.0/2.0 準拠
+- ✅ 双方向パス変換
+- ✅ 複数LSPサーバー対応  
+- ✅ リアルタイム通信
+- ✅ エラー耐性
+
+**2. 非機能要件**  
+- **パフォーマンス**: <10ms変換遅延
+- **安定性**: 24時間連続動作
+- **保守性**: 言語非依存設計
+- **デバッグ性**: 詳細ログ・トレース
+
+**3. 互換性要件**
+- **LSPバージョン**: LSP 3.17準拠
+- **言語サーバー**: gopls, pylsp, tsserver等
+- **プラットフォーム**: macOS, Linux, Windows
+
+### 実装ファイル構成
+
+```
+lua/container/lsp/
+├── proxy/
+│   ├── init.lua           # プロキシメイン制御
+│   ├── jsonrpc.lua        # JSON-RPC処理
+│   ├── transport.lua      # 通信レイヤー
+│   ├── transform.lua      # パス変換ロジック
+│   └── server.lua         # プロキシサーバー実装
+├── proxy.lua              # 外部インターフェース
+└── forwarding.lua         # 既存forwarding (Strategy B用に改修)
+```
+
+### 実装完了事項
+
+1. ✅ **JSON-RPC処理モジュール設計** - メッセージパース・変換仕様完了
+2. ✅ **パス変換ロジック詳細設計** - 変換ルール・エラーハンドリング完了  
+3. ✅ **技術設計書作成** - `docs/STRATEGY_B_DESIGN.md` に詳細仕様を記録
+
+### 次のアクション
+
+1. 🔄 **プロトタイプ実装計画** - 最小限の動作検証システム (進行中)
+2. 🔍 **VSCode実装調査** - Dev Containersの参考実装分析  
+3. 🚀 **Phase 1実装開始** - 基本JSON-RPC中継システム
+4. 🧪 **動作検証** - examples/go-test-exampleでの実証実験
+
+## プロトタイプ実装計画
+
+### 実装フェーズ1: 最小動作プロトタイプ
+
+**目標: 単純なJSON-RPC中継を実現し、基本パス変換を確認**
+
+#### 実装範囲
+1. **JSON-RPC基本処理**
+   - Content-Length形式のメッセージパース
+   - 基本的なシリアライゼーション
+   - リクエスト・レスポンス・通知の判別
+
+2. **stdio通信**
+   - Neovim ↔ プロキシ間のstdio接続
+   - プロキシ ↔ LSPサーバー間のstdio接続
+   - 非同期I/O処理（vim.loop.new_pipe）
+
+3. **基本パス変換**
+   - `textDocument/didOpen` のURI変換
+   - `initialize` のrootUri, workspaceFolders変換
+   - `textDocument/definition` レスポンスのURI変換
+
+4. **最小限のエラーハンドリング**
+   - 接続断検出
+   - パース失敗時の処理
+   - 基本的なログ出力
+
+#### 検証シナリオ
+```
+1. コンテナ内でLSPプロキシ起動
+2. Neovimからプロキシ経由でgoplsに接続
+3. ファイルオープン（textDocument/didOpen）を送信
+4. 定義ジャンプ（textDocument/definition）を実行
+5. パスが正しく変換されて動作することを確認
+```
+
+#### 実装ファイル構成（Phase 1）
+```
+lua/container/lsp/proxy/
+├── init.lua           # プロキシメイン（シンプル版）
+├── jsonrpc.lua        # 基本JSON-RPC処理
+├── transport.lua      # stdio通信のみ
+└── transform.lua      # 基本パス変換のみ
+```
+
+#### 成功判定基準
+- ✅ Neovim → プロキシ → gopls の通信が成立
+- ✅ `textDocument/didOpen` でコンテナパスが送信される
+- ✅ `textDocument/definition` でホストパスが返却される
+- ✅ 基本的な定義ジャンプが動作する
+- ✅ プロキシが安定して動作する（最低5分間）
+
+### 実装フェーズ2: 機能拡張
+
+**Phase 1の成功後に実装:**
+
+1. **高度なパス変換**
+   - 複雑なネストしたオブジェクトの変換
+   - 配列内URI変換（diagnostics等）
+   - エラーパス変換
+
+2. **パフォーマンス最適化**
+   - メッセージキューイング
+   - パス変換キャッシュ
+   - バッチ処理
+
+3. **堅牢性強化**
+   - 詳細なエラーハンドリング
+   - ヘルスチェック機能
+   - 自動復旧機能
+
+4. **複数言語対応**
+   - pylsp, tsserver等での検証
+   - 言語固有の設定対応
+
+### 開発環境セットアップ
+
+#### テスト用スクリプト作成
+```bash
+# プロトタイプテスト用スクリプト
+./scripts/test_proxy_prototype.sh
+```
+
+#### デバッグ環境
+- プロキシログ: `/tmp/lsp_proxy_debug.log`
+- LSPサーバーログ: `/tmp/gopls_debug.log`
+- Neovimクライアントログ: `:set verbose=9`
+
+### リスク管理
+
+**技術リスク:**
+1. **JSON-RPC解析の複雑性** → 段階的実装、既存ライブラリ参考
+2. **非同期I/O処理の困難性** → vim.loopドキュメント詳細調査
+3. **パフォーマンス問題** → 早期プロファイリング、最適化指針
+
+**緩和策:**
+- 各コンポーネントの単体テスト先行実装
+- 既存LSPクライアント（lspconfig）のコード参考
+- 段階的統合、問題の早期発見
+
+### 次の具体的アクション
+
+1. **Phase 1実装開始**
+   - `lua/container/lsp/proxy/jsonrpc.lua` の実装
+   - 基本的なContent-Length + JSON処理
+
+2. **stdio通信実装**
+   - `lua/container/lsp/proxy/transport.lua` の実装
+   - vim.loop.new_pipe()を使った双方向通信
+
+3. **動作検証準備**
+   - examples/go-test-exampleでのテスト環境構築
+   - デバッグ用のログ・トレース機能
+
+**実装着手可能な状態達成** 🚀
