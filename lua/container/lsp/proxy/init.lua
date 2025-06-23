@@ -259,23 +259,48 @@ function M.create_lsp_client_config(container_id, server_name, config)
   -- Connect client transport to proxy
   proxy:set_client_transport(client_transport)
 
+  -- Create proxy command
+  local proxy_command = M._create_proxy_command(container_id, server_name)
+
   -- Return LSP client configuration
   return {
     name = 'container_' .. server_name,
-    cmd = function()
-      -- This function will be called by vim.lsp.start_client
-      -- Return a custom command that routes through our proxy
-      return M._create_proxy_command(container_id, server_name)
-    end,
+    cmd = proxy_command,
 
     -- LSP capabilities
     capabilities = vim.lsp.protocol.make_client_capabilities(),
 
     -- Workspace configuration
-    root_dir = config and config.host_workspace or vim.fn.getcwd(),
+    root_dir = (function()
+      if config and config.host_workspace and type(config.host_workspace) == 'string' then
+        return config.host_workspace
+      end
+      local cwd = vim.fn.getcwd()
+      return type(cwd) == 'string' and cwd or '/tmp'
+    end)(),
     workspace_folders = {
       {
-        uri = 'file://' .. (config and config.host_workspace or vim.fn.getcwd()),
+        uri = (function()
+          local workspace
+          if config and config.host_workspace and type(config.host_workspace) == 'string' then
+            workspace = config.host_workspace
+          else
+            local cwd = vim.fn.getcwd()
+            if type(cwd) == 'string' then
+              workspace = cwd
+            else
+              log.error('Proxy: vim.fn.getcwd() returned %s instead of string', type(cwd))
+              workspace = '/tmp'
+            end
+          end
+
+          if type(workspace) ~= 'string' then
+            log.error('Proxy: workspace is %s instead of string: %s', type(workspace), vim.inspect(workspace))
+            workspace = '/tmp'
+          end
+
+          return 'file://' .. workspace
+        end)(),
         name = 'workspace',
       },
     },

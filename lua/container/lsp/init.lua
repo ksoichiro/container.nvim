@@ -2,6 +2,28 @@ local M = {}
 local log = require('container.utils.log')
 -- local async = require('container.utils.async')  -- Reserved for future use
 
+-- Compatibility helper for LSP client API changes
+local function get_lsp_clients(opts)
+  -- Use new API if available (Neovim 0.10+)
+  if vim.lsp.get_clients then
+    return vim.lsp.get_clients(opts)
+  else
+    -- Fall back to deprecated API for older versions
+    return vim.lsp.get_active_clients(opts)
+  end
+end
+
+-- Compatibility helper for starting LSP clients
+local function start_lsp_client(config)
+  -- Use new API if available (Neovim 0.12+)
+  if vim.lsp.start then
+    return vim.lsp.start(config)
+  else
+    -- Fall back to deprecated API for older versions
+    return vim.lsp.start_client(config)
+  end
+end
+
 -- State management
 local state = {
   servers = {},
@@ -55,7 +77,7 @@ function M._setup_auto_initialization()
 
     -- Check if we already have container_gopls running for this container
     local container_client_name = 'container_gopls'
-    local existing_clients = vim.lsp.get_active_clients({ name = container_client_name })
+    local existing_clients = get_lsp_clients({ name = container_client_name })
 
     if #existing_clients > 0 then
       log.debug('LSP: Found %d container_gopls client(s), cleaning up duplicates', #existing_clients)
@@ -78,7 +100,7 @@ function M._setup_auto_initialization()
     container_init_status[container_id] = 'in_progress'
 
     -- Stop any existing host gopls clients to avoid conflicts
-    local host_gopls_clients = vim.lsp.get_active_clients({ name = 'gopls' })
+    local host_gopls_clients = get_lsp_clients({ name = 'gopls' })
     for _, client in ipairs(host_gopls_clients) do
       log.info('LSP: Stopping host gopls client (id: %d) to avoid conflicts', client.id)
       client.stop()
@@ -86,7 +108,7 @@ function M._setup_auto_initialization()
       -- Also detach from all buffers to prevent automatic restart
       for _, buf in ipairs(vim.api.nvim_list_bufs()) do
         if vim.api.nvim_buf_is_loaded(buf) then
-          local buf_clients = vim.lsp.get_active_clients({ bufnr = buf })
+          local buf_clients = get_lsp_clients({ bufnr = buf })
           for _, buf_client in ipairs(buf_clients) do
             if buf_client.id == client.id then
               vim.lsp.buf_detach_client(buf, client.id)
@@ -100,7 +122,7 @@ function M._setup_auto_initialization()
     -- Small delay to ensure host gopls is fully stopped
     vim.defer_fn(function()
       -- Check if any host gopls clients are still running and force stop them
-      local remaining_host_clients = vim.lsp.get_active_clients({ name = 'gopls' })
+      local remaining_host_clients = get_lsp_clients({ name = 'gopls' })
       if #remaining_host_clients > 0 then
         log.warn('LSP: %d host gopls client(s) still running, force stopping...', #remaining_host_clients)
         for _, client in ipairs(remaining_host_clients) do
@@ -287,7 +309,7 @@ function M.client_exists(server_name)
   local container_client_name = 'container_' .. server_name
 
   -- Check active clients first
-  local active_clients = vim.lsp.get_active_clients({ name = container_client_name })
+  local active_clients = get_lsp_clients({ name = container_client_name })
   if #active_clients > 0 then
     log.debug('LSP: Found existing active client for %s', container_client_name)
     return true, active_clients[1].id
@@ -325,7 +347,7 @@ function M.setup_lsp_in_container()
     if server.available then
       -- Check if client already exists and clean up duplicates
       local container_client_name = 'container_' .. name
-      local existing_clients = vim.lsp.get_active_clients({ name = container_client_name })
+      local existing_clients = get_lsp_clients({ name = container_client_name })
 
       if #existing_clients > 0 then
         log.info('LSP: Found %d existing %s client(s)', #existing_clients, container_client_name)
@@ -404,10 +426,10 @@ function M.create_lsp_client(name, server_config)
     return
   end
 
-  log.debug('LSP: Starting client with %s strategy using vim.lsp.start_client', chosen_strategy)
+  log.debug('LSP: Starting client with %s strategy using start_lsp_client', chosen_strategy)
 
-  -- Start client directly using vim.lsp.start_client
-  local client_id = vim.lsp.start_client(lsp_config)
+  -- Start client directly using compatibility helper
+  local client_id = start_lsp_client(lsp_config)
 
   if not client_id then
     log.error('LSP: Failed to start client for %s', name)
@@ -646,7 +668,7 @@ function M.stop_client(name)
 
   -- Stop any active LSP clients using container client name
   local container_client_name = 'container_' .. name
-  local clients = vim.lsp.get_active_clients({ name = container_client_name })
+  local clients = get_lsp_clients({ name = container_client_name })
   for _, client in ipairs(clients) do
     client.stop()
   end
@@ -700,7 +722,7 @@ function M._setup_auto_attach(server_name, server_config, client_id)
           local client = vim.lsp.get_client_by_id(client_id)
           if client and client.is_stopped ~= true then
             -- Check if this buffer is already attached
-            local attached_clients = vim.lsp.get_active_clients({ bufnr = buf })
+            local attached_clients = get_lsp_clients({ bufnr = buf })
             local already_attached = false
             for _, attached_client in ipairs(attached_clients) do
               if attached_client.id == client_id then
@@ -733,7 +755,7 @@ function M._attach_to_existing_buffers(server_name, server_config, client_id)
       local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
       if vim.tbl_contains(supported_filetypes, ft) then
         -- Check if this buffer is already attached
-        local attached_clients = vim.lsp.get_active_clients({ bufnr = buf })
+        local attached_clients = get_lsp_clients({ bufnr = buf })
         local already_attached = false
         for _, attached_client in ipairs(attached_clients) do
           if attached_client.id == client_id then

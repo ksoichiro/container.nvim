@@ -38,9 +38,10 @@ function M.create_stdio_transport(read_stream, write_stream)
 
   -- Set up async reading
   if read_stream then
-    transport.read_handle = vim.loop.new_pipe(false)
-    if transport.read_handle then
-      transport.read_handle:open(read_stream)
+    -- Check if read_stream is already a vim.loop handle or a file descriptor
+    if type(read_stream) == 'userdata' and read_stream.read_start then
+      -- It's already a vim.loop pipe handle with read_start method
+      transport.read_handle = read_stream
       transport.read_handle:read_start(function(err, data)
         if err then
           log.error('Transport: Read error: %s', err)
@@ -52,14 +53,44 @@ function M.create_stdio_transport(read_stream, write_stream)
           transport:_handle_close()
         end
       end)
+    else
+      -- It's a file descriptor or invalid handle, create a new pipe and open it
+      transport.read_handle = vim.loop.new_pipe(false)
+      if transport.read_handle and type(read_stream) == 'number' then
+        transport.read_handle:open(read_stream)
+        transport.read_handle:read_start(function(err, data)
+          if err then
+            log.error('Transport: Read error: %s', err)
+            transport:_handle_error(err)
+          elseif data then
+            transport:_handle_incoming_data(data)
+          else
+            log.debug('Transport: Read stream closed')
+            transport:_handle_close()
+          end
+        end)
+      else
+        log.error('Transport: Invalid read_stream type: %s', type(read_stream))
+        transport.read_handle = nil
+      end
     end
   end
 
   -- Set up async writing
   if write_stream then
-    transport.write_handle = vim.loop.new_pipe(false)
-    if transport.write_handle then
-      transport.write_handle:open(write_stream)
+    -- Check if write_stream is already a vim.loop handle or a file descriptor
+    if type(write_stream) == 'userdata' and write_stream.write then
+      -- It's already a vim.loop pipe handle with write method
+      transport.write_handle = write_stream
+    else
+      -- It's a file descriptor or invalid handle, create a new pipe and open it
+      transport.write_handle = vim.loop.new_pipe(false)
+      if transport.write_handle and type(write_stream) == 'number' then
+        transport.write_handle:open(write_stream)
+      else
+        log.error('Transport: Invalid write_stream type: %s', type(write_stream))
+        transport.write_handle = nil
+      end
     end
   end
 

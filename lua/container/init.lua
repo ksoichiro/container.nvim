@@ -1560,7 +1560,8 @@ function M.lsp_status(detailed)
     for _, client_name in ipairs(lsp_state.clients) do
       if detailed then
         -- Get additional client info
-        local clients = vim.lsp.get_active_clients({ name = client_name })
+        local clients = vim.lsp.get_clients and vim.lsp.get_clients({ name = client_name })
+          or vim.lsp.get_active_clients({ name = client_name })
         if #clients > 0 then
           local client = clients[1]
           print(string.format('  🔌 %s (ID: %d)', client_name, client.id))
