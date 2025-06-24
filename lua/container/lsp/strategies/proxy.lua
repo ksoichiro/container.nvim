@@ -39,8 +39,7 @@ end
 function M.create_client(server_name, container_id, server_config, strategy_config)
   log.debug('Proxy Strategy: Creating client for %s in container %s', server_name, container_id)
 
-  -- Ensure proxy system is initialized
-  ensure_proxy_initialized()
+  -- Skip complex proxy system for now, focus on simple path transformation
 
   -- Get language-specific configuration
   local lang_config = configs.get_language_config(server_name) or {}
@@ -53,15 +52,74 @@ function M.create_client(server_name, container_id, server_config, strategy_conf
     settings = vim.tbl_deep_extend('force', lang_config.settings or {}, server_config.settings or {}),
   }, strategy_config.proxy or {})
 
-  -- Create LSP client configuration using proxy system
-  local client_config, proxy_err = proxy.create_lsp_client_config(container_id, server_name, proxy_config)
+  -- Create a simpler direct docker exec configuration with path transformation
+  -- Focus on fixing the immediate issue: before_init not being called and workspace paths
+  local client_config = {
+    name = 'container_' .. server_name,
+    cmd = { 'docker', 'exec', '-i', container_id, '/go/bin/gopls' },
+    root_dir = server_config.root_dir or vim.fn.getcwd(),
+    capabilities = vim.lsp.protocol.make_client_capabilities(),
+    settings = proxy_config.settings,
+    init_options = proxy_config.init_options,
+  }
 
-  if not client_config then
-    log.error('Proxy Strategy: Failed to create client config: %s', proxy_err or 'unknown error')
-    return nil, 'Failed to create proxy client: ' .. tostring(proxy_err)
+  -- Add before_init to transform workspace paths from host to container
+  client_config.before_init = function(initialize_params, config)
+    log.info('Proxy Strategy: before_init called for %s (container: %s)', server_name, container_id)
+
+    -- Transform workspace paths from host to container
+    if initialize_params.rootUri then
+      local original_uri = initialize_params.rootUri
+      -- Transform host path to container path
+      local host_workspace = server_config.root_dir or vim.fn.getcwd()
+      if original_uri:match('^file://' .. vim.pesc(host_workspace)) then
+        initialize_params.rootUri = 'file:///workspace'
+        log.info('Proxy Strategy: Transformed rootUri: %s -> %s', original_uri, initialize_params.rootUri)
+      end
+    end
+
+    if initialize_params.rootPath then
+      local original_path = initialize_params.rootPath
+      local host_workspace = server_config.root_dir or vim.fn.getcwd()
+      if original_path == host_workspace then
+        initialize_params.rootPath = '/workspace'
+        log.info('Proxy Strategy: Transformed rootPath: %s -> %s', original_path, initialize_params.rootPath)
+      end
+    end
+
+    if initialize_params.workspaceFolders then
+      for i, folder in ipairs(initialize_params.workspaceFolders) do
+        local original_uri = folder.uri
+        local host_workspace = server_config.root_dir or vim.fn.getcwd()
+        if original_uri:match('^file://' .. vim.pesc(host_workspace)) then
+          folder.uri = 'file:///workspace'
+          folder.name = 'workspace'
+          log.info('Proxy Strategy: Transformed workspace folder %d: %s -> %s', i, original_uri, folder.uri)
+        end
+      end
+    end
+
+    log.info('Proxy Strategy: before_init transformation complete')
   end
 
-  -- Override event handlers to integrate with strategy system
+  -- Add path transformation handlers for responses
+  local original_handlers = client_config.handlers or {}
+  client_config.handlers = vim.tbl_deep_extend('force', original_handlers, {
+    ['textDocument/publishDiagnostics'] = function(err, result, context, config)
+      if result and result.uri then
+        local original_uri = result.uri
+        -- Transform container path back to host path
+        if result.uri:match('^file:///workspace') then
+          local host_workspace = server_config.root_dir or vim.fn.getcwd()
+          result.uri = result.uri:gsub('^file:///workspace', 'file://' .. host_workspace)
+          log.debug('Proxy Strategy: Transformed diagnostic URI: %s -> %s', original_uri, result.uri)
+        end
+      end
+      -- Call default handler
+      return vim.lsp.handlers['textDocument/publishDiagnostics'](err, result, context, config)
+    end,
+  })
+
   local original_on_init = client_config.on_init
   client_config.on_init = function(client, initialize_result)
     log.info('Proxy Strategy: LSP client initialized for %s', server_name)

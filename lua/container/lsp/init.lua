@@ -75,25 +75,39 @@ function M._setup_auto_initialization()
       return
     end
 
-    -- Check if we already have container_gopls running for this container
+    -- Clean up ALL existing container_gopls clients to ensure clean state
     local container_client_name = 'container_gopls'
     local existing_clients = get_lsp_clients({ name = container_client_name })
 
     if #existing_clients > 0 then
-      log.debug('LSP: Found %d container_gopls client(s), cleaning up duplicates', #existing_clients)
+      log.info(
+        'LSP: Found %d existing container_gopls client(s), stopping all for clean initialization',
+        #existing_clients
+      )
 
-      -- Stop all but the first client
-      for i = 2, #existing_clients do
-        log.info('LSP: Stopping duplicate container_gopls (id: %d)', existing_clients[i].id)
-        existing_clients[i].stop()
+      -- Stop ALL existing container_gopls clients
+      for _, client in ipairs(existing_clients) do
+        log.info('LSP: Stopping existing container_gopls (id: %d)', client.id)
+        client.stop()
+
+        -- Detach from all buffers
+        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+          if vim.api.nvim_buf_is_loaded(buf) then
+            local buf_clients = get_lsp_clients({ bufnr = buf })
+            for _, buf_client in ipairs(buf_clients) do
+              if buf_client.id == client.id then
+                vim.lsp.buf_detach_client(buf, client.id)
+                log.debug('LSP: Detached container_gopls from buffer %d', buf)
+              end
+            end
+          end
+        end
       end
 
-      -- If we have at least one working client, mark as completed and skip setup
-      if #existing_clients >= 1 and not existing_clients[1].is_stopped then
-        log.debug('LSP: container_gopls already running for container %s, marking as completed', container_id)
-        container_init_status[container_id] = 'completed'
-        return
-      end
+      -- Wait a moment for cleanup to complete
+      vim.defer_fn(function()
+        log.info('LSP: Container_gopls cleanup complete, proceeding with new initialization')
+      end, 100)
     end
 
     -- Mark initialization as in progress for this container
@@ -416,9 +430,21 @@ function M.create_lsp_client(name, server_config)
     chosen_strategy,
     name,
     state.container_id,
-    vim.tbl_extend('force', server_config, base_lsp_config),
+    server_config, -- Pass server_config directly
     strategy_config
   )
+
+  -- If strategy didn't provide certain required fields, use base config as fallback
+  if lsp_config then
+    -- Only add base config fields that are missing in strategy config
+    -- Skip callbacks that strategy might have defined
+    local skip_fields = { 'before_init', 'on_init', 'on_attach', 'on_exit', 'handlers' }
+    for key, value in pairs(base_lsp_config) do
+      if lsp_config[key] == nil and not vim.tbl_contains(skip_fields, key) then
+        lsp_config[key] = value
+      end
+    end
+  end
 
   if not lsp_config then
     print('ERROR: Failed to create client with ' .. chosen_strategy .. ' strategy: ' .. tostring(strategy_error))
@@ -427,6 +453,17 @@ function M.create_lsp_client(name, server_config)
   end
 
   log.debug('LSP: Starting client with %s strategy using start_lsp_client', chosen_strategy)
+
+  -- Debug: Check if before_init exists
+  if lsp_config.before_init then
+    log.info('LSP: before_init is defined in lsp_config for %s', name)
+  else
+    log.error('LSP: before_init is NOT defined in lsp_config for %s!', name)
+    -- Add a fallback before_init for debugging
+    lsp_config.before_init = function(params, config)
+      log.error('LSP: Fallback before_init called for %s - this should not happen!', name)
+    end
+  end
 
   -- Start client directly using compatibility helper
   local client_id = start_lsp_client(lsp_config)

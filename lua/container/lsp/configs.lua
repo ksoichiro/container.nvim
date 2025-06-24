@@ -4,16 +4,16 @@ local M = {}
 -- Strategy configuration for LSP servers
 M.strategy_config = {
   -- Default strategy for all servers
-  default = 'symlink', -- Use Strategy A (symlink) by default for now
+  default = 'proxy', -- Use Strategy B (proxy) as default
 
   -- Server-specific strategy overrides
   servers = {
-    gopls = 'symlink', -- Go: Use symlink for now until proxy implementation is complete
-    pylsp = 'symlink', -- Python: Use symlink for now
-    pyright = 'symlink', -- Python (alternative): Use symlink for now
-    tsserver = 'symlink', -- TypeScript: Use symlink for now
-    rust_analyzer = 'symlink', -- Rust: Use symlink for now
-    clangd = 'symlink', -- C/C++: Use symlink for now
+    gopls = 'proxy', -- Go: Use proxy for better path handling
+    pylsp = 'proxy', -- Python: Use proxy
+    pyright = 'proxy', -- Python (alternative): Use proxy
+    tsserver = 'proxy', -- TypeScript: Use proxy
+    rust_analyzer = 'proxy', -- Rust: Use proxy
+    clangd = 'proxy', -- C/C++: Use proxy
     lua_ls = 'symlink', -- Lua: Symlinks work well for simple setups
   },
 

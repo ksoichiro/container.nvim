@@ -18,11 +18,11 @@ local LEVELS = {
 
 -- Message categories
 local CATEGORIES = {
-  critical = { level = 1, vim_level = vim.log.levels.ERROR }, -- Always shown (errors)
-  container = { level = 2, vim_level = vim.log.levels.INFO }, -- Container operations
-  status = { level = 3, vim_level = vim.log.levels.INFO }, -- General status
-  progress = { level = 3, vim_level = vim.log.levels.INFO }, -- Progress updates
-  debug = { level = 4, vim_level = vim.log.levels.DEBUG }, -- Verbose information
+  critical = { level = 1, vim_level = vim.log and vim.log.levels and vim.log.levels.ERROR or 1 }, -- Always shown (errors)
+  container = { level = 2, vim_level = vim.log and vim.log.levels and vim.log.levels.INFO or 2 }, -- Container operations
+  status = { level = 3, vim_level = vim.log and vim.log.levels and vim.log.levels.INFO or 2 }, -- General status
+  progress = { level = 3, vim_level = vim.log and vim.log.levels and vim.log.levels.INFO or 2 }, -- Progress updates
+  debug = { level = 4, vim_level = vim.log and vim.log.levels and vim.log.levels.DEBUG or 4 }, -- Verbose information
 }
 
 -- Get current notification level from config

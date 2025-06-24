@@ -170,7 +170,7 @@ end
 -- @param path string: host path
 -- @return string: container path
 function M.host_to_container_path(path)
-  if not path or type(path) ~= 'string' then
+  if not path or type(path) ~= 'string' or path == '' then
     return path
   end
 
@@ -222,7 +222,8 @@ end
 -- @param path string: container path
 -- @return string: host path
 function M.container_to_host_path(path)
-  if not path or type(path) ~= 'string' then
+  if not path or type(path) ~= 'string' or path == '' then
+    log.debug('Transform: Skipping invalid/empty path: %s (%s)', tostring(path), type(path))
     return path
   end
 
@@ -255,6 +256,13 @@ function M.container_to_host_path(path)
     if path:match('^' .. vim.pesc(M.config.container_root)) then
       local relative_path = path:gsub('^' .. vim.pesc(M.config.container_root), '')
       transformed = M.config.host_root .. relative_path
+
+      -- If the original was likely meant to be a URI, add file:// prefix
+      -- This handles cases where the input should have been a URI but wasn't
+      if path:match('/') and not path:match('^[a-zA-Z]:') then
+        -- Looks like a Unix file path that should be a URI
+        transformed = 'file://' .. transformed
+      end
     end
   end
 
@@ -296,8 +304,11 @@ end
 -- @param transform_func function: transformation function
 function M._apply_field_pattern(obj, pattern, transform_func)
   if not obj or type(obj) ~= 'table' then
+    log.debug('Transform: Invalid object for pattern %s: %s', pattern, type(obj))
     return
   end
+
+  log.debug('Transform: Applying pattern %s to object with keys: %s', pattern, vim.inspect(vim.tbl_keys(obj)))
 
   -- Handle array patterns [].field
   if pattern:match('^%[%]%.') then
@@ -332,11 +343,16 @@ function M._apply_field_pattern(obj, pattern, transform_func)
 
   -- Handle simple field pattern
   if obj[pattern] then
+    local original_value = obj[pattern]
     local transformed_value = transform_func(obj[pattern])
     if transformed_value ~= obj[pattern] then
       obj[pattern] = transformed_value
-      log.debug('Transform: Applied to field %s', pattern)
+      log.debug('Transform: Applied to field %s: %s -> %s', pattern, original_value, transformed_value)
+    else
+      log.debug('Transform: No change for field %s: %s', pattern, original_value)
     end
+  else
+    log.debug('Transform: Field %s not found in object', pattern)
   end
 end
 
@@ -506,6 +522,87 @@ function M.run_transformation_tests(test_cases)
   end
 
   return results
+end
+
+-- Check if a method requires path transformation
+-- @param method string: LSP method name
+-- @return boolean: true if the method needs transformation
+function M.should_transform_method(method)
+  if not method then
+    return false
+  end
+
+  -- Check if we have transformation rules for this method
+  local rules = TRANSFORM_RULES[method]
+  if not rules then
+    return false
+  end
+
+  -- Return true if there are any request or response transformation rules
+  return (rules.request and #rules.request > 0) or (rules.response and #rules.response > 0)
+end
+
+-- Transform LSP request parameters
+-- @param method string: LSP method name
+-- @param params table: request parameters
+-- @param transform_func function: path transformation function
+-- @return table: transformed parameters
+function M.transform_request(method, params, transform_func)
+  if not params or not transform_func then
+    return params
+  end
+
+  local rules = TRANSFORM_RULES[method]
+  if not rules or not rules.request then
+    return params
+  end
+
+  -- Deep copy to avoid modifying original
+  local transformed_params = vim.tbl_deep_extend('force', {}, params)
+
+  -- Apply field patterns
+  for _, pattern in ipairs(rules.request) do
+    M._apply_field_pattern(transformed_params, pattern, transform_func)
+  end
+
+  return transformed_params
+end
+
+-- Transform LSP response data
+-- @param method string: LSP method name
+-- @param result table: response result
+-- @param transform_func function: path transformation function
+-- @return table: transformed result
+function M.transform_response(method, result, transform_func)
+  if not result or not transform_func then
+    return result
+  end
+
+  local rules = TRANSFORM_RULES[method]
+  if not rules then
+    return result
+  end
+
+  -- Deep copy to avoid modifying original
+  local transformed_result = vim.tbl_deep_extend('force', {}, result)
+
+  -- Apply response field patterns
+  if rules.response then
+    for _, pattern in ipairs(rules.response) do
+      M._apply_field_pattern(transformed_result, pattern, transform_func)
+    end
+  end
+
+  -- Apply notification field patterns (for publishDiagnostics etc.)
+  if rules.notification then
+    log.debug('Transform: Applying notification patterns for %s: %s', method, vim.inspect(rules.notification))
+    for _, pattern in ipairs(rules.notification) do
+      log.debug('Transform: Applying pattern: %s', pattern)
+      M._apply_field_pattern(transformed_result, pattern, transform_func)
+    end
+  end
+
+  return transformed_result
 end
 
 return M

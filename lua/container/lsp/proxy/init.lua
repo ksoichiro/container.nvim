@@ -309,9 +309,50 @@ function M.create_lsp_client_config(container_id, server_name, config)
     init_options = config and config.init_options or {},
     settings = config and config.settings or {},
 
+    -- Path transformation handlers
+    handlers = M._create_path_transformation_handlers(container_id, server_name),
+
+    -- Before init callback - transform paths in initialize request
+    before_init = function(initialize_params, lsp_config)
+      log.info('Proxy System: before_init called for %s/%s', container_id, server_name)
+
+      local transform = require('container.lsp.proxy.transform')
+
+      -- Transform workspace paths from host to container
+      if initialize_params.rootUri then
+        local original_uri = initialize_params.rootUri
+        -- Extract path from file:// URI and transform
+        local path = original_uri:gsub('^file://', '')
+        local transformed_path = transform.host_to_container_path(path)
+        initialize_params.rootUri = 'file://' .. transformed_path
+        log.info('Proxy: Transformed rootUri: %s -> %s', original_uri, initialize_params.rootUri)
+      end
+
+      if initialize_params.rootPath then
+        local original_path = initialize_params.rootPath
+        initialize_params.rootPath = transform.host_to_container_path(initialize_params.rootPath)
+        log.info('Proxy: Transformed rootPath: %s -> %s', original_path, initialize_params.rootPath)
+      end
+
+      if initialize_params.workspaceFolders then
+        for _, folder in ipairs(initialize_params.workspaceFolders) do
+          local original_uri = folder.uri
+          -- Extract path from file:// URI and transform
+          local path = original_uri:gsub('^file://', '')
+          local transformed_path = transform.host_to_container_path(path)
+          folder.uri = 'file://' .. transformed_path
+          log.info('Proxy: Transformed workspace folder: %s -> %s', original_uri, folder.uri)
+        end
+      end
+    end,
+
     -- Event handlers
     on_init = function(client, initialize_result)
       log.info('Proxy System: LSP client initialized for %s/%s', container_id, server_name)
+
+      -- Set up request path transformation
+      M._setup_request_transformation(client, container_id, server_name)
+
       if config and config.on_init then
         config.on_init(client, initialize_result)
       end
@@ -337,15 +378,230 @@ function M.create_lsp_client_config(container_id, server_name, config)
   }
 end
 
--- Private: Create proxy command for vim.lsp.start_client
+-- Private: Setup request path transformation for LSP client
+-- @param client table: LSP client object
+-- @param container_id string: container ID
+-- @param server_name string: server name
+function M._setup_request_transformation(client, container_id, server_name)
+  local transform = require('container.lsp.proxy.transform')
+
+  -- Wrap the client's request method to transform paths
+  local original_request = client.request
+  client.request = function(method, params, handler, bufnr)
+    log.info('Proxy: Client request called with method: %s', method)
+
+    -- Transform paths from host to container
+    if transform.should_transform_method(method) then
+      params = transform.transform_request(method, params, function(path)
+        return transform.host_to_container_path(path)
+      end)
+    end
+
+    -- Wrap the handler to transform responses
+    local original_handler = handler
+    if handler and transform.should_transform_method(method) then
+      handler = function(err, result, ctx)
+        if result then
+          log.info('Proxy: Got response for %s, transforming paths', method)
+          result = transform.transform_response(method, result, function(path)
+            return transform.container_to_host_path(path)
+          end)
+        end
+        return original_handler(err, result, ctx)
+      end
+    end
+
+    return original_request(method, params, handler, bufnr)
+  end
+
+  -- Wrap the client's notify method to transform paths in notifications
+  local original_notify = client.notify
+  client.notify = function(method, params)
+    log.info('Proxy: Client notify called with method: %s, params: %s', method, vim.inspect(params))
+
+    -- Transform paths from host to container
+    if transform.should_transform_method(method) then
+      params = transform.transform_request(method, params, function(path)
+        return transform.host_to_container_path(path)
+      end)
+    end
+
+    return original_notify(method, params)
+  end
+
+  log.info('Proxy: Set up request path transformation for %s/%s', container_id, server_name)
+end
+
+-- Private: Create path transformation handlers for LSP client
+-- @param container_id string: container ID
+-- @param server_name string: server name
+-- @return table: LSP handlers with path transformation
+function M._create_path_transformation_handlers(container_id, server_name)
+  local transform = require('container.lsp.proxy.transform')
+  local handlers = {}
+
+  -- List of methods that need response path transformation (server -> client)
+  local response_transform_methods = {
+    'textDocument/definition',
+    'textDocument/references',
+    'textDocument/implementation',
+    'textDocument/typeDefinition',
+    'textDocument/declaration',
+    'workspace/symbol',
+    'callHierarchy/incomingCalls',
+    'callHierarchy/outgoingCalls',
+    'textDocument/documentLink',
+    'textDocument/publishDiagnostics', -- Add diagnostics notification
+  }
+
+  for _, method in ipairs(response_transform_methods) do
+    handlers[method] = function(err, result, context, config)
+      if method == 'textDocument/publishDiagnostics' then
+        -- Handle publishDiagnostics notification (params structure is different)
+        log.info('Proxy: publishDiagnostics handler called with err=%s, result=%s', tostring(err), vim.inspect(result))
+
+        if result then
+          -- Validate URI exists
+          if not result.uri or result.uri == '' then
+            log.error('Proxy: publishDiagnostics received with empty URI! Full result: %s', vim.inspect(result))
+            -- Try to recover by checking context
+            if context and context.params and context.params.uri then
+              result.uri = context.params.uri
+              log.info('Proxy: Recovered URI from context: %s', result.uri)
+            else
+              log.error('Proxy: Cannot recover URI, skipping diagnostics')
+              return
+            end
+          end
+
+          log.info('Proxy: Original diagnostics result: %s', vim.inspect(result))
+
+          -- Transform paths from container to host
+          result = transform.transform_response(method, result, function(path)
+            local transformed = transform.container_to_host_path(path)
+            log.debug('Proxy: Path transform %s -> %s', path, transformed)
+            return transformed
+          end)
+
+          log.info('Proxy: Transformed diagnostics result: %s', vim.inspect(result))
+        else
+          log.warn('Proxy: publishDiagnostics called with nil result')
+        end
+      else
+        -- Handle normal responses
+        if result then
+          -- Transform paths from container to host
+          result = transform.transform_response(method, result, function(path)
+            return transform.container_to_host_path(path)
+          end)
+          log.debug('Proxy: Transformed response for %s', method)
+        end
+      end
+
+      -- Call the default handler
+      return vim.lsp.handlers[method](err, result, context, config)
+    end
+  end
+
+  log.debug('Proxy: Created %d path transformation handlers', #response_transform_methods)
+  return handlers
+end
+
+-- Private: Create proxy command for LSP client
 -- @param container_id string: container ID
 -- @param server_name string: server name
 -- @return table: command array for LSP client
 function M._create_proxy_command(container_id, server_name)
-  -- Return a command that will route through our proxy system
-  -- This is a placeholder - the actual implementation would use
-  -- a custom stdio handler that communicates with our proxy
-  return { 'container-lsp-proxy', container_id, server_name }
+  -- Create a Lua proxy script that will handle communication
+  -- The script will:
+  -- 1. Read JSON-RPC from stdin
+  -- 2. Transform paths host->container
+  -- 3. Forward to real LSP server in container
+  -- 4. Transform responses container->host
+  -- 5. Send back to stdout
+
+  -- Create a temporary Lua script for this proxy
+  local proxy_script_path = '/tmp/container_lsp_proxy_' .. container_id .. '_' .. server_name .. '.lua'
+
+  -- Generate the proxy script content
+  local script_content = string.format(
+    [[
+-- Auto-generated LSP proxy script for %s in container %s
+local container_id = %q
+local server_name = %q
+
+-- Load required modules
+local log_ok, log = pcall(require, 'container.utils.log')
+if not log_ok then
+  -- Fallback logging
+  log = { debug = function() end, info = function() end, error = function() end }
+end
+
+local proxy_ok, proxy = pcall(require, 'container.lsp.proxy.init')
+if not proxy_ok then
+  log.error('Proxy Script: Failed to load proxy module')
+  os.exit(1)
+end
+
+-- Get the proxy instance
+local proxy_instance = proxy.get_proxy(container_id, server_name)
+if not proxy_instance then
+  log.error('Proxy Script: No proxy instance found for %%s/%%s', container_id, server_name)
+  os.exit(1)
+end
+
+log.info('Proxy Script: Starting proxy communication for %%s/%%s', container_id, server_name)
+
+-- Main communication loop
+local jsonrpc = require('container.lsp.proxy.jsonrpc')
+local buffer = ""
+
+while true do
+  -- Read input
+  local input = io.stdin:read("*l")
+  if not input then
+    log.info('Proxy Script: EOF reached, exiting')
+    break
+  end
+
+  buffer = buffer .. input .. "\n"
+
+  -- Try to parse complete JSON-RPC messages
+  local message, remaining = jsonrpc.parse_message(buffer)
+  while message do
+    log.debug('Proxy Script: Processing message: %%s', message.method or 'response')
+
+    -- Process message through proxy
+    proxy_instance:process_client_message(message)
+
+    buffer = remaining or ""
+    message, remaining = jsonrpc.parse_message(buffer)
+  end
+end
+
+log.info('Proxy Script: Proxy communication ended')
+]],
+    server_name,
+    container_id,
+    container_id,
+    server_name
+  )
+
+  -- Write the script to temporary file
+  local script_file = io.open(proxy_script_path, 'w')
+  if not script_file then
+    log.error('Proxy: Failed to create proxy script at %s', proxy_script_path)
+    return { 'echo', 'Failed to create proxy script' }
+  end
+
+  script_file:write(script_content)
+  script_file:close()
+
+  -- Make the script executable and return command to run it
+  local proxy_cmd = { 'lua', proxy_script_path }
+
+  log.info('Proxy: Generated proxy script command: %s', table.concat(proxy_cmd, ' '))
+  return proxy_cmd
 end
 
 -- Private: Handle proxy errors
