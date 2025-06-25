@@ -17,11 +17,12 @@ This is a Neovim plugin that can be loaded using Lazy.nvim or Packer. For develo
 ```
 
 ### Testing Changes
-Currently no formal test framework is implemented. Test manually by:
-1. Reload the plugin: `:lua package.loaded.devcontainer = nil; require('container').setup()`
-2. Test commands: `:ContainerOpen`, `:ContainerBuild`, `:ContainerStart`
-3. Check debug info: `:ContainerDebug`
-4. View logs: `:ContainerLogs`
+- When testing in an actual nvim environment is necessary, utilize headless mode as much as possible to eliminate manual user operations. This approach is more reliable for verifying what needs to be checked and is also more efficient.
+- When user has to test manually:
+  1. Reload the plugin: `:lua package.loaded.devcontainer = nil; require('container').setup()`
+  2. Test commands: `:ContainerOpen`, `:ContainerBuild`, `:ContainerStart`
+  3. Check debug info: `:ContainerDebug`
+  4. View logs: `:ContainerLogs`
 
 **Important**: When using `nvim --headless` for automated testing, always include the `-u NONE` option to prevent loading user configuration files from `~/.config/nvim`. This ensures consistent test environments.
 

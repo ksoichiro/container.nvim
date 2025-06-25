@@ -75,6 +75,22 @@ function M._setup_auto_initialization()
       return
     end
 
+    -- Check if container_gopls is already running and functional
+    local existing_container_gopls = get_lsp_clients({ name = 'container_gopls' })
+    local functional_gopls = nil
+    for _, client in ipairs(existing_container_gopls) do
+      if not client.is_stopped() and client.initialized then
+        functional_gopls = client
+        break
+      end
+    end
+
+    if functional_gopls then
+      log.debug('LSP: Functional container_gopls already exists (ID: %d), skipping setup', functional_gopls.id)
+      container_init_status[container_id] = 'completed'
+      return
+    end
+
     -- Clean up ALL existing container_gopls clients to ensure clean state
     local container_client_name = 'container_gopls'
     local existing_clients = get_lsp_clients({ name = container_client_name })
@@ -348,8 +364,8 @@ end
 
 -- Setup LSP servers in the container
 function M.setup_lsp_in_container()
-  if not M.config.auto_setup then
-    log.debug('LSP: Auto-setup disabled')
+  if not M.config or not M.config.auto_setup then
+    log.debug('LSP: Auto-setup disabled or module not initialized')
     return
   end
 
@@ -466,14 +482,29 @@ function M.create_lsp_client(name, server_config)
   end
 
   -- Start client directly using compatibility helper
+  log.info('LSP: About to start LSP client for %s with command: %s', name, table.concat(lsp_config.cmd or {}, ' '))
   local client_id = start_lsp_client(lsp_config)
 
   if not client_id then
-    log.error('LSP: Failed to start client for %s', name)
+    log.error('LSP: Failed to start client for %s - start_lsp_client returned nil', name)
+    log.error('LSP: This usually means the command failed to execute or was invalid')
+    log.error('LSP: Command was: %s', table.concat(lsp_config.cmd or {}, ' '))
     return
   end
 
   log.info('LSP: Started client for %s with ID %s using %s strategy', name, client_id, chosen_strategy)
+
+  -- Verify client is actually running
+  vim.defer_fn(function()
+    local client = vim.lsp.get_client_by_id(client_id)
+    if not client then
+      log.error('LSP: Client %s (ID: %d) not found after creation - it may have exited immediately', name, client_id)
+    elseif client.is_stopped() then
+      log.error('LSP: Client %s (ID: %d) is already stopped after creation', name, client_id)
+    else
+      log.info('LSP: Client %s (ID: %d) is running successfully', name, client_id)
+    end
+  end, 1000)
 
   -- Get the client immediately to set up strategy-specific features
   local client = vim.lsp.get_client_by_id(client_id)
@@ -1016,6 +1047,97 @@ function M.health_check()
   end
 
   return health
+end
+
+-- Get detailed debugging information about LSP clients
+function M.get_debug_info()
+  local debug_info = {
+    config = M.config,
+    state = state,
+    container_id = state.container_id,
+    active_clients = {},
+    current_buffer_clients = {},
+  }
+
+  -- Get all active LSP clients
+  local clients = get_lsp_clients()
+  for _, client in ipairs(clients) do
+    local client_info = {
+      id = client.id,
+      name = client.name,
+      root_dir = client.config.root_dir,
+      cmd = client.config.cmd,
+      container_managed = client.config.container_managed,
+      is_stopped = client.is_stopped(),
+      initialized = client.initialized,
+      attached_buffers = client.attached_buffers and vim.tbl_keys(client.attached_buffers) or {},
+      server_capabilities = client.server_capabilities and vim.tbl_keys(client.server_capabilities) or {},
+    }
+    table.insert(debug_info.active_clients, client_info)
+  end
+
+  -- Get clients attached to current buffer
+  local bufnr = vim.api.nvim_get_current_buf()
+  local buf_clients = get_lsp_clients({ bufnr = bufnr })
+  for _, client in ipairs(buf_clients) do
+    table.insert(debug_info.current_buffer_clients, {
+      id = client.id,
+      name = client.name,
+      initialized = client.initialized,
+    })
+  end
+
+  return debug_info
+end
+
+-- Detailed LSP client analysis for specific client
+function M.analyze_client(client_name)
+  local clients = get_lsp_clients({ name = client_name })
+  if #clients == 0 then
+    return { error = 'No client found with name: ' .. client_name }
+  end
+
+  local client = clients[1]
+  local analysis = {
+    basic_info = {
+      id = client.id,
+      name = client.name,
+      is_stopped = client.is_stopped(),
+      initialized = client.initialized,
+    },
+    config = {
+      cmd = client.config.cmd,
+      root_dir = client.config.root_dir,
+      capabilities = client.config.capabilities and vim.tbl_keys(client.config.capabilities) or {},
+      settings = client.config.settings,
+      init_options = client.config.init_options,
+    },
+    server_info = {
+      server_capabilities = client.server_capabilities,
+      workspace_folders = client.workspace_folders,
+    },
+    buffer_attachment = {},
+  }
+
+  -- Check buffer attachments
+  local bufnr = vim.api.nvim_get_current_buf()
+  local buf_clients = get_lsp_clients({ bufnr = bufnr })
+  local attached_to_current = false
+  for _, buf_client in ipairs(buf_clients) do
+    if buf_client.id == client.id then
+      attached_to_current = true
+      break
+    end
+  end
+
+  analysis.buffer_attachment = {
+    attached_to_current_buffer = attached_to_current,
+    current_buffer = bufnr,
+    current_buffer_name = vim.api.nvim_buf_get_name(bufnr),
+    attached_buffers = client.attached_buffers and vim.tbl_keys(client.attached_buffers) or {},
+  }
+
+  return analysis
 end
 
 return M

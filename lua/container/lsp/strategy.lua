@@ -62,6 +62,11 @@ function M.setup(config)
   }
 
   log.info('Strategy Selector: Initialized with default strategy: %s', strategy_config.default)
+  log.info(
+    'Strategy Selector: Loaded strategy implementations: %s',
+    vim.inspect(vim.tbl_keys(strategy_implementations))
+  )
+  log.debug('Strategy Selector: Final strategy config: %s', vim.inspect(strategy_config))
 end
 
 -- Determine the best strategy for a given LSP server
@@ -71,38 +76,54 @@ end
 -- @return string: chosen strategy name
 -- @return table: strategy-specific configuration
 function M.select_strategy(server_name, container_id, config)
+  log.info('Strategy Selector: Selecting strategy for %s in container %s', server_name, container_id)
+  log.debug('Strategy Selector: Available strategies: %s', vim.inspect(vim.tbl_keys(strategy_implementations)))
+  log.debug('Strategy Selector: Current strategy config: %s', vim.inspect(strategy_config))
+
   local chosen_strategy = strategy_config.default
   local strategy_specific_config = {}
+
+  log.info('Strategy Selector: Default strategy: %s', chosen_strategy)
 
   -- Check server-specific override
   if strategy_config.servers[server_name] then
     chosen_strategy = strategy_config.servers[server_name]
-    log.debug('Strategy Selector: Using server-specific strategy for %s: %s', server_name, chosen_strategy)
+    log.info('Strategy Selector: Using server-specific strategy for %s: %s', server_name, chosen_strategy)
   end
 
   -- Auto-detection logic (if enabled)
   if strategy_config.features.auto_detection then
+    log.debug('Strategy Selector: Auto-detection enabled, checking...')
     local detected_strategy = M._auto_detect_strategy(server_name, container_id)
     if detected_strategy then
       chosen_strategy = detected_strategy
-      log.debug('Strategy Selector: Auto-detected strategy for %s: %s', server_name, chosen_strategy)
+      log.info('Strategy Selector: Auto-detected strategy for %s: %s', server_name, chosen_strategy)
+    else
+      log.debug('Strategy Selector: No auto-detected strategy for %s', server_name)
     end
   end
 
   -- Validate strategy availability
   if not strategy_implementations[chosen_strategy] then
-    log.warn(
+    log.error(
       'Strategy Selector: Strategy %s not available, falling back to %s',
       chosen_strategy,
       strategy_config.fallback.strategy
     )
     chosen_strategy = strategy_config.fallback.strategy
+  else
+    log.info('Strategy Selector: Strategy %s is available', chosen_strategy)
   end
 
   -- Get strategy-specific configuration
   strategy_specific_config = M._get_strategy_config(chosen_strategy, server_name, config)
 
-  log.info('Strategy Selector: Selected %s strategy for %s in container %s', chosen_strategy, server_name, container_id)
+  log.info(
+    'Strategy Selector: Final selected %s strategy for %s in container %s',
+    chosen_strategy,
+    server_name,
+    container_id
+  )
 
   return chosen_strategy, strategy_specific_config
 end

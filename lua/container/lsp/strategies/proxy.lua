@@ -37,7 +37,9 @@ end
 -- @return table|nil: LSP client configuration or nil on error
 -- @return string|nil: error message if failed
 function M.create_client(server_name, container_id, server_config, strategy_config)
-  log.debug('Proxy Strategy: Creating client for %s in container %s', server_name, container_id)
+  log.info('Proxy Strategy: Starting client creation for %s in container %s', server_name, container_id)
+  log.debug('Proxy Strategy: server_config = %s', vim.inspect(server_config))
+  log.debug('Proxy Strategy: strategy_config = %s', vim.inspect(strategy_config))
 
   -- Skip complex proxy system for now, focus on simple path transformation
 
@@ -179,16 +181,14 @@ function M.create_client(server_name, container_id, server_config, strategy_conf
     client_config.capabilities = vim.tbl_deep_extend('force', client_config.capabilities, server_config.capabilities)
   end
 
-  -- Add additional server configuration
+  -- Add additional server configuration (but preserve our critical callbacks)
   if server_config.flags then
     client_config.flags = server_config.flags
   end
-  if server_config.before_init then
-    client_config.before_init = server_config.before_init
-  end
-  if server_config.handlers then
-    client_config.handlers = server_config.handlers
-  end
+  -- DO NOT override before_init - we need our path transformation
+  -- DO NOT override handlers - we need our diagnostic path transformation
+
+  log.debug('Proxy Strategy: Preserved before_init and handlers for path transformation')
 
   log.info('Proxy Strategy: Successfully created client configuration for %s', server_name)
   return client_config, nil

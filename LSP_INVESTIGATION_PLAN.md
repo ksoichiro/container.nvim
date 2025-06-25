@@ -803,3 +803,94 @@ lua/container/lsp/proxy/
    - デバッグ用のログ・トレース機能
 
 **実装着手可能な状態達成** 🚀
+
+## Phase 1 実行結果（継続調査）
+
+### 2025-06-26 - gdマッピング直接上書きアプローチの検証
+
+**経緯**：
+Phase 1の調査過程で、gdマッピングを直接上書きする緊急回避策を発見し、動作確認を実施。
+
+#### 成功した機能確認
+
+**動作する実装**：`working_gd_override.lua`
+- ✅ **ホバー（K）** - 正常動作
+- ✅ **定義ジャンプ（gd）** - 同ファイル内/異なるファイル間両方で動作
+- ✅ **補完機能** - 正常動作
+- ✅ **複数回ジャンプ** - 安定性確認済み
+- ✅ **同じファイル vs 異なるファイルの適切な処理** - vim.cmd('edit')回避による安定化
+
+**技術的実装内容**：
+```lua
+vim.keymap.set('n', 'gd', function()
+  -- container_goplsクライアントを検索
+  -- URIをホストパス→コンテナパスに変換
+  -- textDocument/definitionリクエスト送信
+  -- レスポンスのURIをコンテナパス→ホストパスに変換
+  -- 同じファイル内なら cursor移動のみ、異なるファイルならvim.cmd('edit')
+end)
+```
+
+#### 残存する根本的問題 ⚠️
+
+**LSP初期化時の警告/エラー**：
+1. **ワークスペース初期化警告**：
+   ```
+   No packages found for open file /Users/ksoichiro/.../main.go. go list
+   ```
+
+2. **型解析エラー**：
+   ```
+   undefined: NewCalculator compiler (UndeclaredName)
+   ```
+
+3. **position_encoding警告**（解決済み）：
+   ```
+   position_encoding param is required in vim.lsp.util.make_position_params
+   ```
+
+#### 根本原因分析
+
+**問題の本質**：
+- gdマッピング上書きは**症状の対処療法**にすぎない
+- LSP初期化時（`textDocument/didOpen`）にホストパスが送信される問題は未解決
+- container_goplsがワークスペースを正しく認識できていない
+- **従来のパス変換アプローチと本質的に同じ制約**を持つ
+
+**技術的詳細**：
+- `textDocument/didOpen`: ホストパス送信 → コンテナ内で認識できない
+- ワークスペースフォルダー設定の不完全性
+- go.modファイルとの関連性の問題
+
+#### 評価と結論
+
+**gdマッピング上書きアプローチの限界**：
+- ✅ 定義ジャンプは動作するが、**LSP全体の動作は不完全**
+- ❌ ワークスペース認識問題により、補完や診断の質が低下
+- ❌ 根本的なパス変換問題は未解決
+- ❌ スケーラビリティに欠ける（他のLSP機能で同様の対応が必要）
+
+**Strategy Bの必要性を再確認**：
+現在の「動作する」状態は部分的な成功であり、完全なLSP機能のためにはStrategy B（LSPプロキシ方式）が必要不可欠。
+
+#### 次フェーズへの移行方針
+
+**現状の記録とコミット**：
+1. ✅ 動作するgdマッピング実装を保存（`working_gd_override.lua`）
+2. ✅ 包括的テスト環境を保存（`test_gd_comprehensive.lua`）
+3. ✅ 調査結果を詳細記録
+4. 🔄 **変更をコミット** - 一時的解決策の記録
+5. 🚀 **Strategy B実装に本格着手** - 根本解決への移行
+
+**Strategy Bの実装優先度**：
+- **High**: textDocument/didOpen のパス変換（根本問題解決）
+- **High**: ワークスペース設定の完全な修正
+- **Medium**: 全LSP機能（診断、リファレンス等）の統合
+- **Low**: パフォーマンス最適化
+
+### 作業成果物（2025-06-26追加）
+
+- ✅ `working_gd_override.lua`: 動作する定義ジャンプ実装（一時的解決策）
+- ✅ `test_gd_comprehensive.lua`: 包括的テストスクリプト
+- ✅ 根本原因の完全な特定と記録
+- ✅ Strategy Bの必要性を実証的に確認
