@@ -145,7 +145,8 @@ end
 function M.is_available(server_name, container_id)
   -- Check if container is running
   local docker = require('container.docker.init')
-  local is_running = docker.is_container_running(container_id)
+  local status = docker.get_container_status(container_id)
+  local is_running = status == 'running'
 
   if not is_running then
     return false, 'Container is not running: ' .. container_id

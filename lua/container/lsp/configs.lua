@@ -4,16 +4,16 @@ local M = {}
 -- Strategy configuration for LSP servers
 M.strategy_config = {
   -- Default strategy for all servers
-  default = 'proxy', -- Use Strategy B (proxy) as default
+  default = 'intercept', -- Use Strategy C (intercept) as default
 
   -- Server-specific strategy overrides
   servers = {
-    gopls = 'proxy', -- Go: Use proxy for better path handling
-    pylsp = 'proxy', -- Python: Use proxy
-    pyright = 'proxy', -- Python (alternative): Use proxy
-    tsserver = 'proxy', -- TypeScript: Use proxy
-    rust_analyzer = 'proxy', -- Rust: Use proxy
-    clangd = 'proxy', -- C/C++: Use proxy
+    gopls = 'intercept', -- Go: Use interception for reliable path handling
+    pylsp = 'intercept', -- Python: Use interception
+    pyright = 'intercept', -- Python (alternative): Use interception
+    tsserver = 'intercept', -- TypeScript: Use interception
+    rust_analyzer = 'intercept', -- Rust: Use interception
+    clangd = 'intercept', -- C/C++: Use interception
     lua_ls = 'symlink', -- Lua: Symlinks work well for simple setups
   },
 

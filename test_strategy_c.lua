@@ -127,17 +127,17 @@ local function test_full_integration()
   print("Initial LSP clients:", #initial_clients)
 
   -- Trigger LSP setup
-  local lsp = require('container.lsp')
+  local lsp = require('container.lsp.init')
   print("Setting up container LSP...")
 
   -- Force setup for current buffer if it's a Go file
   local filetype = vim.bo.filetype
   if filetype == 'go' then
     print("Current buffer is Go file, triggering setup...")
-    lsp.setup_container_lsp(container_id, { 'gopls' })
+    lsp.setup_lsp_in_container()
   else
     print("Current buffer is not Go file (", filetype, "), manual setup...")
-    lsp.setup_container_lsp(container_id, { 'gopls' })
+    lsp.setup_lsp_in_container()
   end
 
   -- Wait a moment for client to initialize
