@@ -93,13 +93,52 @@ lua/container/lsp/
 - 複雑な状態管理は避ける
 - パフォーマンスへの影響を考慮する
 
+## Strategy B 実装完了 🎉
+
+### 2025-06-26 - Phase 0検証とStrategy B実装発見
+
+#### ✅ Phase 0: 仮説検証完了
+- **根本原因確認**: gopls がコンテナ内でホストパス（/Users/...）にアクセスできない
+- **解決策有効性確認**: `/workspace` パスでは gopls が正常動作する
+- **GO判定**: Strategy B実装を開始
+
+#### 🚀 Strategy B実装状況発見
+Phase 2-1として計画していた基本プロキシ機能が**既に完全実装済み**であることが判明：
+
+**完成済みモジュール:**
+- ✅ `lua/container/lsp/proxy/jsonrpc.lua` - JSON-RPC 2.0完全対応パーサー
+- ✅ `lua/container/lsp/proxy/transport.lua` - docker exec stdio transport
+- ✅ `lua/container/lsp/proxy/init.lua` - プロキシシステム管理
+- ✅ `lua/container/lsp/proxy/server.lua` - 言語別プロキシファクトリー
+- ✅ `lua/container/lsp/proxy/transform.lua` - パス変換エンジン
+
+**統合テスト結果:**
+```
+✅ module_loading (5/5 modules)
+✅ jsonrpc_parsing (206 bytes processed)
+✅ proxy_system_init (clean state)
+✅ proxy_creation (container 68ea7ef3dfa8)
+✅ lsp_client_config (container_gopls generated)
+```
+
+#### 🎯 現在の状況
+Strategy B の**基盤実装は完了**。次のステップ：
+1. **実環境動作確認** - examples/go-test-example での実際のテスト
+2. **統合作業** - 既存システムとの統合
+3. **エラーハンドリング強化**
+
+#### 📋 Strategy A vs Strategy B
+- **Strategy A（現行）**: LspAttach後のパス変換（タイミング問題あり）
+- **Strategy B（実装済）**: プロキシ経由の透過的パス変換（根本解決）
+
 ## 次のアクション
 
 1. ✅ 計画をファイルに記録
-2. 🔄 現在の変更を整理・コミット
-3. 📊 フェーズ1: LSP初期化シーケンスの詳細調査
-4. 🔧 フェーズ2: 診断問題の解決
-5. 🛡️ フェーズ3: ホストLSP制御
+2. ✅ Phase 0: 仮説検証完了
+3. ✅ Strategy B: 基盤実装確認完了
+4. 🔄 実環境でのStrategy B動作テスト
+5. 🔧 既存システムとの統合
+6. 🛡️ エラーハンドリング強化
 
 ## 進捗記録
 
