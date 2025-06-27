@@ -9,19 +9,20 @@ local log = require('container.utils.log')
 local STRATEGIES = {
   SYMLINK = 'symlink', -- Strategy A: Use symlinks for path unification
   PROXY = 'proxy', -- Strategy B: Use LSP proxy for path transformation
+  INTERCEPT = 'intercept', -- Strategy C: Host-side message interception
 }
 
 -- Default strategy configuration
 local DEFAULT_STRATEGY_CONFIG = {
   -- Global default strategy
-  default = STRATEGIES.PROXY,
+  default = STRATEGIES.INTERCEPT,
 
   -- Server-specific strategy overrides
   servers = {
-    gopls = STRATEGIES.PROXY, -- Go: Use proxy for better path handling
-    pylsp = STRATEGIES.PROXY, -- Python: Use proxy
-    tsserver = STRATEGIES.PROXY, -- TypeScript: Use proxy
-    rust_analyzer = STRATEGIES.PROXY, -- Rust: Use proxy
+    gopls = STRATEGIES.INTERCEPT, -- Go: Use interception for reliable path handling
+    pylsp = STRATEGIES.INTERCEPT, -- Python: Use interception
+    tsserver = STRATEGIES.INTERCEPT, -- TypeScript: Use interception
+    rust_analyzer = STRATEGIES.INTERCEPT, -- Rust: Use interception
   },
 
   -- Fallback behavior when strategy fails
@@ -59,6 +60,7 @@ function M.setup(config)
   strategy_implementations = {
     [STRATEGIES.SYMLINK] = require('container.lsp.strategies.symlink'),
     [STRATEGIES.PROXY] = require('container.lsp.strategies.proxy'),
+    [STRATEGIES.INTERCEPT] = require('container.lsp.strategies.intercept'),
   }
 
   log.info('Strategy Selector: Initialized with default strategy: %s', strategy_config.default)
