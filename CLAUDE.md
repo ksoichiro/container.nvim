@@ -179,6 +179,31 @@ lua/devcontainer/
 - Async handling utilities ✓
 - User events for lifecycle management ✓
 
+### LSP Integration Progress
+
+#### Strategy Overview
+Three strategies were investigated for LSP integration with containers:
+
+1. **Strategy A: Symlinks** - Create symlinks from host to container paths
+2. **Strategy B: Container Proxy** - Run a proxy inside the container
+3. **Strategy C: Host Interception** - Intercept LSP messages on host side
+
+#### Current Status
+- **Strategy C** (simplified version) is working at proof-of-concept level
+- Uses direct container paths (`file:///workspace/`) instead of complex interception
+- Works with standard Neovim LSP handlers for consistent UI
+
+#### Known Issues
+1. **Hardcoded Paths**: Currently uses fixed `file:///workspace/main.go`
+   - Needs dynamic path transformation for production use
+2. **Standard Library**: Cannot navigate to Go stdlib (outside /workspace)
+3. **Multi-file**: Each file needs manual registration with container LSP
+
+#### Working Test Files
+- `container_lsp_fixed.lua` - Current working implementation
+- `simple_diagnosis.lua` - Diagnostic tool proving container gopls works
+- See `docs/STRATEGY_C_PROGRESS.md` for detailed implementation notes
+
 ### Planned Features (Future)
 - Multi-container support with docker-compose
 - Advanced networking configuration
