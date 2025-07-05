@@ -178,6 +178,11 @@ lua/devcontainer/
 - Logging and filesystem utilities ✓
 - Async handling utilities ✓
 - User events for lifecycle management ✓
+- LSP integration with dynamic path transformation ✓
+  - Simple path transformation without complex interception
+  - Automatic file registration and change tracking
+  - Container-aware LSP commands (hover, definition, references)
+  - Multi-file support with automatic keybinding setup
 
 ### LSP Integration Progress
 
@@ -188,21 +193,38 @@ Three strategies were investigated for LSP integration with containers:
 2. **Strategy B: Container Proxy** - Run a proxy inside the container
 3. **Strategy C: Host Interception** - Intercept LSP messages on host side
 
-#### Current Status
-- **Strategy C** (simplified version) is working at proof-of-concept level
-- Uses direct container paths (`file:///workspace/`) instead of complex interception
+#### Current Status - Dynamic Path Transformation (Completed)
+- **Simplified Strategy C** implemented with dynamic path transformation
+- Automatic file registration and change tracking
 - Works with standard Neovim LSP handlers for consistent UI
+- Integrated into main plugin with automatic setup
 
-#### Known Issues
-1. **Hardcoded Paths**: Currently uses fixed `file:///workspace/main.go`
-   - Needs dynamic path transformation for production use
-2. **Standard Library**: Cannot navigate to Go stdlib (outside /workspace)
-3. **Multi-file**: Each file needs manual registration with container LSP
+#### Key Components:
+1. **`lua/container/lsp/simple_transform.lua`**: Path transformation utilities
+2. **`lua/container/lsp/commands.lua`**: LSP command implementations  
+3. **Integration in `lua/container/lsp/init.lua`**: Automatic setup for gopls
 
-#### Working Test Files
-- `container_lsp_fixed.lua` - Current working implementation
-- `simple_diagnosis.lua` - Diagnostic tool proving container gopls works
-- See `docs/STRATEGY_C_PROGRESS.md` for detailed implementation notes
+#### Usage:
+When a container with gopls is detected, the plugin automatically:
+- Sets up container_gopls LSP client
+- Maps standard LSP keys (K, gd, gr) to container-aware commands
+- Handles path transformation transparently
+
+Users can also use commands directly:
+- `:ContainerLspHover` - Show hover information
+- `:ContainerLspDefinition` - Go to definition
+- `:ContainerLspReferences` - Find references
+
+#### Remaining Limitations:
+1. **Standard Library**: Cannot navigate to Go stdlib (outside /workspace)
+   - Workaround: Mount Go installation or use vendored dependencies
+2. **Performance**: Slight overhead from path transformation
+   - Generally not noticeable in practice
+
+#### Test Files:
+- `test_lsp_dynamic.lua` - Test script for dynamic LSP functionality
+- `container_lsp_fixed.lua` - Original proof-of-concept (archived)
+- `docs/STRATEGY_C_PROGRESS.md` - Detailed implementation history
 
 ### Planned Features (Future)
 - Multi-container support with docker-compose

@@ -51,6 +51,19 @@ function M.setup(config)
   if M.config.auto_setup then
     M._setup_auto_initialization()
   end
+
+  -- Initialize LSP commands module
+  local commands_ok, commands = pcall(require, 'container.lsp.commands')
+  if commands_ok then
+    commands.setup({
+      host_workspace = vim.fn.getcwd(),
+      container_workspace = '/workspace',
+    })
+    commands.setup_commands()
+    log.debug('LSP: Commands module initialized')
+  else
+    log.debug('LSP: Commands module not available: %s', commands)
+  end
 end
 
 -- Setup automatic LSP initialization
@@ -557,6 +570,11 @@ function M.create_lsp_client(name, server_config)
 
     -- Attach to existing loaded buffers with matching filetypes
     M._attach_to_existing_buffers(name, server_config, client_id)
+
+    -- Setup LSP commands keybindings for Go files if this is gopls
+    if name == 'gopls' then
+      M._setup_gopls_commands(client_id)
+    end
   end, 100) -- 100ms delay ensures transformation setup completes
 
   log.info('LSP: Successfully started %s client directly', name)
@@ -839,6 +857,58 @@ function M._attach_to_existing_buffers(server_name, server_config, client_id)
       end
     end
   end
+end
+
+-- Setup gopls-specific commands and keybindings
+function M._setup_gopls_commands(client_id)
+  local commands_ok, commands = pcall(require, 'container.lsp.commands')
+  if not commands_ok then
+    log.debug('LSP: Commands module not available for gopls setup')
+    return
+  end
+
+  -- Setup keybindings for Go buffers
+  local group_name = 'ContainerGoplsCommands'
+  vim.api.nvim_create_augroup(group_name, { clear = true })
+
+  vim.api.nvim_create_autocmd({ 'BufEnter', 'FileType' }, {
+    group = group_name,
+    pattern = { '*.go', 'go' },
+    callback = function(args)
+      local bufnr = args.buf
+      local ft = vim.bo[bufnr].filetype
+
+      if ft == 'go' then
+        -- Check if this buffer has container_gopls attached
+        local buf_clients = get_lsp_clients({ bufnr = bufnr })
+        local has_container_gopls = false
+
+        for _, client in ipairs(buf_clients) do
+          if client.name == 'container_gopls' then
+            has_container_gopls = true
+            break
+          end
+        end
+
+        if has_container_gopls then
+          -- Setup keybindings for this buffer
+          commands.setup_keybindings({
+            buffer = bufnr,
+            server_name = 'gopls',
+            keybindings = M.config.keybindings or {
+              hover = 'K',
+              definition = 'gd',
+              references = 'gr',
+            },
+          })
+
+          log.debug('LSP: Setup gopls commands for buffer %d', bufnr)
+        end
+      end
+    end,
+  })
+
+  log.info('LSP: Setup gopls commands autocommand')
 end
 
 -- Enhanced LSP error handling and recovery functions
