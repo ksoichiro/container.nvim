@@ -891,8 +891,45 @@ function M._setup_gopls_commands(client_id)
         end
 
         if has_container_gopls then
-          -- Setup keybindings for this buffer
-          commands.setup_keybindings({
+          -- Setup keybindings for this buffer with delay to ensure LSP is ready
+          vim.defer_fn(function()
+            local success = commands.setup_keybindings({
+              buffer = bufnr,
+              server_name = 'gopls',
+              keybindings = M.config.keybindings or {
+                hover = 'K',
+                definition = 'gd',
+                references = 'gr',
+              },
+            })
+
+            if success then
+              log.info('LSP: Successfully setup gopls keybindings for buffer %d', bufnr)
+            else
+              log.warn('LSP: Failed to setup gopls keybindings for buffer %d', bufnr)
+            end
+          end, 200)
+
+          log.debug('LSP: Scheduled gopls commands setup for buffer %d', bufnr)
+        end
+      end
+    end,
+  })
+
+  -- Also setup on LSP attach events
+  vim.api.nvim_create_autocmd('LspAttach', {
+    group = group_name,
+    callback = function(args)
+      local bufnr = args.buf
+      local client = vim.lsp.get_client_by_id(args.data.client_id)
+
+      if client and client.name == 'container_gopls' then
+        local ft = vim.bo[bufnr].filetype
+        if ft == 'go' then
+          log.info('LSP: container_gopls attached to buffer %d, setting up keybindings', bufnr)
+
+          -- Setup keybindings immediately since LSP is now attached
+          local success = commands.setup_keybindings({
             buffer = bufnr,
             server_name = 'gopls',
             keybindings = M.config.keybindings or {
@@ -902,13 +939,17 @@ function M._setup_gopls_commands(client_id)
             },
           })
 
-          log.debug('LSP: Setup gopls commands for buffer %d', bufnr)
+          if success then
+            log.info('LSP: Successfully setup keybindings on attach for buffer %d', bufnr)
+          else
+            log.warn('LSP: Failed to setup keybindings on attach for buffer %d', bufnr)
+          end
         end
       end
     end,
   })
 
-  log.info('LSP: Setup gopls commands autocommand')
+  log.info('LSP: Setup gopls commands autocommand and attach handler')
 end
 
 -- Enhanced LSP error handling and recovery functions

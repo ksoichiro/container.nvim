@@ -194,8 +194,9 @@ For detailed command documentation, use `:help container-commands` in Neovim.
 | `:ContainerLspHover [server]` | Show hover information using container LSP |
 | `:ContainerLspDefinition [server]` | Go to definition using container LSP |
 | `:ContainerLspReferences [server]` | Find references using container LSP |
+| `:ContainerLspSetupKeys [server]` | Manually setup LSP keybindings for current buffer |
 
-**Note**: LSP commands automatically handle path transformation between host and container. When gopls is detected in a container, standard LSP keybindings (K, gd, gr) are automatically mapped to container-aware commands for Go files.
+**Note**: LSP commands automatically handle path transformation between host and container. When gopls is detected in a container, the plugin attempts to automatically map standard LSP keybindings (K, gd, gr) to container-aware commands for Go files. If automatic setup doesn't work, use `:ContainerLspSetupKeys` to manually configure keybindings.
 
 ### Configuration Management
 

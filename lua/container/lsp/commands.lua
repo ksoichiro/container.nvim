@@ -403,6 +403,29 @@ function M.setup_commands()
     desc = 'Find references using container LSP',
   })
 
+  -- Command to manually setup keybindings
+  vim.api.nvim_create_user_command('ContainerLspSetupKeys', function(args)
+    local server_name = args.args ~= '' and args.args or 'gopls'
+    local bufnr = vim.api.nvim_get_current_buf()
+
+    local success = M.setup_keybindings({
+      buffer = bufnr,
+      server_name = server_name,
+    })
+
+    if success then
+      vim.notify('Container LSP: Keybindings set up for ' .. server_name, vim.log.levels.INFO)
+    else
+      vim.notify('Container LSP: Failed to set up keybindings', vim.log.levels.ERROR)
+    end
+  end, {
+    nargs = '?',
+    complete = function()
+      return { 'gopls', 'pyright', 'tsserver' }
+    end,
+    desc = 'Manually setup Container LSP keybindings for current buffer',
+  })
+
   log.info('Container LSP Commands: User commands created')
 end
 
@@ -411,6 +434,13 @@ end
 function M.setup_keybindings(opts)
   opts = opts or {}
   local server_name = opts.server_name or 'gopls'
+  local bufnr = opts.buffer or 0
+
+  -- Validate buffer
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    log.error('Container LSP Commands: Invalid buffer for keybinding setup: %d', bufnr)
+    return false
+  end
 
   -- Default keybindings (can be overridden)
   local bindings = vim.tbl_extend('force', {
@@ -419,38 +449,73 @@ function M.setup_keybindings(opts)
     references = 'gr',
   }, opts.keybindings or {})
 
+  log.debug('Container LSP Commands: Setting up keybindings for buffer %d: %s', bufnr, vim.inspect(bindings))
+
+  -- Clear existing LSP keybindings to avoid conflicts
+  M._clear_existing_lsp_keybindings(bufnr, bindings)
+
   -- Setup keybindings
   if bindings.hover then
     vim.keymap.set('n', bindings.hover, function()
       M.hover({ server_name = server_name })
     end, {
-      buffer = opts.buffer,
+      buffer = bufnr,
       desc = 'Container LSP hover',
       silent = true,
+      noremap = true,
     })
+    log.debug('Container LSP Commands: Set %s -> hover for buffer %d', bindings.hover, bufnr)
   end
 
   if bindings.definition then
     vim.keymap.set('n', bindings.definition, function()
       M.definition({ server_name = server_name })
     end, {
-      buffer = opts.buffer,
+      buffer = bufnr,
       desc = 'Container LSP go to definition',
       silent = true,
+      noremap = true,
     })
+    log.debug('Container LSP Commands: Set %s -> definition for buffer %d', bindings.definition, bufnr)
   end
 
   if bindings.references then
     vim.keymap.set('n', bindings.references, function()
       M.references({ server_name = server_name })
     end, {
-      buffer = opts.buffer,
+      buffer = bufnr,
       desc = 'Container LSP find references',
       silent = true,
+      noremap = true,
     })
+    log.debug('Container LSP Commands: Set %s -> references for buffer %d', bindings.references, bufnr)
   end
 
-  log.info('Container LSP Commands: Keybindings set up')
+  log.info('Container LSP Commands: Keybindings set up for buffer %d', bufnr)
+  return true
+end
+
+-- Clear existing LSP keybindings to avoid conflicts
+-- @param bufnr number: buffer number
+-- @param bindings table: keybindings to clear
+function M._clear_existing_lsp_keybindings(bufnr, bindings)
+  local keys_to_clear = { bindings.hover, bindings.definition, bindings.references }
+
+  for _, key in ipairs(keys_to_clear) do
+    if key then
+      -- Get existing keymap
+      local existing_maps = vim.api.nvim_buf_get_keymap(bufnr, 'n')
+      for _, map in ipairs(existing_maps) do
+        if
+          map.lhs == key and (map.desc and map.desc:match('LSP') or map.desc and map.desc:match('language server'))
+        then
+          -- Remove existing LSP mapping safely
+          pcall(vim.keymap.del, 'n', key, { buffer = bufnr })
+          log.debug('Container LSP Commands: Cleared existing %s mapping for buffer %d', key, bufnr)
+        end
+      end
+    end
+  end
 end
 
 -- Get module state (for debugging)
