@@ -41,6 +41,52 @@ function M.get_container_client(server_name)
   return nil
 end
 
+-- Validate prerequisites for LSP operations
+-- @param server_name string: LSP server name
+-- @return boolean, string: success status and error message
+function M._validate_lsp_prerequisites(server_name)
+  -- Check buffer validity
+  local current_buf = vim.api.nvim_get_current_buf()
+  if not vim.api.nvim_buf_is_valid(current_buf) or not vim.api.nvim_buf_is_loaded(current_buf) then
+    return false, 'Invalid or unloaded buffer'
+  end
+
+  -- Check file type
+  local filetype = vim.bo[current_buf].filetype
+  if filetype == '' then
+    return false, 'No filetype detected'
+  end
+
+  -- Check if initialization completed
+  if not state.initialized then
+    return false, 'LSP commands module not initialized'
+  end
+
+  return true, nil
+end
+
+-- Get and validate container client
+-- @param server_name string: LSP server name
+-- @return table|nil, string: client and error message
+function M._get_validated_client(server_name)
+  local client = M.get_container_client(server_name)
+  if not client then
+    return nil, 'No ' .. server_name .. ' client found. Try opening a Go file.'
+  end
+
+  -- Check if client is stopped
+  if client.is_stopped() then
+    return nil, 'Client ' .. server_name .. ' is stopped'
+  end
+
+  -- Check if client is initialized
+  if not client.initialized then
+    return nil, 'Client ' .. server_name .. ' is not yet initialized'
+  end
+
+  return client, nil
+end
+
 -- Register a file with the container LSP
 -- @param bufnr number: buffer number (0 for current)
 -- @param client table: LSP client
@@ -160,32 +206,57 @@ function M.hover(opts)
   opts = opts or {}
   local server_name = opts.server_name or 'gopls'
 
-  local client = M.get_container_client(server_name)
+  -- Validate prerequisites
+  local valid, error_msg = M._validate_lsp_prerequisites(server_name)
+  if not valid then
+    vim.notify('Container LSP: ' .. error_msg, vim.log.levels.ERROR)
+    return false
+  end
+
+  -- Get validated client
+  local client, client_error = M._get_validated_client(server_name)
   if not client then
-    vim.notify('Container LSP: No ' .. server_name .. ' client found', vim.log.levels.ERROR)
-    return
+    vim.notify('Container LSP: ' .. client_error, vim.log.levels.WARN)
+    return false
   end
 
   -- Register current file
   if not M.register_file(0, client) then
     vim.notify('Container LSP: Failed to register current file', vim.log.levels.ERROR)
-    return
+    return false
   end
 
   -- Get container URI
   local container_uri = transform.get_buffer_container_uri(0)
   if not container_uri then
-    vim.notify('Container LSP: Cannot determine container path', vim.log.levels.ERROR)
-    return
+    vim.notify('Container LSP: Cannot determine container path for current file', vim.log.levels.ERROR)
+    return false
   end
 
-  -- Make request
+  -- Make request with error handling
   local params = {
     textDocument = { uri = container_uri },
     position = vim.lsp.util.make_position_params(0, client.offset_encoding).position,
   }
 
-  client.request('textDocument/hover', params, vim.lsp.handlers.hover, 0)
+  local success, request_error = pcall(function()
+    client.request('textDocument/hover', params, function(err, result, ctx)
+      if err then
+        vim.notify('Container LSP: Hover request failed: ' .. tostring(err), vim.log.levels.ERROR)
+        return
+      end
+
+      -- Use standard handler
+      vim.lsp.handlers.hover(err, result, ctx)
+    end, 0)
+  end)
+
+  if not success then
+    vim.notify('Container LSP: Failed to send hover request: ' .. tostring(request_error), vim.log.levels.ERROR)
+    return false
+  end
+
+  return true
 end
 
 -- Execute definition request

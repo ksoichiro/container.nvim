@@ -1,6 +1,6 @@
 -- Container LSP with fixed handlers
 
-print("=== Container LSP Fixed ===")
+print('=== Container LSP Fixed ===')
 
 -- Get container_gopls client
 local clients = vim.lsp.get_clients()
@@ -14,11 +14,11 @@ for _, client in ipairs(clients) do
 end
 
 if not container_client then
-  print("❌ No container_gopls client found")
+  print('❌ No container_gopls client found')
   return
 end
 
-print("✅ Found container_gopls (ID:", container_client.id .. ")")
+print('✅ Found container_gopls (ID:', container_client.id .. ')')
 
 -- Register file with container path
 container_client.notify('textDocument/didOpen', {
@@ -26,15 +26,15 @@ container_client.notify('textDocument/didOpen', {
     uri = 'file:///workspace/main.go',
     languageId = 'go',
     version = 0,
-    text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
-  }
+    text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n'),
+  },
 })
 
 -- Container hover using standard handler
 vim.api.nvim_create_user_command('ContainerHover', function()
   local params = {
     textDocument = { uri = 'file:///workspace/main.go' },
-    position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position
+    position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position,
   }
 
   container_client.request('textDocument/hover', params, vim.lsp.handlers.hover, 0)
@@ -44,12 +44,12 @@ end, {})
 vim.api.nvim_create_user_command('ContainerDefinition', function()
   local params = {
     textDocument = { uri = 'file:///workspace/main.go' },
-    position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position
+    position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position,
   }
 
   container_client.request('textDocument/definition', params, function(err, result, ctx)
     if err then
-      vim.notify("Definition error: " .. tostring(err), vim.log.levels.ERROR)
+      vim.notify('Definition error: ' .. tostring(err), vim.log.levels.ERROR)
       return
     end
 
@@ -77,10 +77,10 @@ vim.api.nvim_create_user_command('ContainerDefinition', function()
       if #locations > 0 then
         vim.lsp.util.jump_to_location(locations[1], container_client.offset_encoding)
       else
-        vim.notify("No definition found", vim.log.levels.INFO)
+        vim.notify('No definition found', vim.log.levels.INFO)
       end
     else
-      vim.notify("No definition found", vim.log.levels.INFO)
+      vim.notify('No definition found', vim.log.levels.INFO)
     end
   end, 0)
 end, {})
@@ -90,12 +90,12 @@ vim.api.nvim_create_user_command('ContainerReferences', function()
   local params = {
     textDocument = { uri = 'file:///workspace/main.go' },
     position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position,
-    context = { includeDeclaration = true }
+    context = { includeDeclaration = true },
   }
 
   container_client.request('textDocument/references', params, function(err, result, ctx)
     if err then
-      vim.notify("References error: " .. tostring(err), vim.log.levels.ERROR)
+      vim.notify('References error: ' .. tostring(err), vim.log.levels.ERROR)
       return
     end
 
@@ -112,47 +112,53 @@ vim.api.nvim_create_user_command('ContainerReferences', function()
       vim.fn.setqflist({}, ' ', { title = 'References', items = items })
       vim.cmd('copen')
     else
-      vim.notify("No references found", vim.log.levels.INFO)
+      vim.notify('No references found', vim.log.levels.INFO)
     end
   end, 0)
 end, {})
 
 -- Create convenient functions
 _G.container_lsp = {
-  hover = function() vim.cmd('ContainerHover') end,
-  definition = function() vim.cmd('ContainerDefinition') end,
-  references = function() vim.cmd('ContainerReferences') end,
+  hover = function()
+    vim.cmd('ContainerHover')
+  end,
+  definition = function()
+    vim.cmd('ContainerDefinition')
+  end,
+  references = function()
+    vim.cmd('ContainerReferences')
+  end,
 }
 
 -- Set up keymaps (you can customize these)
 vim.keymap.set('n', '<leader>K', container_lsp.hover, {
   buffer = 0,
   desc = 'Container LSP hover',
-  silent = true
+  silent = true,
 })
 
 vim.keymap.set('n', '<leader>gd', container_lsp.definition, {
   buffer = 0,
   desc = 'Container LSP definition',
-  silent = true
+  silent = true,
 })
 
 vim.keymap.set('n', '<leader>gr', container_lsp.references, {
   buffer = 0,
   desc = 'Container LSP references',
-  silent = true
+  silent = true,
 })
 
-print("✅ Container LSP commands ready")
-print("\nCommands:")
-print("- :ContainerHover")
-print("- :ContainerDefinition")
-print("- :ContainerReferences")
-print("\nKeybindings:")
-print("- <leader>K  : Hover")
-print("- <leader>gd : Go to definition")
-print("- <leader>gr : Find references")
-print("\nOr override default keys in your config:")
+print('✅ Container LSP commands ready')
+print('\nCommands:')
+print('- :ContainerHover')
+print('- :ContainerDefinition')
+print('- :ContainerReferences')
+print('\nKeybindings:')
+print('- <leader>K  : Hover')
+print('- <leader>gd : Go to definition')
+print('- <leader>gr : Find references')
+print('\nOr override default keys in your config:')
 print("vim.keymap.set('n', 'K', container_lsp.hover)")
 print("vim.keymap.set('n', 'gd', container_lsp.definition)")
 

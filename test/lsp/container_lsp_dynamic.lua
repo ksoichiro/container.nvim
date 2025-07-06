@@ -1,7 +1,7 @@
 -- Container LSP with dynamic path transformation
 -- This version uses dynamic paths instead of hardcoded ones
 
-print("=== Container LSP Dynamic ===")
+print('=== Container LSP Dynamic ===')
 
 -- Load path transformation utility
 local transform = require('container.lsp.simple_transform')
@@ -9,7 +9,7 @@ local transform = require('container.lsp.simple_transform')
 -- Initialize path transformation
 transform.setup({
   host_workspace = vim.fn.getcwd(),
-  container_workspace = '/workspace'
+  container_workspace = '/workspace',
 })
 
 -- Get container_gopls client
@@ -26,11 +26,11 @@ end
 local container_client = get_container_client()
 
 if not container_client then
-  print("❌ No container_gopls client found")
+  print('❌ No container_gopls client found')
   return
 end
 
-print("✅ Found container_gopls (ID:", container_client.id .. ")")
+print('✅ Found container_gopls (ID:', container_client.id .. ')')
 
 -- Track registered files
 local registered_files = {}
@@ -65,12 +65,12 @@ local function register_current_file()
       uri = container_uri,
       languageId = 'go',
       version = 0,
-      text = text
-    }
+      text = text,
+    },
   })
 
   registered_files[container_uri] = true
-  print("✅ Registered file:", container_uri)
+  print('✅ Registered file:', container_uri)
 
   return true
 end
@@ -78,19 +78,19 @@ end
 -- Container hover using dynamic paths
 vim.api.nvim_create_user_command('ContainerHover', function()
   if not register_current_file() then
-    vim.notify("Failed to register current file", vim.log.levels.ERROR)
+    vim.notify('Failed to register current file', vim.log.levels.ERROR)
     return
   end
 
   local container_uri = transform.get_buffer_container_uri(0)
   if not container_uri then
-    vim.notify("Cannot determine container path for current file", vim.log.levels.ERROR)
+    vim.notify('Cannot determine container path for current file', vim.log.levels.ERROR)
     return
   end
 
   local params = {
     textDocument = { uri = container_uri },
-    position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position
+    position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position,
   }
 
   container_client.request('textDocument/hover', params, vim.lsp.handlers.hover, 0)
@@ -99,24 +99,24 @@ end, {})
 -- Container definition with dynamic paths
 vim.api.nvim_create_user_command('ContainerDefinition', function()
   if not register_current_file() then
-    vim.notify("Failed to register current file", vim.log.levels.ERROR)
+    vim.notify('Failed to register current file', vim.log.levels.ERROR)
     return
   end
 
   local container_uri = transform.get_buffer_container_uri(0)
   if not container_uri then
-    vim.notify("Cannot determine container path for current file", vim.log.levels.ERROR)
+    vim.notify('Cannot determine container path for current file', vim.log.levels.ERROR)
     return
   end
 
   local params = {
     textDocument = { uri = container_uri },
-    position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position
+    position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position,
   }
 
   container_client.request('textDocument/definition', params, function(err, result, ctx)
     if err then
-      vim.notify("Definition error: " .. tostring(err), vim.log.levels.ERROR)
+      vim.notify('Definition error: ' .. tostring(err), vim.log.levels.ERROR)
       return
     end
 
@@ -133,13 +133,13 @@ vim.api.nvim_create_user_command('ContainerDefinition', function()
           -- Multiple locations
           vim.lsp.util.jump_to_location(transformed_result[1], container_client.offset_encoding)
         else
-          vim.notify("No definition found", vim.log.levels.INFO)
+          vim.notify('No definition found', vim.log.levels.INFO)
         end
       else
-        vim.notify("No definition found", vim.log.levels.INFO)
+        vim.notify('No definition found', vim.log.levels.INFO)
       end
     else
-      vim.notify("No definition found", vim.log.levels.INFO)
+      vim.notify('No definition found', vim.log.levels.INFO)
     end
   end, 0)
 end, {})
@@ -147,25 +147,25 @@ end, {})
 -- Container references with dynamic paths
 vim.api.nvim_create_user_command('ContainerReferences', function()
   if not register_current_file() then
-    vim.notify("Failed to register current file", vim.log.levels.ERROR)
+    vim.notify('Failed to register current file', vim.log.levels.ERROR)
     return
   end
 
   local container_uri = transform.get_buffer_container_uri(0)
   if not container_uri then
-    vim.notify("Cannot determine container path for current file", vim.log.levels.ERROR)
+    vim.notify('Cannot determine container path for current file', vim.log.levels.ERROR)
     return
   end
 
   local params = {
     textDocument = { uri = container_uri },
     position = vim.lsp.util.make_position_params(0, container_client.offset_encoding).position,
-    context = { includeDeclaration = true }
+    context = { includeDeclaration = true },
   }
 
   container_client.request('textDocument/references', params, function(err, result, ctx)
     if err then
-      vim.notify("References error: " .. tostring(err), vim.log.levels.ERROR)
+      vim.notify('References error: ' .. tostring(err), vim.log.levels.ERROR)
       return
     end
 
@@ -178,13 +178,13 @@ vim.api.nvim_create_user_command('ContainerReferences', function()
       vim.fn.setqflist({}, ' ', { title = 'References', items = items })
       vim.cmd('copen')
     else
-      vim.notify("No references found", vim.log.levels.INFO)
+      vim.notify('No references found', vim.log.levels.INFO)
     end
   end, 0)
 end, {})
 
 -- Auto-register files on buffer enter
-vim.api.nvim_create_autocmd({'BufEnter', 'BufNewFile'}, {
+vim.api.nvim_create_autocmd({ 'BufEnter', 'BufNewFile' }, {
   pattern = '*.go',
   callback = function()
     -- Wait a bit to ensure container_client is available
@@ -195,14 +195,20 @@ vim.api.nvim_create_autocmd({'BufEnter', 'BufNewFile'}, {
         register_current_file()
       end
     end, 100)
-  end
+  end,
 })
 
 -- Create convenient functions
 _G.container_lsp = {
-  hover = function() vim.cmd('ContainerHover') end,
-  definition = function() vim.cmd('ContainerDefinition') end,
-  references = function() vim.cmd('ContainerReferences') end,
+  hover = function()
+    vim.cmd('ContainerHover')
+  end,
+  definition = function()
+    vim.cmd('ContainerDefinition')
+  end,
+  references = function()
+    vim.cmd('ContainerReferences')
+  end,
   register_file = register_current_file,
 }
 
@@ -210,32 +216,32 @@ _G.container_lsp = {
 vim.keymap.set('n', '<leader>K', container_lsp.hover, {
   buffer = 0,
   desc = 'Container LSP hover',
-  silent = true
+  silent = true,
 })
 
 vim.keymap.set('n', '<leader>gd', container_lsp.definition, {
   buffer = 0,
   desc = 'Container LSP definition',
-  silent = true
+  silent = true,
 })
 
 vim.keymap.set('n', '<leader>gr', container_lsp.references, {
   buffer = 0,
   desc = 'Container LSP references',
-  silent = true
+  silent = true,
 })
 
-print("✅ Container LSP commands ready (dynamic version)")
-print("\nCommands:")
-print("- :ContainerHover")
-print("- :ContainerDefinition")
-print("- :ContainerReferences")
-print("\nFeatures:")
-print("- Dynamic path transformation")
-print("- Automatic file registration")
-print("- Multi-file support")
-print("\nCurrent file:", vim.fn.expand('%:p'))
-print("Container path:", transform.get_buffer_container_uri(0) or "N/A")
+print('✅ Container LSP commands ready (dynamic version)')
+print('\nCommands:')
+print('- :ContainerHover')
+print('- :ContainerDefinition')
+print('- :ContainerReferences')
+print('\nFeatures:')
+print('- Dynamic path transformation')
+print('- Automatic file registration')
+print('- Multi-file support')
+print('\nCurrent file:', vim.fn.expand('%:p'))
+print('Container path:', transform.get_buffer_container_uri(0) or 'N/A')
 
 -- Register current file automatically
 vim.defer_fn(function()
