@@ -426,6 +426,36 @@ function M.setup_commands()
     desc = 'Manually setup Container LSP keybindings for current buffer',
   })
 
+  -- Debug command for diagnostics analysis
+  vim.api.nvim_create_user_command('ContainerLspDebugDiagnostics', function()
+    local interceptor = require('container.lsp.interceptor')
+    local current_file = vim.api.nvim_buf_get_name(0)
+
+    if current_file == '' then
+      vim.notify('Container LSP Debug: No file open in current buffer', vim.log.levels.WARN)
+      return
+    end
+
+    local file_uri = 'file://' .. current_file
+    local analysis = interceptor.debug_path_transformation(file_uri)
+
+    vim.notify('Container LSP Debug: Path transformation analysis', vim.log.levels.INFO)
+    print(vim.inspect(analysis))
+
+    -- Also check current diagnostics for this buffer
+    local diagnostics = vim.diagnostic.get(0)
+    if #diagnostics > 0 then
+      vim.notify(
+        string.format('Container LSP Debug: Found %d diagnostics in current buffer', #diagnostics),
+        vim.log.levels.INFO
+      )
+    else
+      vim.notify('Container LSP Debug: No diagnostics found in current buffer', vim.log.levels.INFO)
+    end
+  end, {
+    desc = 'Debug Container LSP diagnostics and path transformations',
+  })
+
   log.info('Container LSP Commands: User commands created')
 end
 

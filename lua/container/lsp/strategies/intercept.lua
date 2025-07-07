@@ -66,9 +66,46 @@ function M.create_client(server_name, container_id, server_config, strategy_conf
     before_init = function(initialize_params, config)
       log.info('Intercept Strategy: before_init called for %s', server_name)
 
-      -- The interceptor will handle path transformation, but we can do basic setup here
+      -- IMPORTANT: Transform paths in initialize params to container paths
+      -- This is crucial because the initialize request happens before interceptor setup
       log.debug('Intercept Strategy: Initial rootUri: %s', initialize_params.rootUri or 'nil')
       log.debug('Intercept Strategy: Initial workspaceFolders: %s', vim.inspect(initialize_params.workspaceFolders))
+      log.debug('Intercept Strategy: Host workspace: %s', host_workspace)
+
+      -- Transform rootUri and rootPath to container paths
+      if initialize_params.rootUri and initialize_params.rootUri:match('^file://') and host_workspace then
+        local original_uri = initialize_params.rootUri
+        local host_path = initialize_params.rootUri:gsub('^file://', '')
+        local container_path = host_path:gsub('^' .. vim.pesc(host_workspace), '/workspace')
+        initialize_params.rootUri = 'file://' .. container_path
+        log.info('Intercept Strategy: Transformed rootUri: %s -> %s', original_uri, initialize_params.rootUri)
+      else
+        log.warn('Intercept Strategy: Cannot transform rootUri - missing host_workspace or invalid URI')
+      end
+
+      if initialize_params.rootPath and host_workspace then
+        local original_path = initialize_params.rootPath
+        local container_path = initialize_params.rootPath:gsub('^' .. vim.pesc(host_workspace), '/workspace')
+        initialize_params.rootPath = container_path
+        log.info('Intercept Strategy: Transformed rootPath: %s -> %s', original_path, initialize_params.rootPath)
+      else
+        log.warn('Intercept Strategy: Cannot transform rootPath - missing host_workspace')
+      end
+
+      -- Transform workspace folders
+      if initialize_params.workspaceFolders and host_workspace then
+        for i, folder in ipairs(initialize_params.workspaceFolders) do
+          if folder.uri and folder.uri:match('^file://') then
+            local original_uri = folder.uri
+            local host_path = folder.uri:gsub('^file://', '')
+            local container_path = host_path:gsub('^' .. vim.pesc(host_workspace), '/workspace')
+            folder.uri = 'file://' .. container_path
+            log.info('Intercept Strategy: Transformed workspace folder %d: %s -> %s', i, original_uri, folder.uri)
+          end
+        end
+      else
+        log.warn('Intercept Strategy: Cannot transform workspace folders - missing host_workspace')
+      end
 
       -- Call original before_init if provided
       if strategy_config.before_init then
@@ -87,6 +124,22 @@ function M.create_client(server_name, container_id, server_config, strategy_conf
       else
         log.info('Intercept Strategy: Successfully setup interception for %s', server_name)
       end
+
+      -- Wait for client to be fully initialized before proceeding with additional setup
+      vim.defer_fn(function()
+        if client and not client.is_stopped() and client.initialized then
+          log.debug('Intercept Strategy: Client %s is fully initialized, proceeding with post-init setup', server_name)
+
+          -- Trigger any additional setup that depends on full initialization
+          -- This ensures proper timing for diagnostics and other LSP features
+          if server_name == 'gopls' then
+            log.debug('Intercept Strategy: Triggering post-initialization setup for gopls')
+            -- The actual file registration is handled by the main LSP module
+          end
+        else
+          log.warn('Intercept Strategy: Client %s not ready for post-init setup', server_name)
+        end
+      end, 100) -- Small delay to ensure client is fully ready
 
       -- Call original on_init if provided
       if strategy_config.on_init then

@@ -47,6 +47,9 @@ function M.setup(config)
     servers = {},
   }, config or {})
 
+  -- Setup global defensive diagnostic handler to prevent URI scheme crashes
+  M._setup_global_defensive_handler()
+
   -- Setup automatic LSP initialization when Go files are opened
   if M.config.auto_setup then
     M._setup_auto_initialization()
@@ -64,6 +67,57 @@ function M.setup(config)
   else
     log.debug('LSP: Commands module not available: %s', commands)
   end
+end
+
+-- Setup global defensive diagnostic handler to prevent URI crashes
+-- This is a failsafe in case interceptor setup fails or is incomplete
+function M._setup_global_defensive_handler()
+  log.debug('LSP: Setting up global defensive diagnostic handler')
+
+  -- Store original handler
+  local original_handler = vim.lsp.handlers['textDocument/publishDiagnostics']
+
+  -- Create defensive wrapper
+  vim.lsp.handlers['textDocument/publishDiagnostics'] = function(err, result, ctx, config)
+    if err then
+      log.debug('LSP: Global defensive handler - error: %s', vim.inspect(err))
+      if original_handler then
+        return original_handler(err, result, ctx, config)
+      end
+      return
+    end
+
+    if not result then
+      return
+    end
+
+    -- Validate URI before processing
+    if not result.uri or result.uri == '' then
+      log.warn('LSP: Global defensive handler caught empty URI, skipping diagnostics')
+      return
+    end
+
+    -- Ensure URI has proper scheme
+    if not result.uri:match('^[a-zA-Z][a-zA-Z0-9+.-]*:') then
+      log.warn('LSP: Global defensive handler caught URI without scheme: %s', result.uri)
+
+      -- Try to fix by adding file:// if it looks like an absolute path
+      if result.uri:match('^/') then
+        result.uri = 'file://' .. result.uri
+        log.info('LSP: Global defensive handler fixed URI: %s', result.uri)
+      else
+        log.warn('LSP: Global defensive handler cannot fix URI, skipping: %s', result.uri)
+        return
+      end
+    end
+
+    -- Call original handler
+    if original_handler then
+      return original_handler(err, result, ctx, config)
+    end
+  end
+
+  log.info('LSP: Global defensive diagnostic handler installed')
 end
 
 -- Setup automatic LSP initialization
@@ -692,6 +746,48 @@ function M._prepare_lsp_config(name, server_config)
         log.debug('LSP: Sent workspace/didChangeConfiguration')
       end
 
+      -- Register existing files with the LSP server to ensure proper initial diagnostics
+      -- This is crucial for getting correct initial diagnostics instead of stale ones
+      -- IMPORTANT: We need to ensure the interceptor is fully set up before registering files
+      if name == 'gopls' then
+        log.debug('LSP: Scheduling initial file registration for gopls')
+        vim.defer_fn(function()
+          -- Double-check that client is still valid and initialized before registering files
+          if client and not client.is_stopped() and client.initialized then
+            -- Additional check: verify interceptor is set up by checking if client has been modified
+            -- The interceptor modifies the client's request and notify methods
+            local has_interceptor = client.config
+              and client.config._container_metadata
+              and client.config._container_metadata.strategy == 'intercept'
+            if has_interceptor then
+              log.info('LSP: Client %s confirmed ready with interceptor, starting file registration', name)
+              M._register_existing_go_files(client)
+            else
+              log.warn('LSP: Interceptor not yet set up for %s, retrying in 500ms', name)
+              vim.defer_fn(function()
+                if client and not client.is_stopped() and client.initialized then
+                  log.info('LSP: Client %s ready on retry, starting file registration', name)
+                  M._register_existing_go_files(client)
+                else
+                  log.error('LSP: Client %s still not ready, skipping initial file registration', name)
+                end
+              end, 500)
+            end
+          else
+            log.warn('LSP: Client %s not ready, retrying file registration in 1 second', name)
+            -- Retry once more with longer delay
+            vim.defer_fn(function()
+              if client and not client.is_stopped() and client.initialized then
+                log.info('LSP: Client %s ready on retry, starting file registration', name)
+                M._register_existing_go_files(client)
+              else
+                log.error('LSP: Client %s still not ready, skipping initial file registration', name)
+              end
+            end, 1000)
+          end
+        end, 800) -- Increased delay to ensure interceptor setup completes
+      end
+
       if M.config.on_init then
         return M.config.on_init(client, initialize_result)
       end
@@ -950,6 +1046,102 @@ function M._setup_gopls_commands(client_id)
   })
 
   log.info('LSP: Setup gopls commands autocommand and attach handler')
+end
+
+-- Register existing Go files with the LSP server for proper initial diagnostics
+-- @param client table: LSP client
+function M._register_existing_go_files(client)
+  if not client or client.is_stopped() then
+    log.warn('LSP: Cannot register files - client is stopped or invalid')
+    return
+  end
+
+  local registered_count = 0
+  local workspace_root = vim.fn.getcwd()
+
+  -- Find Go project root if available
+  local util = require('lspconfig.util')
+  local go_root = util.root_pattern('go.mod', 'go.work')(vim.fn.expand('%:p'))
+  if go_root then
+    workspace_root = go_root
+  end
+
+  log.info('LSP: Registering existing Go files in workspace: %s', workspace_root)
+
+  -- Find all Go files in the workspace
+  local go_files = {}
+  local find_cmd = string.format('find %s -name "*.go" -type f', vim.fn.shellescape(workspace_root))
+  local result = vim.fn.system(find_cmd)
+
+  if vim.v.shell_error == 0 then
+    for file in result:gmatch('[^\r\n]+') do
+      table.insert(go_files, file)
+    end
+  else
+    log.warn('LSP: Failed to find Go files using find command, falling back to loaded buffers')
+    -- Fallback: use currently loaded buffers
+    for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_is_loaded(bufnr) then
+        local filename = vim.api.nvim_buf_get_name(bufnr)
+        if filename:match('%.go$') then
+          table.insert(go_files, filename)
+        end
+      end
+    end
+  end
+
+  -- Register each Go file with textDocument/didOpen
+  for _, file_path in ipairs(go_files) do
+    -- Read file content
+    local file_handle = io.open(file_path, 'r')
+    if file_handle then
+      local content = file_handle:read('*all')
+      file_handle:close()
+
+      -- Use host path and let the interceptor handle transformation
+      local host_uri = 'file://' .. file_path
+
+      -- Send textDocument/didOpen notification
+      local ok, err = pcall(function()
+        client.notify('textDocument/didOpen', {
+          textDocument = {
+            uri = host_uri,
+            languageId = 'go',
+            version = 0,
+            text = content,
+          },
+        })
+      end)
+
+      if ok then
+        registered_count = registered_count + 1
+        log.debug('LSP: Registered file %s (interceptor will transform to container path)', file_path)
+      else
+        log.warn('LSP: Failed to register file %s: %s', file_path, err)
+      end
+    else
+      log.warn('LSP: Cannot read file: %s', file_path)
+    end
+  end
+
+  log.info('LSP: Successfully registered %d Go files with gopls', registered_count)
+
+  -- Request diagnostics for the workspace to refresh initial state
+  if registered_count > 0 then
+    vim.defer_fn(function()
+      -- Force a workspace diagnostics refresh
+      if client and not client.is_stopped() then
+        log.debug('LSP: Requesting workspace diagnostics refresh')
+        client.request('workspace/diagnostic', {}, function(err, result)
+          if err then
+            log.debug('LSP: Workspace diagnostic request failed (this is normal for some servers): %s', err)
+          else
+            log.debug('LSP: Workspace diagnostics refreshed')
+          end
+        end)
+      end
+    end, 1000)
+  end
 end
 
 -- Enhanced LSP error handling and recovery functions

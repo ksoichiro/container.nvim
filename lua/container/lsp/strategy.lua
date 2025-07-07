@@ -241,20 +241,18 @@ end
 function M._auto_detect_strategy(server_name, container_id)
   -- Auto-detection logic based on server capabilities and container environment
 
-  -- For now, prefer proxy strategy for better path handling
-  -- In the future, this could check:
-  -- - Container file system type
-  -- - Network connectivity
-  -- - Server-specific requirements
-  -- - Performance characteristics
+  -- Currently prefer intercept strategy for most reliable behavior
+  -- The intercept strategy provides the most comprehensive path transformation
+  -- and is compatible with all LSP servers
 
   if server_name == 'gopls' then
-    -- Go projects benefit from proxy due to module system
-    return STRATEGIES.PROXY
+    -- Use intercept strategy for Go projects - provides better diagnostics handling
+    return STRATEGIES.INTERCEPT
   end
 
-  -- Default to configured strategy
-  return nil
+  -- For other servers, also use intercept strategy by default
+  -- as it's the most reliable and well-tested approach
+  return STRATEGIES.INTERCEPT
 end
 
 -- Private: Get strategy-specific configuration
