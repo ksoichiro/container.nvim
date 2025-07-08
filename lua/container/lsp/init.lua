@@ -808,11 +808,9 @@ function M._prepare_lsp_config(name, server_config)
         log.debug('LSP: Initialized path mappings for %s', name)
       end
 
-      -- Setup path transformation for this client
+      -- Setup container metadata for this client
       client.config.container_id = state.container_id
       client.config.container_managed = true
-      local transform = require('container.lsp.transform')
-      transform.setup_path_transformation(client)
 
       if M.config.on_attach then
         M.config.on_attach(client, bufnr)
