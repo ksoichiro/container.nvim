@@ -14,14 +14,14 @@ M.strategy_config = {
     tsserver = 'intercept', -- TypeScript: Use interception
     rust_analyzer = 'intercept', -- Rust: Use interception
     clangd = 'intercept', -- C/C++: Use interception
-    lua_ls = 'symlink', -- Lua: Symlinks work well for simple setups
+    lua_ls = 'intercept', -- Lua: Use interception like other servers
   },
 
   -- Feature flags
   features = {
     auto_detection = true, -- Auto-detect best strategy based on environment
     prefer_performance = true, -- Prefer faster strategy when both work
-    enable_fallback = true, -- Fall back to symlinks if proxy fails
+    enable_fallback = false, -- Fallback disabled as only intercept strategy is available
   },
 }
 
