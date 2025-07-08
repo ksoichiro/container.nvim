@@ -9,7 +9,7 @@ A Neovim plugin that provides VSCode Dev Containers-like development experience.
 - **devcontainer.json Support**: Fully compatible with VSCode configuration files
 - **Automatic Image Building**: Automatic Docker image building and management
 - **Enhanced Terminal Integration**: Advanced in-container terminal with session management
-- **LSP Integration**: Automatic detection and configuration of LSP servers in containers
+- **LSP Integration**: Automatic detection and configuration of LSP servers in containers with dynamic path transformation
 - **DAP Integration**: Container-based debugging with nvim-dap support for multiple languages
 - **Smart Port Forwarding**: Dynamic port allocation to prevent conflicts between projects
 - **Test Integration**: Run tests in containers with vim-test, nvim-test, and neotest. Supports both buffer and terminal output modes
@@ -186,6 +186,17 @@ For detailed command documentation, use `:help container-commands` in Neovim.
 | `:ContainerStatus` | Show container status |
 | `:ContainerLogs` | Show container logs |
 | `:ContainerConfig` | Show configuration |
+
+### LSP Integration
+
+| Command | Description |
+|---------|-------------|
+| `:ContainerLspHover [server]` | Show hover information using container LSP |
+| `:ContainerLspDefinition [server]` | Go to definition using container LSP |
+| `:ContainerLspReferences [server]` | Find references using container LSP |
+| `:ContainerLspSetupKeys [server]` | Manually setup LSP keybindings for current buffer |
+
+**Note**: LSP commands automatically handle path transformation between host and container. When gopls is detected in a container, the plugin attempts to automatically map standard LSP keybindings (K, gd, gr) to container-aware commands for Go files. If automatic setup doesn't work, use `:ContainerLspSetupKeys` to manually configure keybindings.
 
 ### Configuration Management
 

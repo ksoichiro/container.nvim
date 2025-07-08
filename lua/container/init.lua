@@ -95,6 +95,16 @@ function M.setup(user_config)
     log.debug('Failed to initialize DAP integration: %s', dap_err)
   end
 
+  -- Initialize LSP integration
+  local lsp_ok, lsp_err = pcall(function()
+    lsp = require('container.lsp.init')
+    lsp.setup(config.get_value('lsp') or {})
+  end)
+
+  if not lsp_ok then
+    log.warn('Failed to initialize LSP integration: %s', lsp_err)
+  end
+
   state.initialized = true
   log.debug('container.nvim initialized successfully')
 
@@ -391,6 +401,10 @@ end
 function M._finalize_container_setup(container_id)
   notify.container('Container is running!', 'info')
   log.info('Container is ready: %s', container_id)
+
+  -- LSP path resolution is now handled by the LSP strategy system
+  -- Strategy selection will determine whether to use symlinks or proxy
+  log.info('LSP path resolution will be handled by strategy system')
 
   -- Trigger ContainerStarted event
   vim.api.nvim_exec_autocmds('User', {
@@ -946,6 +960,9 @@ function M.start_container(container_name)
       log.info('Started container: %s', container_name)
       notify.container('Started container: ' .. container_name)
 
+      -- LSP path resolution is now handled by the LSP strategy system
+      log.info('LSP path resolution will be handled by strategy system')
+
       -- Trigger ContainerStarted event
       vim.api.nvim_exec_autocmds('User', {
         pattern = 'ContainerStarted',
@@ -1017,6 +1034,9 @@ function M.restart()
               if start_success then
                 notify.progress('restart', 'Step 2: ✓ Container started')
                 log.info('Container restarted successfully: %s', container_id)
+
+                -- LSP path resolution is now handled by the LSP strategy system
+                log.info('LSP path resolution will be handled by strategy system')
 
                 -- Trigger ContainerStarted event
                 vim.api.nvim_exec_autocmds('User', {
@@ -1523,7 +1543,8 @@ function M.lsp_status(detailed)
     for _, client_name in ipairs(lsp_state.clients) do
       if detailed then
         -- Get additional client info
-        local clients = vim.lsp.get_active_clients({ name = client_name })
+        local clients = vim.lsp.get_clients and vim.lsp.get_clients({ name = client_name })
+          or vim.lsp.get_active_clients({ name = client_name })
         if #clients > 0 then
           local client = clients[1]
           print(string.format('  🔌 %s (ID: %d)', client_name, client.id))
@@ -1764,6 +1785,9 @@ function M._start_container_step4(container_id)
         notify.success('Container started successfully and is ready!')
         notify.container('Container is now ready for development')
 
+        -- LSP path resolution is now handled by the LSP strategy system
+        log.info('LSP path resolution will be handled by strategy system')
+
         -- Trigger ContainerStarted event
         vim.api.nvim_exec_autocmds('User', {
           pattern = 'ContainerStarted',
@@ -1951,6 +1975,19 @@ function M._try_reconnect_existing_container()
         notify.success('Reconnected to existing container: ' .. container.id:sub(1, 12))
         notify.container('Status: ' .. container.status)
         notify.info('Use :ContainerStatus for details')
+
+        -- LSP path resolution is now handled by the LSP strategy system
+        log.info('LSP path resolution will be handled by strategy system')
+
+        -- Trigger ContainerDetected event for LSP auto-initialization
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'ContainerDetected',
+          data = {
+            container_id = container.id,
+            container_name = normalized_config.name,
+            status = container.status,
+          },
+        })
 
         -- Trigger ContainerOpened event for reconnection
         vim.api.nvim_exec_autocmds('User', {

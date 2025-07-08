@@ -19,6 +19,9 @@ Thumbs.db
 *.log
 *.tmp
 
+# Debug files
+debug/
+
 # Dependencies
 node_modules/
 .luarocks/

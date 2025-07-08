@@ -284,9 +284,38 @@ function M.get_client_cmd(server_name, server_config, container_id)
     table.insert(cmd, arg)
   end
 
-  -- Add container and LSP server command
+  -- Add container
   table.insert(cmd, container_id)
-  table.insert(cmd, server_config.cmd or server_config.path or server_name)
+
+  -- Special handling for Go language server
+  if server_name == 'gopls' then
+    -- Create a wrapper script that sets up proper configuration
+    table.insert(cmd, 'bash')
+    table.insert(cmd, '-c')
+    local gopls_script = [[
+      # Change to workspace directory
+      cd /workspace || exit 1
+
+      # Set environment variables for Go
+      export GO111MODULE=on
+      export GOPATH=/go
+      export GOROOT=/usr/local/go
+      export PATH=/usr/local/go/bin:/go/bin:$PATH
+
+      # Configure gopls to reduce file watching and improve stability
+      export GOPLSREMOTEDEBUG=off
+      export GOPLSREMOTELOG=off
+
+      # Set up signal handlers to ensure clean shutdown
+      trap 'exit 0' TERM INT
+
+      # Start gopls with minimal configuration for stdio mode
+      gopls -mode=stdio -remote=auto -rpc.trace=false -logfile=/tmp/gopls.log
+    ]]
+    table.insert(cmd, gopls_script)
+  else
+    table.insert(cmd, server_config.cmd or server_config.path or server_name)
+  end
 
   log.info('Forwarding: Creating LSP command for ' .. server_name .. ': ' .. table.concat(cmd, ' '))
 

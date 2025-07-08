@@ -591,6 +591,16 @@ local function create_commands()
     desc = 'Show comprehensive debug information',
   })
 
+  -- LSP handler fix command
+  vim.api.nvim_create_user_command('ContainerLspFix', function()
+    local proxy_fix = require('container.lsp.strategies.proxy_fix')
+    if proxy_fix.auto_enable_if_needed() then
+      vim.notify('Container LSP handler fix applied', vim.log.levels.INFO)
+    else
+      vim.notify('No container_gopls client found', vim.log.levels.WARN)
+    end
+  end, { desc = 'Apply LSP handler fix for container_gopls' })
+
   -- LSP related commands
   vim.api.nvim_create_user_command('ContainerLspStatus', function(args)
     local detailed = args.args == 'true' or args.args == 'detailed' or args.args == '-v'
@@ -606,7 +616,25 @@ local function create_commands()
   vim.api.nvim_create_user_command('ContainerLspSetup', function()
     require('container').lsp_setup()
   end, {
-    desc = 'Setup LSP servers in container',
+    desc = 'Setup LSP in container',
+  })
+
+  vim.api.nvim_create_user_command('ContainerLspDebug', function()
+    local lsp = require('container.lsp.init')
+    local debug_info = lsp.get_debug_info()
+    print(vim.inspect(debug_info))
+  end, {
+    desc = 'Show detailed LSP debugging information',
+  })
+
+  vim.api.nvim_create_user_command('ContainerLspAnalyze', function(args)
+    local client_name = args.args ~= '' and args.args or 'container_gopls'
+    local lsp = require('container.lsp.init')
+    local analysis = lsp.analyze_client(client_name)
+    print(vim.inspect(analysis))
+  end, {
+    desc = 'Analyze specific LSP client (default: container_gopls)',
+    nargs = '?',
   })
 
   vim.api.nvim_create_user_command('ContainerLspDiagnose', function()

@@ -17,11 +17,12 @@ This is a Neovim plugin that can be loaded using Lazy.nvim or Packer. For develo
 ```
 
 ### Testing Changes
-Currently no formal test framework is implemented. Test manually by:
-1. Reload the plugin: `:lua package.loaded.devcontainer = nil; require('container').setup()`
-2. Test commands: `:ContainerOpen`, `:ContainerBuild`, `:ContainerStart`
-3. Check debug info: `:ContainerDebug`
-4. View logs: `:ContainerLogs`
+- When testing in an actual nvim environment is necessary, utilize headless mode as much as possible to eliminate manual user operations. This approach is more reliable for verifying what needs to be checked and is also more efficient.
+- When user has to test manually:
+  1. Reload the plugin: `:lua package.loaded.devcontainer = nil; require('container').setup()`
+  2. Test commands: `:ContainerOpen`, `:ContainerBuild`, `:ContainerStart`
+  3. Check debug info: `:ContainerDebug`
+  4. View logs: `:ContainerLogs`
 
 **Important**: When using `nvim --headless` for automated testing, always include the `-u NONE` option to prevent loading user configuration files from `~/.config/nvim`. This ensures consistent test environments.
 
@@ -177,6 +178,42 @@ lua/devcontainer/
 - Logging and filesystem utilities ✓
 - Async handling utilities ✓
 - User events for lifecycle management ✓
+- LSP integration with dynamic path transformation ✓
+  - Simple path transformation without complex interception
+  - Automatic file registration and change tracking
+  - Container-aware LSP commands (hover, definition, references)
+  - Multi-file support with automatic keybinding setup
+
+### LSP Integration
+
+#### Current Implementation - Dynamic Path Transformation
+- Simple and reliable path transformation approach
+- Automatic file registration and change tracking
+- Works with standard Neovim LSP handlers for consistent UI
+- Integrated into main plugin with automatic setup
+
+#### Key Components:
+1. **`lua/container/lsp/simple_transform.lua`**: Path transformation utilities
+2. **`lua/container/lsp/commands.lua`**: LSP command implementations  
+3. **Integration in `lua/container/lsp/init.lua`**: Automatic setup for gopls
+
+#### Usage:
+When a container with gopls is detected, the plugin automatically:
+- Sets up container_gopls LSP client
+- Maps standard LSP keys (K, gd, gr) to container-aware commands
+- Handles path transformation transparently
+
+Users can also use commands directly:
+- `:ContainerLspHover` - Show hover information
+- `:ContainerLspDefinition` - Go to definition
+- `:ContainerLspReferences` - Find references
+
+#### Remaining Limitations:
+1. **Standard Library**: Cannot navigate to Go stdlib (outside /workspace)
+   - Workaround: Mount Go installation or use vendored dependencies
+2. **Performance**: Slight overhead from path transformation
+   - Generally not noticeable in practice
+
 
 ### Planned Features (Future)
 - Multi-container support with docker-compose

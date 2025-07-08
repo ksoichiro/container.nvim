@@ -62,7 +62,7 @@ M.defaults = {
     -- Session management
     persistent_history = true, -- Save terminal history across sessions
     max_history_lines = 10000, -- Maximum lines to keep in history
-    history_dir = (vim.fn and vim.fn.stdpath('data') or '/tmp') .. '/container/terminal_history',
+    history_dir = (vim.fn and vim.fn.stdpath and vim.fn.stdpath('data') or '/tmp') .. '/container/terminal_history',
 
     -- Default positioning
     default_position = 'split', -- 'split', 'tab', 'float'
@@ -282,7 +282,7 @@ function M.setup(user_config)
   end
 
   -- Set log level if log is available
-  if log then
+  if log and log.set_level then
     log.set_level(current_config.log_level)
     log.debug('Configuration loaded successfully')
   end

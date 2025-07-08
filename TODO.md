@@ -143,6 +143,14 @@ Priority: Complex multi-service development environments
   - [ ] Load balancing configuration
   - [ ] Network isolation and security
 
+- [ ] **Multi-language LSP Support Generalization**
+  - [ ] Abstract language-specific hardcoded parts (currently Go/gopls focused)
+  - [ ] Generalize auto-initialization for multiple languages
+  - [ ] Create language-agnostic project root detection system
+  - [ ] Implement universal file registration system for LSP servers
+  - [ ] Add language-specific configuration abstraction layer
+  - [ ] Support for Python (pylsp/pyright), TypeScript (tsserver), Rust (rust-analyzer), C/C++ (clangd)
+
 ### v1.0.0 (Stable Release) - 12-16 weeks
 
 Priority: Production-ready plugin with full ecosystem compatibility

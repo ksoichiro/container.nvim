@@ -89,6 +89,55 @@ _G.vim = {
     print('[NOTIFY]', msg)
   end,
   log = { levels = { INFO = 1, ERROR = 2 } },
+  lsp = {
+    handlers = {},
+    protocol = {
+      make_client_capabilities = function()
+        return {}
+      end,
+    },
+    get_clients = function()
+      return {}
+    end,
+    get_active_clients = function()
+      return {}
+    end,
+    start = function()
+      return {}
+    end,
+    start_client = function()
+      return {}
+    end,
+  },
+  api = {
+    nvim_create_user_command = function(name, callback, opts)
+      -- Mock command creation
+    end,
+    nvim_create_augroup = function(name, opts)
+      return 1
+    end,
+    nvim_create_autocmd = function(event, opts)
+      return 1
+    end,
+    nvim_get_current_buf = function()
+      return 1
+    end,
+    nvim_buf_is_valid = function(buf)
+      return true
+    end,
+    nvim_buf_is_loaded = function(buf)
+      return true
+    end,
+    nvim_buf_get_name = function(buf)
+      return '/test/file.go'
+    end,
+    nvim_buf_get_lines = function(buf, start, end_line, strict)
+      return { 'package main', 'func main() {}' }
+    end,
+  },
+  bo = {
+    filetype = 'go',
+  },
 }
 
 local function test_module_loading()
