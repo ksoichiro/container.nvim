@@ -1,14 +1,12 @@
 -- lua/container/lsp/strategy.lua
 -- LSP Strategy Selector
--- Chooses between Strategy A (symlinks) and Strategy B (proxy) based on configuration
+-- Chooses the appropriate LSP strategy based on configuration
 
 local M = {}
 local log = require('container.utils.log')
 
 -- Available LSP strategies
 local STRATEGIES = {
-  SYMLINK = 'symlink', -- Strategy A: Use symlinks for path unification
-  PROXY = 'proxy', -- Strategy B: Use LSP proxy for path transformation
   INTERCEPT = 'intercept', -- Strategy C: Host-side message interception
 }
 
@@ -28,7 +26,7 @@ local DEFAULT_STRATEGY_CONFIG = {
   -- Fallback behavior when strategy fails
   fallback = {
     enabled = true,
-    strategy = STRATEGIES.SYMLINK, -- Fall back to symlinks if proxy fails
+    strategy = STRATEGIES.INTERCEPT, -- Fall back to intercept if primary fails
     max_retries = 2,
   },
 
@@ -58,8 +56,6 @@ function M.setup(config)
 
   -- Load strategy implementations
   strategy_implementations = {
-    [STRATEGIES.SYMLINK] = require('container.lsp.strategies.symlink'),
-    [STRATEGIES.PROXY] = require('container.lsp.strategies.proxy'),
     [STRATEGIES.INTERCEPT] = require('container.lsp.strategies.intercept'),
   }
 
@@ -266,21 +262,7 @@ function M._get_strategy_config(strategy, server_name, config)
     strategy = strategy,
   }
 
-  if strategy == STRATEGIES.PROXY then
-    -- Proxy-specific configuration
-    base_config.proxy = {
-      enable_caching = true,
-      max_proxies_per_container = 5,
-      auto_cleanup_interval = 300,
-      enable_health_monitoring = true,
-    }
-  elseif strategy == STRATEGIES.SYMLINK then
-    -- Symlink-specific configuration
-    base_config.symlink = {
-      create_workspace_symlinks = true,
-      cleanup_on_exit = true,
-    }
-  end
+  -- No strategy-specific configuration needed for intercept
 
   return vim.tbl_deep_extend('force', base_config, config or {})
 end
