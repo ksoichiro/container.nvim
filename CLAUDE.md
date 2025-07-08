@@ -184,17 +184,10 @@ lua/devcontainer/
   - Container-aware LSP commands (hover, definition, references)
   - Multi-file support with automatic keybinding setup
 
-### LSP Integration Progress
+### LSP Integration
 
-#### Strategy Overview
-Three strategies were investigated for LSP integration with containers:
-
-1. **Strategy A: Symlinks** - Create symlinks from host to container paths
-2. **Strategy B: Container Proxy** - Run a proxy inside the container
-3. **Strategy C: Host Interception** - Intercept LSP messages on host side
-
-#### Current Status - Dynamic Path Transformation (Completed)
-- **Simplified Strategy C** implemented with dynamic path transformation
+#### Current Implementation - Dynamic Path Transformation
+- Simple and reliable path transformation approach
 - Automatic file registration and change tracking
 - Works with standard Neovim LSP handlers for consistent UI
 - Integrated into main plugin with automatic setup
@@ -221,10 +214,6 @@ Users can also use commands directly:
 2. **Performance**: Slight overhead from path transformation
    - Generally not noticeable in practice
 
-#### Test Files:
-- `test_lsp_dynamic.lua` - Test script for dynamic LSP functionality
-- `container_lsp_fixed.lua` - Original proof-of-concept (archived)
-- `docs/STRATEGY_C_PROGRESS.md` - Detailed implementation history
 
 ### Planned Features (Future)
 - Multi-container support with docker-compose
