@@ -115,14 +115,14 @@ return {
 
     -- Key mapping examples
     keys = {
-      { "<leader>co", "<cmd>DevcontainerOpen<cr>", desc = "Open devcontainer" },
-      { "<leader>cb", "<cmd>DevcontainerBuild<cr>", desc = "Build devcontainer" },
-      { "<leader>cs", "<cmd>DevcontainerStart<cr>", desc = "Start devcontainer" },
-      { "<leader>cx", "<cmd>DevcontainerStop<cr>", desc = "Stop devcontainer" },
-      { "<leader>ct", "<cmd>DevcontainerTerminal<cr>", desc = "Open terminal" },
-      { "<leader>cl", "<cmd>DevcontainerLogs<cr>", desc = "Show logs" },
-      { "<leader>ci", "<cmd>DevcontainerStatus<cr>", desc = "Show status" },
-      { "<leader>cr", "<cmd>DevcontainerReset<cr>", desc = "Reset state" },
+      { "<leader>co", "<cmd>ContainerOpen<cr>", desc = "Open container" },
+      { "<leader>cb", "<cmd>ContainerBuild<cr>", desc = "Build container" },
+      { "<leader>cs", "<cmd>ContainerStart<cr>", desc = "Start container" },
+      { "<leader>cx", "<cmd>ContainerStop<cr>", desc = "Stop container" },
+      { "<leader>ct", "<cmd>ContainerTerminal<cr>", desc = "Open terminal" },
+      { "<leader>cl", "<cmd>ContainerLogs<cr>", desc = "Show logs" },
+      { "<leader>ci", "<cmd>ContainerStatus<cr>", desc = "Show status" },
+      { "<leader>cr", "<cmd>ContainerReset<cr>", desc = "Reset state" },
     },
   }
 }
@@ -222,10 +222,10 @@ groups $USER
 
 ```lua
 -- Function to reload the plugin during development
-vim.api.nvim_create_user_command('DevcontainerReload', function()
+vim.api.nvim_create_user_command('ContainerReload', function()
   -- Clear module cache
   for module_name, _ in pairs(package.loaded) do
-    if module_name:match("^devcontainer") then
+    if module_name:match("^container") then
       package.loaded[module_name] = nil
     end
   end
@@ -243,12 +243,12 @@ config = function()
   require('container').setup({
     log_level = 'debug',
     -- Set log file
-    log_file = vim.fn.stdpath('data') .. '/devcontainer.log',
+    log_file = vim.fn.stdpath('data') .. '/container.log',
   })
 
   -- Command to open log file
-  vim.api.nvim_create_user_command('DevcontainerLogFile', function()
-    vim.cmd('edit ' .. vim.fn.stdpath('data') .. '/devcontainer.log')
+  vim.api.nvim_create_user_command('ContainerLogFile', function()
+    vim.cmd('edit ' .. vim.fn.stdpath('data') .. '/container.log')
   end, {})
 end,
 ```
