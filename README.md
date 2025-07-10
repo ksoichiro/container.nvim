@@ -593,6 +593,58 @@ Configuration changes can be applied without restarting Neovim:
 - Automatic reload: `:ContainerConfig watch` monitors `.container.nvim.lua`
 - Event-based: Other modules react to `ContainerConfigReloaded` event
 
+## Dev Container Specification Compatibility
+
+Container.nvim is designed to be compatible with the [official Dev Container specification](https://containers.dev/) while providing additional features for enhanced Neovim development experience.
+
+### Standard Compliance
+
+All standard devcontainer.json properties are fully supported:
+- ✅ Basic properties: `name`, `image`, `dockerFile`, `build`
+- ✅ Port forwarding: `forwardPorts`, `portsAttributes`
+- ✅ Environment: `containerEnv`, `remoteEnv`
+- ✅ Lifecycle: `postCreateCommand`, `postStartCommand`, `postAttachCommand`
+- ✅ Workspace: `mounts`, `workspaceFolder`, `remoteUser`
+
+### Extended Features
+
+Container.nvim extends the specification with additional features in the `customizations.container.nvim` section:
+
+#### Dynamic Port Allocation
+```json
+{
+  "forwardPorts": [3000, 8080],
+  "customizations": {
+    "container.nvim": {
+      "dynamicPorts": ["auto:3001", "range:8000-8010:5000"]
+    }
+  }
+}
+```
+
+#### Language-Specific Environments
+```json
+{
+  "customizations": {
+    "container.nvim": {
+      "languagePreset": "go",
+      "execEnvironment": {
+        "GOPLS_FLAGS": "-debug"
+      }
+    }
+  }
+}
+```
+
+### VSCode Compatibility
+
+Your devcontainer.json files remain fully compatible with VSCode:
+- VSCode ignores container.nvim customizations
+- Standard properties work in both tools
+- Teams can use their preferred editor
+
+For detailed compatibility information, see [docs/DEVCONTAINER_COMPATIBILITY.md](docs/DEVCONTAINER_COMPATIBILITY.md).
+
 ## StatusLine Integration
 
 The plugin provides built-in statusline integration to display devcontainer status in your Neovim statusline.
