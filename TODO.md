@@ -130,9 +130,31 @@ Priority: Seamless integration with popular Neovim development plugins
   - [x] Created STANDARD_COMPLIANCE_PLAN.md migration plan ✅ **COMPLETED**
   - [x] Updated README.md with compatibility section ✅ **COMPLETED**
 
-### v0.6.0 (Multi-container & Advanced Features) - 10-12 weeks
 
-Priority: Complex multi-service development environments
+### v0.6.0 (Standards Compliance & Multi-container) - 10-12 weeks
+
+Priority: Standards compliance migration and complex multi-service development environments
+
+#### High Priority - Standards Compliance Migration
+- [ ] **Dynamic Port Forwarding Migration** (Week 1-2)
+  - [ ] Implement backward compatibility for extended port syntax
+  - [ ] Add conversion utility for `"auto:3000"` → standard syntax
+  - [ ] Update documentation to recommend standard syntax
+  - [ ] Add deprecation warnings for non-standard syntax
+
+- [ ] **Environment Configuration Migration** (Week 3-4)
+  - [ ] Migrate `postCreateEnvironment` to standard `containerEnv`
+  - [ ] Migrate `execEnvironment` and `lspEnvironment` to `remoteEnv`
+  - [ ] Implement automatic conversion for legacy configurations
+  - [ ] Update all example configurations to use standard format
+
+- [ ] **Language Preset Standardization** (Week 5-6)
+  - [ ] Convert language presets to standard devcontainer features
+  - [ ] Create devcontainer feature definitions for each language
+  - [ ] Migrate preset logic to feature installation scripts
+  - [ ] Document migration path for existing users
+
+#### Medium Priority - Multi-container Support
 
 - [ ] **Docker Compose Support**
   - [ ] docker-compose.yml parsing and validation
@@ -146,8 +168,11 @@ Priority: Complex multi-service development environments
   - [ ] Load balancing configuration
   - [ ] Network isolation and security
 
-- [ ] **Multi-language LSP Support Generalization**
+- [ ] **Multi-language LSP Support Generalization** (Week 7-8)
   - [ ] Abstract language-specific hardcoded parts (currently Go/gopls focused)
+    - [ ] Remove hardcoded `container_gopls` client name
+    - [ ] Move `ftplugin/go.lua` logic to configurable system
+    - [ ] Make LSP client names configurable per language
   - [ ] Generalize auto-initialization for multiple languages
   - [ ] Create language-agnostic project root detection system
   - [ ] Implement universal file registration system for LSP servers
@@ -273,7 +298,9 @@ This functionality provides developers with a complete development experience wi
 ### Current Problem
 Currently, environment variables (PATH, GOPATH, etc.) for postCreateCommand execution are hardcoded in the plugin, requiring individual support for each language.
 
-### Proposed Improvements
+### ✅ **Implemented Environment Configuration (v0.4.0)**
+
+The following environment configuration features have been implemented in `lua/container/environment.lua`:
 
 #### 1. Environment Variable Specification in devcontainer.json
 ```json
@@ -316,11 +343,15 @@ Currently, environment variables (PATH, GOPATH, etc.) for postCreateCommand exec
 - `execEnvironment`: Environment for DevcontainerExec execution  
 - `lspEnvironment`: Environment for LSP-related command execution
 
-### Implementation Benefits
-- Remove language-specific hardcoding from plugin
-- Allow users complete control over environment
-- Easy support for new languages
-- Comply with standard devcontainer.json extension patterns
+### Implementation Benefits Achieved
+- ✅ Removed hardcoded environment paths from main plugin logic (moved to configurable presets)
+- ✅ Allow users complete control over environment variables
+- ✅ Easy support for new language environments through configuration
+- ⚠️ Uses custom extension pattern (not standard compliant - see v0.6.0 Standards Migration)
+- ❌ Still contains Go/gopls specific hardcoding in LSP integration:
+  - `ftplugin/go.lua` file
+  - `container_gopls` hardcoded client name
+  - Go-specific LSP behavior and configurations
 
 ## Long-term Technical Improvements
 
@@ -366,7 +397,7 @@ User interface improvements with Telescope integration and configuration enhance
 2. **Medium**: Advanced features and multi-container support (v0.6.0)
 3. **Low**: Platform optimization and infrastructure (v1.0.0)
 
-**Last Updated**: 2025-06-21  
+**Last Updated**: 2025-07-10  
 **Next Review Scheduled**: During v0.6.0 planning
 
 This roadmap is regularly updated based on user feedback and development progress.
