@@ -1,0 +1,53 @@
+{
+  "name": "Dynamic Ports Example",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-18-bullseye",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+  // Standard compliant port forwarding
+  //"forwardPorts": [3000, 8080, 9229, 5000],
+
+  //"portsAttributes": {
+  //  "3000": {
+  //    "label": "Development Server",
+  //    "onAutoForward": "notify"
+  //  },
+  //  "8080": {
+  //    "label": "API Server (Auto-allocated)",
+  //    "onAutoForward": "silent"
+  //  },
+  //  "9229": {
+  //    "label": "Node Debug (Range-allocated)",
+  //    "onAutoForward": "silent"
+  //  },
+  //  "5000": {
+  //    "label": "Additional Service",
+  //    "onAutoForward": "notify"
+  //  }
+  //},
+
+  "customizations": {
+    "container.nvim": {
+      // Dynamic port allocation (container.nvim specific)
+      "dynamicPorts": [
+        "auto:3000",           // Auto-allocate host port for container port 3000
+        "auto:8080",           // Auto-allocate host port for container port 8080
+        "range:9000-9100:9229" // Allocate from range 9000-9100 for container port 9229
+      ],
+      "languagePreset": "node"
+    },
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  },
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
+  "postCreateCommand": "npm install",
+  "remoteUser": "node"
+}

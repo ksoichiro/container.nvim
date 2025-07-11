@@ -1200,7 +1200,7 @@ local container_id = require('container').get_container_id()
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
   ],
-  "forwardPorts": [3000, "auto:8080", "range:9000-9100:9229"],
+  "forwardPorts": [3000, 8080, 9229],  // Standard compliant format
   "portsAttributes": {
     "3000": {
       "label": "Frontend",
@@ -1214,6 +1214,9 @@ local container_id = require('container').get_container_id()
   "postCreateCommand": "npm install",
   "postStartCommand": "npm run dev",
   "customizations": {
+    "container.nvim": {
+      "dynamicPorts": ["auto:8080", "range:9000-9100:9229"]  // Dynamic port configuration
+    },
     "neovim": {
       "settings": {
         "editor.tabSize": 2,

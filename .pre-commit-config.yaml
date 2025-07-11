@@ -15,10 +15,12 @@ repos:
 
       # JSON and YAML validation
       - id: check-json
+        exclude: .*devcontainer\.json$  # Allow comments in devcontainer.json files
       - id: check-yaml
         args: [--unsafe]  # Allow custom YAML tags
       - id: pretty-format-json
         args: [--autofix, --indent=2]
+        exclude: .*devcontainer\.json$  # Allow comments in devcontainer.json files
 
       # Git and merge conflicts
       - id: check-merge-conflict

@@ -64,7 +64,14 @@ end
 
 -- Resolve dynamic ports to actual port numbers
 function M.resolve_dynamic_ports(config, plugin_config)
-  if not config.normalized_ports or #config.normalized_ports == 0 then
+  -- Check if we have any dynamic ports to process
+  local has_normalized_ports = config.normalized_ports and #config.normalized_ports > 0
+  local has_custom_dynamic_ports = config.customizations
+    and config.customizations['container.nvim']
+    and config.customizations['container.nvim'].dynamicPorts
+    and #config.customizations['container.nvim'].dynamicPorts > 0
+
+  if not has_normalized_ports and not has_custom_dynamic_ports then
     return config
   end
 
@@ -78,17 +85,32 @@ function M.resolve_dynamic_ports(config, plugin_config)
   end
 
   local port_specs = {}
-  for _, port_entry in ipairs(config.normalized_ports) do
-    if port_entry.type == 'auto' then
-      table.insert(port_specs, string.format('auto:%d', port_entry.container_port))
-    elseif port_entry.type == 'range' then
-      table.insert(
-        port_specs,
-        string.format('range:%d-%d:%d', port_entry.range_start, port_entry.range_end, port_entry.container_port)
-      )
-    else
-      -- Fixed ports remain as-is
-      table.insert(port_specs, port_entry.original_spec)
+
+  -- Process normalized ports (from forwardPorts)
+  if config.normalized_ports then
+    for _, port_entry in ipairs(config.normalized_ports) do
+      if port_entry.type == 'auto' then
+        table.insert(port_specs, string.format('auto:%d', port_entry.container_port))
+      elseif port_entry.type == 'range' then
+        table.insert(
+          port_specs,
+          string.format('range:%d-%d:%d', port_entry.range_start, port_entry.range_end, port_entry.container_port)
+        )
+      else
+        -- Fixed ports remain as-is
+        table.insert(port_specs, port_entry.original_spec)
+      end
+    end
+  end
+
+  -- Also include dynamic ports from customizations.container.nvim.dynamicPorts
+  if
+    config.customizations
+    and config.customizations['container.nvim']
+    and config.customizations['container.nvim'].dynamicPorts
+  then
+    for _, port_spec in ipairs(config.customizations['container.nvim'].dynamicPorts) do
+      table.insert(port_specs, port_spec)
     end
   end
 
@@ -111,6 +133,11 @@ function M.resolve_dynamic_ports(config, plugin_config)
   -- Replace normalized_ports with resolved ports
   config.normalized_ports = resolved_ports or {}
   config.port_resolution_errors = errors or {}
+
+  -- Initialize normalized_ports if it was empty but we had custom dynamic ports
+  if not config.normalized_ports then
+    config.normalized_ports = {}
+  end
 
   log.info('Resolved %d ports for project %s', #config.normalized_ports, project_id)
 
@@ -186,12 +213,13 @@ local function resolve_compose_file_path(config, base_path)
 end
 
 -- Normalize port settings with dynamic port support
-local function normalize_ports(ports)
+local function normalize_ports(ports, config)
   if not ports then
-    return {}
+    return {}, {}
   end
 
   local normalized = {}
+  local deprecated_ports = {}
 
   for i, port in ipairs(ports) do
     local port_entry = {
@@ -211,6 +239,7 @@ local function normalize_ports(ports)
         port_entry.type = 'auto'
         port_entry.container_port = tonumber(auto_container_port)
         -- host_port will be assigned during resolution
+        table.insert(deprecated_ports, port)
       else
         -- Check for range allocation: "range:8000-8010:3000"
         local range_start, range_end, container_port = port:match('^range:(%d+)-(%d+):(%d+)$')
@@ -220,6 +249,7 @@ local function normalize_ports(ports)
           port_entry.range_end = tonumber(range_end)
           port_entry.container_port = tonumber(container_port)
           -- host_port will be assigned during resolution
+          table.insert(deprecated_ports, port)
         else
           -- Check for host:container mapping: "8080:3000"
           local host_port, container_port_2 = port:match('(%d+):(%d+)')
@@ -255,7 +285,7 @@ local function normalize_ports(ports)
     ::continue::
   end
 
-  return normalized
+  return normalized, deprecated_ports
 end
 
 -- Normalize mount settings
@@ -342,7 +372,7 @@ function M.parse(file_path, context)
   config.resolved_compose_file = resolve_compose_file_path(config, base_path)
 
   -- Normalize port settings
-  config.normalized_ports = normalize_ports(config.forwardPorts)
+  config.normalized_ports, config.deprecated_ports = normalize_ports(config.forwardPorts, config)
 
   -- Generate project ID for port allocation
   config.project_id = M.generate_project_id(context.workspace_folder or vim.fn.getcwd())
@@ -354,6 +384,66 @@ function M.parse(file_path, context)
   config.name = config.name or 'devcontainer'
   config.workspaceFolder = config.workspaceFolder or '/workspace'
   config.remoteUser = config.remoteUser or 'root'
+
+  -- Handle deprecated dynamic port syntax migration
+  if config.deprecated_ports and #config.deprecated_ports > 0 then
+    -- Show deprecation warning
+    vim.notify(
+      string.format(
+        '[container.nvim] Warning: Dynamic port syntax (%s) is deprecated.\n'
+          .. 'These will be automatically migrated to customizations.container.nvim.dynamicPorts.\n'
+          .. 'Please update your devcontainer.json to use the standard format.',
+        table.concat(config.deprecated_ports, ', ')
+      ),
+      vim.log.levels.WARN
+    )
+
+    -- Migrate to customizations.container.nvim.dynamicPorts
+    config.customizations = config.customizations or {}
+    config.customizations['container.nvim'] = config.customizations['container.nvim'] or {}
+    config.customizations['container.nvim'].dynamicPorts = config.customizations['container.nvim'].dynamicPorts or {}
+
+    -- Add deprecated ports to dynamicPorts if not already present
+    for _, port in ipairs(config.deprecated_ports) do
+      local found = false
+      for _, existing in ipairs(config.customizations['container.nvim'].dynamicPorts) do
+        if existing == port then
+          found = true
+          break
+        end
+      end
+      if not found then
+        table.insert(config.customizations['container.nvim'].dynamicPorts, port)
+      end
+    end
+
+    -- Update forwardPorts to only contain standard ports
+    local standard_ports = {}
+    for _, port in ipairs(config.forwardPorts or {}) do
+      local is_deprecated = false
+      for _, deprecated in ipairs(config.deprecated_ports) do
+        if port == deprecated then
+          is_deprecated = true
+          break
+        end
+      end
+      if not is_deprecated then
+        table.insert(standard_ports, port)
+      else
+        -- Add the container port number to standard ports
+        local auto_port = port:match('^auto:(%d+)$')
+        if auto_port then
+          table.insert(standard_ports, tonumber(auto_port))
+        else
+          local _, _, container_port = port:match('^range:(%d+)-(%d+):(%d+)$')
+          if container_port then
+            table.insert(standard_ports, tonumber(container_port))
+          end
+        end
+      end
+    end
+    config.forwardPorts = standard_ports
+  end
 
   -- Debug: final postCreateCommand
   log.debug('Final config postCreateCommand: %s', tostring(config.postCreateCommand))
