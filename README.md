@@ -97,7 +97,7 @@ Create a `.devcontainer/devcontainer.json` file in your project root:
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind"
   ],
-  "forwardPorts": [3000, "auto:8080"],
+  "forwardPorts": [3000, 8080],
   "postCreateCommand": "npm install",
   "postStartCommand": "npm run dev",
   "remoteUser": "node"
@@ -757,7 +757,7 @@ local function devcontainer_status()
 end
 
 -- Example with vim.o.statusline
-vim.o.statusline = '%f %{luaeval("require(\"devcontainer\").statusline()")} %='
+vim.o.statusline = '%f %{luaeval("require(\"container\").statusline()")} %='
 ```
 
 #### Lualine Integration
@@ -787,7 +787,7 @@ let g:lightline = {
   \ }
 
 function! DevcontainerStatus()
-  return luaeval('require("devcontainer.ui.statusline").lightline_component()')
+  return luaeval('require("container.ui.statusline").lightline_component()')
 endfunction
 ```
 
@@ -807,12 +807,15 @@ The plugin supports advanced port forwarding with dynamic allocation to prevent 
 
 ```json
 {
-  "forwardPorts": [
-    3000,                    // Fixed port (traditional)
-    "auto:3001",            // Auto-allocate available port
-    "range:8000-8010:3002", // Allocate from specific range
-    "8080:3003"             // Host:container mapping
-  ]
+  "forwardPorts": [3000, 8080],
+  "customizations": {
+    "container.nvim": {
+      "dynamicPorts": [
+        "auto:3001",            // Auto-allocate available port
+        "range:8000-8010:3002"  // Allocate from specific range
+      ]
+    }
+  }
 }
 ```
 
@@ -828,10 +831,24 @@ The plugin supports advanced port forwarding with dynamic allocation to prevent 
 Multi-project development:
 ```json
 // Project A
-{ "forwardPorts": ["auto:3000", "auto:8080"] }
+{
+  "forwardPorts": [3000, 8080],
+  "customizations": {
+    "container.nvim": {
+      "dynamicPorts": ["auto:3000", "auto:8080"]
+    }
+  }
+}
 
 // Project B  
-{ "forwardPorts": ["auto:3000", "auto:8080"] }
+{
+  "forwardPorts": [3000, 8080],
+  "customizations": {
+    "container.nvim": {
+      "dynamicPorts": ["auto:3000", "auto:8080"]
+    }
+  }
+}
 ```
 
 Both projects can run simultaneously with automatically assigned unique ports.
@@ -1200,7 +1217,7 @@ local container_id = require('container').get_container_id()
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
   ],
-  "forwardPorts": [3000, 8080, 9229],  // Standard compliant format
+  "forwardPorts": [3000, 8080, 9229],
   "portsAttributes": {
     "3000": {
       "label": "Frontend",
@@ -1215,7 +1232,7 @@ local container_id = require('container').get_container_id()
   "postStartCommand": "npm run dev",
   "customizations": {
     "container.nvim": {
-      "dynamicPorts": ["auto:8080", "range:9000-9100:9229"]  // Dynamic port configuration
+      "dynamicPorts": ["auto:8080", "range:9000-9100:9229"]
     },
     "neovim": {
       "settings": {
