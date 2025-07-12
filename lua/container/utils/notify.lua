@@ -161,7 +161,7 @@ function M.progress(operation, step, total, message, opts)
 
   -- Format progress message
   local progress_text
-  if total and total > 0 then
+  if total and type(total) == 'number' and type(step) == 'number' and total > 0 then
     local percentage = math.floor((step / total) * 100)
     progress_text = string.format('%s (%d/%d - %d%%)', message, step, total, percentage)
   else
