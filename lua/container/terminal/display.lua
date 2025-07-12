@@ -261,7 +261,7 @@ end
 
 -- Create terminal command for container
 function M.build_terminal_command(container_id, shell, environment)
-  shell = shell or '/bin/bash'
+  shell = shell or '/bin/sh'
   environment = environment or {}
 
   local cmd = { 'docker', 'exec', '-it' }

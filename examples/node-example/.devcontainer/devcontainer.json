@@ -1,10 +1,29 @@
 {
+  "name": "Node.js LSP Example",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-18-bullseye",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "node",
+
+  // Standard container environment (used during container creation)
+  "containerEnv": {
+    "PATH": "/home/node/.local/bin:/usr/local/nodejs/bin:/usr/local/bin:${containerEnv:PATH}"
+  },
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
+  "forwardPorts": [
+    3000,
+    8080
+  ],
+
+  "postCreateCommand": "npm install typescript-language-server typescript eslint",
+
   "customizations": {
     "container.nvim": {
-      "languagePreset": "node",
-      "postCreateEnvironment": {
-        "PATH": "/home/node/.local/bin:/usr/local/nodejs/bin:/usr/local/bin:$PATH"
-      }
+      "languagePreset": "node"
     },
     "vscode": {
       "extensions": [
@@ -12,18 +31,5 @@
         "dbaeumer.vscode-eslint"
       ]
     }
-  },
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
-  "forwardPorts": [
-    3000,
-    8080
-  ],
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-18-bullseye",
-  "name": "Node.js LSP Example",
-  "postCreateCommand": "npm install typescript-language-server typescript eslint",
-  "remoteUser": "node",
-  "workspaceFolder": "/workspace",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  }
 }

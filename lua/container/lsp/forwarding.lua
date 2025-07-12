@@ -290,7 +290,9 @@ function M.get_client_cmd(server_name, server_config, container_id)
   -- Special handling for Go language server
   if server_name == 'gopls' then
     -- Create a wrapper script that sets up proper configuration
-    table.insert(cmd, 'bash')
+    local docker = require('container.docker.init')
+    local shell = docker.detect_shell and docker.detect_shell(container_id) or 'sh'
+    table.insert(cmd, shell)
     table.insert(cmd, '-c')
     local gopls_script = [[
       # Change to workspace directory

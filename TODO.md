@@ -17,7 +17,7 @@ This file tracks the development roadmap, completed features, and planned improv
   - Persistent history with project isolation
   - Smart port forwarding with dynamic allocation
 
-✅ **Critical Issues Resolved (v0.1.0 - v0.3.0)**
+✅ **Critical Issues Resolved (v0.1.0 - v0.6.0)**
 
 - Container naming conflicts preventing multi-project development
 - LSP client integration issues (clients not visible in `:LspInfo`)
@@ -28,8 +28,13 @@ This file tracks the development roadmap, completed features, and planned improv
 - Go environment PATH issues for LSP detection
 - Debug command cleanup and codebase maintainability
 - Comprehensive Neovim help documentation system
+- **Shell compatibility issues with Go devcontainer images (v0.6.0)**
+  - Fixed hardcoded bash dependencies in container creation and command execution
+  - Implemented dynamic shell detection (bash → zsh → sh priority)
+  - Added `--entrypoint sh` override for base images with bash-dependent CMD
+  - Resolved environment variable expansion conflicts causing container creation failures
 
-All critical functionality-blocking issues have been resolved through v0.3.0.
+All critical functionality-blocking issues have been resolved through v0.6.0.
 
 ## Next Milestone Planning
 
@@ -143,11 +148,28 @@ Priority: Standards compliance migration and complex multi-service development e
   - [x] Add deprecation warnings for non-standard syntax ✅ **COMPLETED**
   - [x] Create comprehensive example demonstrating new standard-compliant format ✅ **COMPLETED**
 
-- [ ] **Environment Configuration Migration** (Week 3-4)
-  - [ ] Migrate `postCreateEnvironment` to standard `containerEnv`
-  - [ ] Migrate `execEnvironment` and `lspEnvironment` to `remoteEnv`
-  - [ ] Implement automatic conversion for legacy configurations
-  - [ ] Update all example configurations to use standard format
+- [x] **Environment Configuration Migration** (Week 3-4) ✅ **COMPLETED**
+  - [x] Migrate `postCreateEnvironment` to standard `containerEnv` ✅ **COMPLETED**
+  - [x] Migrate `execEnvironment` and `lspEnvironment` to `remoteEnv` ✅ **COMPLETED**
+  - [x] Implement automatic conversion for legacy configurations ✅ **COMPLETED**
+  - [x] Update all example configurations to use standard format ✅ **COMPLETED**
+
+- [ ] **Environment Variable Expansion Issues Investigation** (Week 4-5)
+  - [ ] **Root Cause Analysis**: Determine exact failure point of `${containerEnv:PATH}` expansion
+    - Container creation fails when using: `"PATH": "/custom/bin:${containerEnv:PATH}"`
+    - Works when using absolute paths: `"PATH": "/custom/bin:/usr/local/bin:/usr/bin:/bin"`
+    - Issue may be in parser.lua variable expansion or Docker argument building
+  - [ ] **Parser Investigation**: Review `parser.lua` lines 49-51 for `${containerEnv:variable}` handling
+  - [ ] **Docker Args Analysis**: Check if `-e` environment variable arguments are properly escaped
+  - [ ] **VS Code Compatibility**: Test how VS Code Dev Containers handles same expansion syntax
+  - [ ] **Implement Proper Expansion**: Support standard devcontainer variable expansion
+    - `${containerEnv:PATH}` → current container PATH value
+    - `${remoteEnv:PATH}` → current remote PATH value  
+    - `${localEnv:PATH}` → host system PATH value
+  - [ ] **Add Fallback Mechanism**: When expansion fails, use system defaults
+  - [ ] **Shell Environment Testing**: Verify expansion works across bash/sh/zsh
+  - [ ] **Documentation**: Document supported patterns and current limitations
+  - [ ] **Regression Tests**: Prevent future expansion failures
 
 - [ ] **Language Preset Standardization** (Week 5-6)
   - [ ] Convert language presets to standard devcontainer features

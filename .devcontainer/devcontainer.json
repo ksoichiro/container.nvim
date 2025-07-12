@@ -1,29 +1,24 @@
 {
-  "customizations": {
-    "container.nvim": {
-      "additionalEnvironment": {
-        "CONTAINER_DEV_MODE": "true"
-      },
-      "execEnvironment": {
-        "EDITOR": "nvim",
-        "PAGER": "less"
-      },
-      "languagePreset": "default",
-      "lspEnvironment": {
-        "LUA_CPATH": "/usr/local/lib/lua/5.4/?.so",
-        "LUA_PATH": "/workspace/lua/?.lua;/workspace/lua/?/init.lua"
-      },
-      "postCreateEnvironment": {
-        "LUACHECK_CONFIG": "/workspace/.luacheckrc"
-      }
-    },
-    "vscode": {
-      "extensions": [
-        "sumneko.lua",
-        "ms-vscode.vscode-json"
-      ]
-    }
+  "name": "container.nvim Development",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "vscode",
+
+  // Standard container environment (used during container creation)
+  "containerEnv": {
+    "CONTAINER_DEV_MODE": "true",
+    "LUACHECK_CONFIG": "/workspace/.luacheckrc"
   },
+
+  // Standard remote environment (used during development)
+  "remoteEnv": {
+    "EDITOR": "nvim",
+    "PAGER": "less",
+    "LUA_CPATH": "/usr/local/lib/lua/5.4/?.so",
+    "LUA_PATH": "/workspace/lua/?.lua;/workspace/lua/?/init.lua"
+  },
+
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/lua:1": {
@@ -33,10 +28,19 @@
       "version": "18"
     }
   },
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-  "name": "container.nvim Development",
+
   "postCreateCommand": "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ripgrep fd-find neovim git curl",
-  "remoteUser": "vscode",
-  "workspaceFolder": "/workspace",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+
+  // Optional: Language preset for convenience
+  "customizations": {
+    "container.nvim": {
+      "languagePreset": "default"
+    },
+    "vscode": {
+      "extensions": [
+        "sumneko.lua",
+        "ms-vscode.vscode-json"
+      ]
+    }
+  }
 }

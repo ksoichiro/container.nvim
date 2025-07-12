@@ -52,19 +52,20 @@ Container.nvim extends the specification with additional features in the `custom
 
 ```json
 {
+  // Standard environment variables
+  "containerEnv": {
+    "PATH": "/usr/local/go/bin:${containerEnv:PATH}",
+    "GOPATH": "/go"
+  },
+  "remoteEnv": {
+    "NODE_ENV": "development",
+    "GOPLS_FLAGS": "-debug"
+  },
+
+  // Optional customizations
   "customizations": {
     "container.nvim": {
-      "languagePreset": "go",
-      "postCreateEnvironment": {
-        "PATH": "/usr/local/go/bin:$PATH",
-        "GOPATH": "/go"
-      },
-      "execEnvironment": {
-        "NODE_ENV": "development"
-      },
-      "lspEnvironment": {
-        "GOPLS_FLAGS": "-debug"
-      }
+      "languagePreset": "go"
     }
   }
 }

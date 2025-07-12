@@ -4,6 +4,7 @@
 local M = {}
 local fs = require('container.utils.fs')
 local log = require('container.utils.log')
+local migrate = require('container.migrate')
 
 -- Remove comments from JSON string
 local function remove_json_comments(content)
@@ -445,6 +446,13 @@ function M.parse(file_path, context)
     config.forwardPorts = standard_ports
   end
 
+  -- Auto-migrate legacy environment settings to standards-compliant format
+  local migrated_config, migration_changes = migrate.auto_migrate_config(config)
+  if #migration_changes > 0 then
+    log.info('Applied %d environment migration(s) to standards-compliant format', #migration_changes)
+    config = migrated_config
+  end
+
   -- Debug: final postCreateCommand
   log.debug('Final config postCreateCommand: %s', tostring(config.postCreateCommand))
 
@@ -558,8 +566,14 @@ function M.normalize_for_plugin(config)
   normalized.workspace_folder = config.workspaceFolder or '/workspace'
   normalized.remote_user = config.remoteUser
 
-  -- Environment variables
-  normalized.environment = config.remoteEnv or {}
+  -- Environment variables (standard support)
+  normalized.environment = {}
+  if config.containerEnv then
+    normalized.environment = vim.tbl_deep_extend('force', normalized.environment, config.containerEnv)
+  end
+  if config.remoteEnv then
+    normalized.environment = vim.tbl_deep_extend('force', normalized.environment, config.remoteEnv)
+  end
 
   -- Port settings
   normalized.ports = config.normalized_ports or {}

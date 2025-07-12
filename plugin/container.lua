@@ -823,6 +823,32 @@ local function create_commands()
   end, {
     desc = 'List active debug sessions',
   })
+
+  -- Force remove container (for shell compatibility issues)
+  vim.api.nvim_create_user_command('ContainerRemove', function(args)
+    local docker = require('container.docker.init')
+
+    if args.bang then
+      -- Force remove current container
+      local current = require('container').get_current_container()
+      if current then
+        local success = docker.force_remove_container(current.id)
+        if success then
+          print('✓ Removed container: ' .. current.name)
+        else
+          print('✗ Failed to remove container: ' .. current.name)
+        end
+      else
+        print('No active container found')
+      end
+    else
+      print('Use :ContainerRemove! to force remove the current container')
+      print('This will permanently delete the container and all its data.')
+    end
+  end, {
+    bang = true,
+    desc = 'Force remove current container. Use ! to confirm removal.',
+  })
 end
 
 -- Create autocommand group

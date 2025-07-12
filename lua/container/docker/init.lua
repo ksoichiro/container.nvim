@@ -4,6 +4,57 @@
 local M = {}
 local log = require('container.utils.log')
 
+-- Shell detection cache to avoid repeated checks
+local shell_cache = {}
+
+-- Detect available shell in container
+local function detect_shell(container_id)
+  if shell_cache[container_id] then
+    return shell_cache[container_id]
+  end
+
+  -- Check if container is running first
+  local status_cmd = string.format('docker inspect -f "{{.State.Status}}" %s 2>/dev/null', container_id)
+  local status_result = vim.fn.system(status_cmd)
+  if vim.v.shell_error ~= 0 or not status_result:match('running') then
+    log.debug('Container %s not running, using default shell: sh', container_id)
+    return 'sh'
+  end
+
+  local shells = { 'bash', 'zsh', 'sh' }
+
+  for _, shell in ipairs(shells) do
+    local cmd = string.format('docker exec %s which %s 2>/dev/null', container_id, shell)
+    local result = vim.fn.system(cmd)
+    if vim.v.shell_error == 0 and result:match(shell) then
+      log.debug('Detected shell in container %s: %s', container_id, shell)
+      shell_cache[container_id] = shell
+      return shell
+    end
+  end
+
+  -- Fallback to sh (should be available in all POSIX systems)
+  log.warn('No preferred shell found in container %s, using fallback: sh', container_id)
+  shell_cache[container_id] = 'sh'
+  return 'sh'
+end
+
+-- Public shell detection function
+function M.detect_shell(container_id)
+  return detect_shell(container_id)
+end
+
+-- Clear shell cache for container (useful when container restarts)
+function M.clear_shell_cache(container_id)
+  if container_id then
+    shell_cache[container_id] = nil
+    log.debug('Cleared shell cache for container: %s', container_id)
+  else
+    shell_cache = {}
+    log.debug('Cleared all shell cache')
+  end
+end
+
 -- Docker command availability check (sync version)
 function M.check_docker_availability()
   log.debug('Checking Docker availability (sync)')
@@ -781,13 +832,18 @@ function M.create_container(config)
     log.error(error_msg)
     return nil, error_msg
   end
+  -- Override any bash-dependent entrypoint from base image
+  table.insert(args, '--entrypoint')
+  table.insert(args, 'sh')
+
   table.insert(args, image)
 
-  -- Default command (keep container running)
-  table.insert(args, 'sleep')
-  table.insert(args, 'infinity')
+  -- Default command (keep container running with POSIX sh)
+  table.insert(args, '-c')
+  table.insert(args, 'while true; do sleep 3600; done')
 
-  log.debug('Docker create command: docker %s', table.concat(args, ' '))
+  log.info('Docker create command: docker %s', table.concat(args, ' '))
+  log.debug('Using POSIX sh entrypoint to avoid bash dependency')
 
   local result = M.run_docker_command(args)
 
@@ -1164,7 +1220,8 @@ function M.exec_command(container_id, command, opts)
   -- Split command
   if type(command) == 'string' then
     -- Execute as shell command (properly escaped)
-    table.insert(args, 'bash')
+    local shell = opts.shell or detect_shell(container_id)
+    table.insert(args, shell)
     table.insert(args, '-c')
     -- Pass entire command as single argument
     table.insert(args, string.format('%s', command))
@@ -1245,7 +1302,7 @@ function M.exec_command_async(container_id, command, opts, callback)
   -- Split command
   if type(command) == 'string' then
     -- Detect shell
-    local shell = opts.shell or 'bash'
+    local shell = opts.shell or detect_shell(container_id)
     table.insert(args, shell)
     table.insert(args, '-c')
     table.insert(args, command)
@@ -1281,7 +1338,7 @@ function M.execute_command(container_id, command, opts)
     env = opts.env,
     detach = opts.detach or false,
     tty = opts.tty or false,
-    shell = opts.shell or 'bash',
+    shell = opts.shell or detect_shell(container_id),
     timeout = opts.timeout,
     cwd = opts.cwd, -- For run_docker_command compatibility
   }
@@ -1371,7 +1428,7 @@ function M.execute_command_stream(container_id, command, opts)
 
   -- Split command
   if type(command) == 'string' then
-    local shell = opts.shell or 'bash'
+    local shell = opts.shell or detect_shell(container_id)
     table.insert(cmd_args, shell)
     table.insert(cmd_args, '-c')
     table.insert(cmd_args, command)
@@ -1443,7 +1500,10 @@ function M.build_command(base_command, opts)
 
   -- Add environment setup if needed
   if opts.setup_env then
-    table.insert(command_parts, 'source ~/.bashrc 2>/dev/null || true')
+    table.insert(
+      command_parts,
+      '[ -f ~/.bashrc ] && source ~/.bashrc 2>/dev/null || [ -f ~/.profile ] && source ~/.profile 2>/dev/null || true'
+    )
   end
 
   -- Add directory change if needed
@@ -1799,6 +1859,27 @@ function M._build_docker_daemon_error()
     'You may need to wait a few moments after starting Docker Desktop.',
   }
   return table.concat(error_lines, '\n')
+end
+
+-- Force remove container (for shell compatibility issues)
+function M.force_remove_container(container_id)
+  log.info('Force removing container: %s', container_id)
+
+  -- Stop container first if running
+  M.run_docker_command({ 'stop', container_id })
+
+  -- Remove container
+  local result = M.run_docker_command({ 'rm', '-f', container_id })
+
+  if result.success then
+    log.info('Successfully removed container: %s', container_id)
+    -- Clear shell cache for this container
+    M.clear_shell_cache(container_id)
+    return true
+  else
+    log.error('Failed to remove container: %s', result.stderr or 'unknown error')
+    return false
+  end
 end
 
 -- Enhanced network error handling

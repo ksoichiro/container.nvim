@@ -1,21 +1,50 @@
 # Go Environment Customization Example
 
-This example demonstrates how to customize the execution environment for Go projects using `container.nvim` customizations.
+This example demonstrates how to use standard devcontainer environment variables with Go projects in container.nvim.
 
 ## Features
 
-- **Language Preset**: Uses the built-in `go` preset for common Go paths
-- **Custom Environment Variables**: Adds Go-specific environment variables
-- **Context-specific Environments**: Different environments for different execution contexts
+- **Standard Environment Variables**: Uses `containerEnv` and `remoteEnv` for VSCode compatibility
+- **Language Preset**: Includes backward-compatible `go` preset
+- **Automatic Migration**: Legacy configurations are automatically converted
 
 ## devcontainer.json Configuration
 
 The `.devcontainer/devcontainer.json` file shows:
 
-1. **Language Preset**: `"languagePreset": "go"` automatically sets up Go-specific PATH, GOPATH, and GOROOT
-2. **postCreateEnvironment**: Environment variables used when running `postCreateCommand`
-3. **execEnvironment**: Environment variables used when running `:ContainerExec` commands
-4. **lspEnvironment**: Environment variables used for LSP server detection and startup
+1. **containerEnv**: Environment variables for container creation (includes postCreateCommand environment)
+2. **remoteEnv**: Environment variables for development operations (exec commands, LSP)
+3. **Language Preset**: Optional `"languagePreset": "go"` for additional convenience
+
+## Migration from Legacy Format
+
+This example was migrated from the legacy format:
+
+**Before (Legacy):**
+```json
+{
+  "customizations": {
+    "container.nvim": {
+      "postCreateEnvironment": { "GOPATH": "/go", ... },
+      "execEnvironment": { "GOPATH": "/go", ... },
+      "lspEnvironment": { "GOPATH": "/go", ... }
+    }
+  }
+}
+```
+
+**After (Standard):**
+```json
+{
+  "containerEnv": { "GOPATH": "/go", ... },
+  "remoteEnv": { "GOPATH": "/go", ... },
+  "customizations": {
+    "container.nvim": {
+      "languagePreset": "go"
+    }
+  }
+}
+```
 
 ## Usage
 
@@ -38,7 +67,7 @@ After starting the container, you can test the environment:
 
 ## Benefits
 
-- No hardcoded paths in the plugin
-- Easily customizable for different Go versions or setups
-- Consistent environment across postCreate, exec, and LSP contexts
-- Compatible with standard devcontainer.json extensions
+- **VSCode Compatibility**: Uses standard devcontainer specification
+- **Automatic Migration**: Legacy configurations work without changes
+- **Simplified Configuration**: Single place for environment variables
+- **Better Tooling Support**: Works with other devcontainer tools

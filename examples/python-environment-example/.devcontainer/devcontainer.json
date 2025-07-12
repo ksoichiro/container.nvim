@@ -1,14 +1,19 @@
 {
+  "name": "Python Project with Language Preset",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "postCreateCommand": "pip install python-lsp-server black flake8",
+
+  // Standard environment variables for remote operations
+  "remoteEnv": {
+    "DEBUG": "true",
+    "PYTHONPATH": "/workspace/src",
+    "PATH": "/home/vscode/.local/bin:/usr/local/python/current/bin:${remoteEnv:PATH}"
+  },
+
+  // Language preset for backward compatibility
   "customizations": {
     "container.nvim": {
-      "additionalEnvironment": {
-        "DEBUG": "true",
-        "PYTHONPATH": "/workspace/src"
-      },
       "languagePreset": "python"
     }
-  },
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "name": "Python Project with Language Preset",
-  "postCreateCommand": "pip install python-lsp-server black flake8"
+  }
 }

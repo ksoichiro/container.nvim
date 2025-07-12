@@ -31,35 +31,54 @@ local language_presets = {
   },
 }
 
--- Get environment variables from devcontainer.json customizations
-local function get_custom_environment(config, context_type)
-  if not config or not config.customizations or not config.customizations['container.nvim'] then
+-- Get environment variables supporting both standard and custom formats
+local function get_environment(config, context_type)
+  if not config then
     return {}
   end
 
-  local customizations = config.customizations['container.nvim']
   local env = {}
 
-  -- Get language preset if specified
-  if customizations.languagePreset and language_presets[customizations.languagePreset] then
-    env = vim.tbl_deep_extend('force', env, language_presets[customizations.languagePreset])
-    log.debug('Applied language preset: %s', customizations.languagePreset)
-  else
-    -- Use default preset
+  -- 1. Start with standard devcontainer environment variables
+  if config.containerEnv then
+    env = vim.tbl_deep_extend('force', env, config.containerEnv)
+    log.debug('Applied standard containerEnv')
+  end
+
+  if config.remoteEnv then
+    env = vim.tbl_deep_extend('force', env, config.remoteEnv)
+    log.debug('Applied standard remoteEnv')
+  end
+
+  -- 2. Apply language presets (for backward compatibility)
+  if config.customizations and config.customizations['container.nvim'] then
+    local customizations = config.customizations['container.nvim']
+
+    if customizations.languagePreset and language_presets[customizations.languagePreset] then
+      env = vim.tbl_deep_extend('force', env, language_presets[customizations.languagePreset])
+      log.debug('Applied language preset: %s', customizations.languagePreset)
+    end
+
+    -- 3. Apply legacy context-specific environment (with deprecation warning)
+    local context_env_key = context_type .. 'Environment'
+    if customizations[context_env_key] then
+      log.warn('DEPRECATED: %s is deprecated, use standard containerEnv/remoteEnv instead', context_env_key)
+      env = vim.tbl_deep_extend('force', env, customizations[context_env_key])
+      log.debug('Applied legacy %s environment overrides', context_type)
+    end
+
+    -- 4. Apply additional environment variables (legacy)
+    if customizations.additionalEnvironment then
+      log.warn('DEPRECATED: additionalEnvironment is deprecated, use standard containerEnv/remoteEnv instead')
+      env = vim.tbl_deep_extend('force', env, customizations.additionalEnvironment)
+      log.debug('Applied legacy additional environment variables')
+    end
+  end
+
+  -- 5. Apply default language preset if no environment configured
+  if vim.tbl_isempty(env) then
     env = vim.tbl_deep_extend('force', env, language_presets.default)
-  end
-
-  -- Get context-specific environment
-  local context_env_key = context_type .. 'Environment'
-  if customizations[context_env_key] then
-    env = vim.tbl_deep_extend('force', env, customizations[context_env_key])
-    log.debug('Applied %s environment overrides', context_type)
-  end
-
-  -- Apply additional environment variables
-  if customizations.additionalEnvironment then
-    env = vim.tbl_deep_extend('force', env, customizations.additionalEnvironment)
-    log.debug('Applied additional environment variables')
+    log.debug('Applied default language preset')
   end
 
   return env
@@ -74,7 +93,7 @@ end
 
 -- Build environment variable arguments for docker exec
 function M.build_env_args(config, context_type)
-  local env = get_custom_environment(config, context_type)
+  local env = get_environment(config, context_type)
   local args = {}
 
   -- Use the user specified in devcontainer.json
@@ -102,17 +121,17 @@ end
 
 -- Get environment for postCreateCommand execution
 function M.get_postcreate_environment(config)
-  return get_custom_environment(config, 'postCreate')
+  return get_environment(config, 'postCreate')
 end
 
 -- Get environment for DevcontainerExec execution
 function M.get_exec_environment(config)
-  return get_custom_environment(config, 'exec')
+  return get_environment(config, 'exec')
 end
 
 -- Get environment for LSP-related execution
 function M.get_lsp_environment(config)
-  return get_custom_environment(config, 'lsp')
+  return get_environment(config, 'lsp')
 end
 
 -- Build docker exec arguments for postCreateCommand
@@ -193,6 +212,27 @@ end
 function M.validate_environment(config)
   local errors = {}
 
+  -- Validate standard environment variables
+  local standard_env_contexts = { 'containerEnv', 'remoteEnv' }
+  for _, context in ipairs(standard_env_contexts) do
+    if config[context] then
+      for key, value in pairs(config[context]) do
+        -- Check for valid environment variable names
+        if not key:match('^[A-Za-z_][A-Za-z0-9_]*$') then
+          table.insert(errors, string.format('Invalid environment variable name in %s: %s', context, key))
+        end
+        -- Check for string values
+        if type(value) ~= 'string' then
+          table.insert(
+            errors,
+            string.format('Environment variable value must be a string in %s: %s=%s', context, key, tostring(value))
+          )
+        end
+      end
+    end
+  end
+
+  -- Validate legacy custom environment variables
   if config.customizations and config.customizations['container.nvim'] then
     local customizations = config.customizations['container.nvim']
 
@@ -208,7 +248,7 @@ function M.validate_environment(config)
       )
     end
 
-    -- Validate environment variable names
+    -- Validate legacy environment variable names
     local env_contexts = { 'postCreateEnvironment', 'execEnvironment', 'lspEnvironment', 'additionalEnvironment' }
     for _, context in ipairs(env_contexts) do
       if customizations[context] then

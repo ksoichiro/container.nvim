@@ -79,16 +79,27 @@ This approach provides:
 
 ### Environment Customization
 
-Use language presets or custom environment variables:
+Use standard devcontainer environment variables for better compatibility:
 
 ```json
 {
+  "name": "Go Project",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
+
+  // Standard container environment (used during container creation)
+  "containerEnv": {
+    "PATH": "/custom/bin:${containerEnv:PATH}"
+  },
+
+  // Standard remote environment (used during development)
+  "remoteEnv": {
+    "PATH": "/custom/bin:${remoteEnv:PATH}"
+  },
+
+  // Optional: Language presets for convenience
   "customizations": {
     "container.nvim": {
-      "languagePreset": "go",
-      "postCreateEnvironment": {
-        "PATH": "/custom/bin:$PATH"
-      }
+      "languagePreset": "go"
     }
   }
 }
@@ -99,7 +110,7 @@ Use language presets or custom environment variables:
 If you're upgrading from older container.nvim versions:
 
 1. **Port Configuration**: Legacy dynamic port syntax in `forwardPorts` will be automatically migrated to `customizations.container.nvim.dynamicPorts`
-2. **Environment Variables**: Consider migrating custom environment settings to standard `containerEnv`/`remoteEnv` where appropriate
+2. **Environment Variables**: Legacy `postCreateEnvironment`, `execEnvironment`, and `lspEnvironment` are automatically migrated to standard `containerEnv`/`remoteEnv` format
 3. **Documentation**: Check each example's README for specific migration notes
 
 ## Contributing

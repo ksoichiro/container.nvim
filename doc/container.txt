@@ -1307,29 +1307,35 @@ Custom environment variables:
     {
       "name": "Python Project",
       "image": "mcr.microsoft.com/devcontainers/python:3.11",
+      // Standard environment variables (recommended)
+      "containerEnv": {
+        "PATH": "/custom/bin:${containerEnv:PATH}",
+        "PYTHONPATH": "/workspace/src"
+      },
+      "remoteEnv": {
+        "DEBUG": "true",
+        "PYTHON_LSP_SERVER": "pylsp"
+      },
+
+      // Optional: Language presets for convenience
       "customizations": {
         "container.nvim": {
-          "languagePreset": "python",
-          "postCreateEnvironment": {
-            "PATH": "/custom/bin:$PATH",
-            "PYTHONPATH": "/workspace/src"
-          },
-          "execEnvironment": {
-            "DEBUG": "true"
-          },
-          "lspEnvironment": {
-            "PYTHON_LSP_SERVER": "pylsp"
-          }
+          "languagePreset": "python"
         }
       }
     }
 <
 
+Standard environment variables:
+  • containerEnv: Environment for container creation and postCreateCommand
+  • remoteEnv: Environment for development operations (exec, LSP)
+
+Legacy environment contexts (deprecated, automatically migrated):
+  • postCreateEnvironment → containerEnv
+  • execEnvironment → remoteEnv
+  • lspEnvironment → remoteEnv
+
 Available language presets: go, python, node, rust, default
-Environment contexts:
-  • postCreateEnvironment: For postCreateCommand execution
-  • execEnvironment: For DevcontainerExec commands
-  • lspEnvironment: For LSP server detection and startup
 
 Port Forwarding~
 

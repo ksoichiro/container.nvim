@@ -54,7 +54,7 @@ M.defaults = {
   -- Terminal settings
   terminal = {
     -- Default shell and behavior
-    default_shell = '/bin/bash',
+    default_shell = '/bin/sh', -- Use POSIX sh as fallback
     auto_insert = true, -- Automatically enter insert mode
     close_on_exit = true, -- Close buffer when process exits
     close_on_container_stop = true, -- Close all terminals when container stops

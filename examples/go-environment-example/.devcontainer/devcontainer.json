@@ -1,25 +1,15 @@
 {
+  "name": "Go Project with Custom Environment",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "remoteUser": "vscode",
+  "postCreateCommand": "go install golang.org/x/tools/gopls@latest",
+
+  // Language preset for backward compatibility
   "customizations": {
     "container.nvim": {
-      "execEnvironment": {
-        "GOPATH": "/go",
-        "PATH": "/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:$PATH"
-      },
-      "languagePreset": "go",
-      "lspEnvironment": {
-        "GOPATH": "/go",
-        "GOROOT": "/usr/local/go",
-        "PATH": "/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:$PATH"
-      },
-      "postCreateEnvironment": {
-        "GO111MODULE": "on",
-        "GOPATH": "/go",
-        "GOROOT": "/usr/local/go",
-        "PATH": "/home/vscode/.local/bin:/usr/local/go/bin:/go/bin:$PATH"
-      }
+      "languagePreset": "go"
     }
-  },
-  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
-  "name": "Go Project with Custom Environment",
-  "postCreateCommand": "go install golang.org/x/tools/gopls@latest"
+  }
 }

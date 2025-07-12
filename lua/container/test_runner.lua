@@ -292,7 +292,9 @@ function M.run_test_in_container(test_command, opts)
 
   -- Add container and test command
   table.insert(exec_args, container_id)
-  table.insert(exec_args, 'bash')
+  -- Use dynamic shell detection instead of hardcoded bash
+  local shell = docker.detect_shell and docker.detect_shell(container_id) or 'sh'
+  table.insert(exec_args, shell)
   table.insert(exec_args, '-c')
   table.insert(exec_args, test_command)
 

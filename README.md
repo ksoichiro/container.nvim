@@ -622,19 +622,41 @@ Container.nvim extends the specification with additional features in the `custom
 }
 ```
 
-#### Language-Specific Environments
+#### Environment Variables
+
+container.nvim supports standard Dev Container environment variables:
+
 ```json
 {
+  "name": "Go Project",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
+
+  // Standard container environment (used during container creation)
+  "containerEnv": {
+    "GO111MODULE": "on",
+    "GOPATH": "/go",
+    "PATH": "/usr/local/go/bin:${containerEnv:PATH}"
+  },
+
+  // Standard remote environment (used during development)
+  "remoteEnv": {
+    "GOPATH": "/go",
+    "GOPLS_FLAGS": "-debug",
+    "PATH": "/usr/local/go/bin:${remoteEnv:PATH}"
+  },
+
+  // Optional: Language presets for backward compatibility
   "customizations": {
     "container.nvim": {
-      "languagePreset": "go",
-      "execEnvironment": {
-        "GOPLS_FLAGS": "-debug"
-      }
+      "languagePreset": "go"
     }
   }
 }
 ```
+
+**Standard vs Legacy:**
+- ✅ **Standard**: Use `containerEnv` and `remoteEnv` for better VSCode compatibility
+- ⚠️ **Legacy**: Custom `postCreateEnvironment`, `execEnvironment`, `lspEnvironment` are deprecated but still supported with automatic migration
 
 ### VSCode Compatibility
 

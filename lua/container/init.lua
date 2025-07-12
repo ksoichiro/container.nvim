@@ -360,8 +360,48 @@ function M._start_stopped_container(container_id)
         M._start_final_step(container_id)
       else
         log.error('Failed to start stopped container: %s', error_msg or 'unknown')
-        notify.critical('Failed to start existing container: ' .. (error_msg or 'unknown'))
-        notify.clear_progress('start')
+
+        -- Check if it's a bash compatibility issue
+        if error_msg and error_msg:match('bash.*executable file not found') then
+          log.info('Detected bash compatibility issue, recreating container with POSIX sh')
+          notify.progress('start', 'Step 3: Fixing shell compatibility issue...')
+
+          -- Force remove the incompatible container
+          local removed = docker.force_remove_container(container_id)
+          if removed then
+            notify.progress('start', 'Step 3: ✓ Removed incompatible container, creating new one...')
+            -- Re-parse configuration and create new container
+            local current_path = vim.fn.getcwd()
+            local parser = require('container.parser')
+            local config, parse_error = parser.find_and_parse(current_path)
+            if config then
+              log.info('Recreating container with POSIX sh compatibility')
+              -- Use the standard container creation flow
+              M._create_container_full_async(config, function(create_result, create_err)
+                vim.schedule(function()
+                  if not create_result then
+                    log.error('Failed to recreate container: %s', create_err)
+                    notify.critical('Failed to recreate container: ' .. (create_err or 'unknown'))
+                    notify.clear_progress('start')
+                  else
+                    log.info('Successfully recreated container: %s', create_result)
+                    notify.progress('start', 'Step 3: ✓ Recreated container with POSIX sh')
+                    M._start_final_step(create_result)
+                  end
+                end)
+              end)
+            else
+              notify.critical('Failed to re-parse configuration: ' .. (parse_error or 'unknown'))
+              notify.clear_progress('start')
+            end
+          else
+            notify.critical('Failed to remove incompatible container')
+            notify.clear_progress('start')
+          end
+        else
+          notify.critical('Failed to start existing container: ' .. (error_msg or 'unknown'))
+          notify.clear_progress('start')
+        end
       end
     end)
   end)
@@ -2082,7 +2122,9 @@ function M._run_post_create_command(container_id, callback)
 
   -- Add container and command
   table.insert(exec_args, container_id)
-  table.insert(exec_args, 'bash')
+  -- Use dynamic shell detection instead of hardcoded bash
+  local shell = docker.detect_shell and docker.detect_shell(container_id) or 'sh'
+  table.insert(exec_args, shell)
   table.insert(exec_args, '-c')
   table.insert(exec_args, command)
 
