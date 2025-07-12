@@ -8,24 +8,45 @@ package.path = './test/e2e/helpers/?.lua;./test/helpers/?.lua;./lua/?.lua;./lua/
 local nvim_setup = require('nvim_setup')
 nvim_setup.setup_nvim_environment()
 
+-- Utility function for timestamped output
+local function print_with_timestamp(msg)
+  print(os.date('[%H:%M:%S]') .. ' ' .. msg)
+end
+
 -- E2E specific utilities
-local function run_command(cmd)
+local function run_command(cmd, show_progress)
+  if show_progress then
+    print_with_timestamp('Running: ' .. cmd)
+  end
   local handle = io.popen(cmd .. ' 2>&1')
   local result = handle:read('*a')
   local success = handle:close()
+  if show_progress then
+    print_with_timestamp(success and 'Command completed' or 'Command failed')
+  end
   return success, result
 end
 
-local function wait_for_condition(condition_fn, timeout_ms, interval_ms)
+local function wait_for_condition(condition_fn, timeout_ms, interval_ms, message)
   timeout_ms = timeout_ms or 30000 -- 30 seconds default
   interval_ms = interval_ms or 1000 -- 1 second default
+  message = message or 'Waiting for condition'
 
   local start_time = os.time() * 1000 -- Convert to milliseconds
-  while (os.time() * 1000 - start_time) < timeout_ms do
+  local elapsed = 0
+
+  while elapsed < timeout_ms do
     if condition_fn() then
       return true
     end
+
+    elapsed = os.time() * 1000 - start_time
+    if elapsed % 5000 < interval_ms then -- Print every 5 seconds
+      print(string.format('  %s... (%.1fs/%.1fs)', message, elapsed / 1000, timeout_ms / 1000))
+    end
+
     os.execute('sleep ' .. (interval_ms / 1000))
+    elapsed = os.time() * 1000 - start_time
   end
   return false
 end
@@ -38,7 +59,7 @@ local tests = {}
 
 -- Test 1: Complete workflow with existing examples
 function tests.test_existing_example_workflow()
-  print('=== E2E Test 1: Existing Example Workflow ===')
+  print_with_timestamp('=== E2E Test 1: Existing Example Workflow ===')
 
   -- Try with actual example projects that should have valid devcontainer setups
   local example_projects = {
@@ -81,7 +102,7 @@ function tests.test_existing_example_workflow()
   print('Step 1.1: Testing plugin initialization')
   local container = require('container')
 
-  local setup_success = pcall(function()
+  local setup_success, setup_error = pcall(function()
     container.setup({
       log_level = 'debug',
       docker = { timeout = 60000 }, -- Longer timeout for E2E
@@ -90,24 +111,27 @@ function tests.test_existing_example_workflow()
 
   if not setup_success then
     print('✗ Plugin setup failed')
+    print('Setup error:', setup_error)
     return false
   end
   print('✓ Plugin initialized successfully')
 
   -- Test 1.2: DevContainer discovery and opening
   print('Step 1.2: Testing devcontainer discovery')
-  local open_success = pcall(function()
+  local open_success, open_error = pcall(function()
     return container.open(worked_project)
   end)
 
   if not open_success then
     print('✗ DevContainer open failed')
+    print('Open error:', open_error)
     return false
   end
   print('✓ DevContainer configuration loaded')
 
   -- Test 1.3: Container building/pulling
   print('Step 1.3: Testing image preparation')
+  print('  This may take a while for first-time image pulls...')
   local build_success = pcall(function()
     return container.build()
   end)
@@ -120,6 +144,7 @@ function tests.test_existing_example_workflow()
 
   -- Test 1.4: Container startup
   print('Step 1.4: Testing container startup')
+  print('  Starting container...')
   local start_success = pcall(function()
     return container.start()
   end)
@@ -135,7 +160,7 @@ function tests.test_existing_example_workflow()
   local container_found = wait_for_condition(function()
     local success, output = run_command('docker ps -a --filter name=' .. container_name_pattern .. ' -q')
     return success and output:gsub('%s+', '') ~= ''
-  end, 10000)
+  end, 10000, 1000, 'Checking for container creation')
 
   if container_found then
     print('✓ Container was created')
@@ -189,7 +214,7 @@ end
 
 -- Test 2: Python workflow
 function tests.test_python_full_workflow()
-  print('\n=== E2E Test 2: Python Full Workflow ===')
+  print_with_timestamp('\n=== E2E Test 2: Python Full Workflow ===')
 
   local project_dir = 'test/e2e/sample-projects/simple-python'
   local container_name_pattern = 'simple-python-e2e-test'
@@ -208,41 +233,106 @@ function tests.test_python_full_workflow()
   end)
 
   -- Test setup with Python project
-  local setup_success = pcall(function()
+  local setup_success, setup_error = pcall(function()
     container.setup({ log_level = 'debug' })
     return container.open(project_dir)
   end)
 
   if not setup_success then
     print('✗ Python project setup failed')
+    print('Setup error:', setup_error)
     return false
   end
   print('✓ Python project setup successful')
 
-  -- Quick container lifecycle test
-  local lifecycle_success = pcall(function()
-    container.build()
-    container.start()
-    return true
+  -- Quick container lifecycle test with detailed logging
+  print('Step 2.1: Testing container build')
+  local build_success, build_err = pcall(function()
+    return container.build()
   end)
 
-  if not lifecycle_success then
-    print('✗ Python container lifecycle failed')
+  if not build_success then
+    print('✗ Python container build failed')
+    print('Build error:', build_err)
     return false
   end
-  print('✓ Python container lifecycle successful')
+  print('✓ Python container build successful')
 
-  -- Wait briefly for container
-  local container_ready = wait_for_condition(function()
-    local success, output =
-      run_command('docker ps --filter name=' .. container_name_pattern .. ' --filter status=running -q')
-    return success and output:gsub('%s+', '') ~= ''
-  end, 30000)
+  print('Step 2.2: Testing container start')
+  local start_success, start_err = pcall(function()
+    return container.start()
+  end)
 
-  if container_ready then
-    print('✓ Python container is running')
+  if not start_success then
+    print('✗ Python container start failed')
+    print('Start error:', start_err)
+    return false
+  end
+  print('✓ Python container start initiated')
+
+  -- Check plugin state after start
+  print('Step 2.2.1: Checking plugin state after start')
+  local state_success, state = pcall(function()
+    return container.get_state()
+  end)
+
+  if state_success and state then
+    print('Plugin state:')
+    print('  Container ID:', state.container_id or 'none')
+    print('  Status:', state.status or 'unknown')
+    if state.config then
+      print('  Config name:', state.config.name or 'unknown')
+      print('  Config image:', state.config.image or 'unknown')
+    end
   else
-    print('⚠ Python container not detected (may be expected in fast E2E)')
+    print('⚠ Could not retrieve plugin state')
+  end
+
+  -- Wait briefly for container with detailed diagnostics
+  print('Step 2.3: Checking container status')
+
+  -- First, check if any containers were created
+  local all_success, all_output = run_command('docker ps -a --filter name=' .. container_name_pattern .. ' -q')
+  if all_success and all_output:gsub('%s+', '') ~= '' then
+    print('✓ Container(s) found with pattern:', container_name_pattern)
+
+    -- Get detailed container info
+    local info_success, info_output = run_command(
+      'docker ps -a --filter name='
+        .. container_name_pattern
+        .. ' --format "table {{.Names}}\\t{{.Status}}\\t{{.Image}}"'
+    )
+    if info_success and info_output then
+      print('Container details:')
+      print(info_output)
+    end
+
+    -- Check if container is running
+    local running_success, running_output =
+      run_command('docker ps --filter name=' .. container_name_pattern .. ' --filter status=running -q')
+    if running_success and running_output:gsub('%s+', '') ~= '' then
+      print('✓ Python container is running')
+    else
+      print('⚠ Python container exists but is not running')
+
+      -- Get container logs for troubleshooting
+      local logs_success, logs_output =
+        run_command('docker logs ' .. container_name_pattern .. '-devcontainer 2>&1 | tail -20')
+      if logs_success and logs_output then
+        print('Recent container logs:')
+        print(logs_output)
+      end
+    end
+  else
+    print('⚠ No containers found with pattern:', container_name_pattern)
+
+    -- Check if any devcontainer-related containers exist
+    local dev_success, dev_output =
+      run_command('docker ps -a --filter label=devcontainer --format "table {{.Names}}\\t{{.Status}}\\t{{.Image}}"')
+    if dev_success and dev_output then
+      print('All devcontainer containers:')
+      print(dev_output)
+    end
   end
 
   -- Cleanup
@@ -254,7 +344,7 @@ end
 
 -- Test 3: Error scenarios
 function tests.test_error_scenarios()
-  print('\n=== E2E Test 3: Error Scenarios ===')
+  print_with_timestamp('\n=== E2E Test 3: Error Scenarios ===')
 
   local container = require('container')
 
@@ -300,7 +390,7 @@ end
 
 -- Test 4: Docker environment validation
 function tests.test_docker_environment()
-  print('\n=== E2E Test 4: Docker Environment Validation ===')
+  print_with_timestamp('\n=== E2E Test 4: Docker Environment Validation ===')
 
   -- Test Docker availability
   local docker_available, docker_output = run_command('docker --version')
@@ -320,7 +410,8 @@ function tests.test_docker_environment()
   print('✓ Docker daemon accessible')
 
   -- Test image pulling capability
-  local pull_success, pull_output = run_command('docker pull alpine:latest')
+  print('  Pulling test image (alpine:latest)...')
+  local pull_success, pull_output = run_command('docker pull alpine:latest', true)
   if not pull_success then
     print('⚠ Docker image pull failed (network issue?)')
     print('Error:', pull_output)
@@ -333,8 +424,8 @@ end
 
 -- Main E2E test runner
 local function run_e2e_tests()
-  print('=== container.nvim End-to-End Tests ===')
-  print('Testing complete workflows with real Docker containers')
+  print_with_timestamp('=== container.nvim End-to-End Tests ===')
+  print_with_timestamp('Testing complete workflows with real Docker containers')
   print('')
 
   -- Check prerequisites
@@ -356,12 +447,16 @@ local function run_e2e_tests()
 
   for i, test_func in ipairs(test_functions) do
     print('')
+    print_with_timestamp('Starting E2E Test ' .. i .. '...')
+    local start_time = os.time()
     local success, result = pcall(test_func)
+    local elapsed = os.time() - start_time
+
     if success and result ~= false then
       passed = passed + 1
-      print('✅ E2E Test ' .. i .. ' PASSED')
+      print_with_timestamp(string.format('✅ E2E Test %d PASSED (%.1fs)', i, elapsed))
     else
-      print('❌ E2E Test ' .. i .. ' FAILED')
+      print_with_timestamp(string.format('❌ E2E Test %d FAILED (%.1fs)', i, elapsed))
       if not success then
         print('Error:', result)
       end

@@ -3,24 +3,63 @@
 -- E2E Test Runner for container.nvim
 -- Manages execution of E2E tests through nvim --headless
 
-local function run_command(cmd)
+local function run_command(cmd, show_output)
   print('Running: ' .. cmd)
-  local handle = io.popen(cmd .. ' 2>&1')
-  local result = handle:read('*a')
-  local success = handle:close()
-  return success
+
+  if show_output then
+    -- Use streaming output for real-time display
+    local handle = io.popen(cmd .. ' 2>&1', 'r')
+    local result = {}
+
+    print('--- Test Output (Real-time) ---')
+    while true do
+      local line = handle:read('*l')
+      if not line then
+        break
+      end
+      print(line)
+      io.stdout:flush() -- Force immediate output
+      table.insert(result, line)
+    end
+    print('--- End Test Output ---')
+
+    local success = handle:close()
+    return success, table.concat(result, '\n')
+  else
+    -- Original non-streaming approach for silent commands
+    local handle = io.popen(cmd .. ' 2>&1')
+    local result = handle:read('*a')
+    local success = handle:close()
+    return success, result
+  end
 end
 
 local function run_nvim_test(test_file)
-  local cmd = string.format('nvim --headless -u NONE -c "lua dofile(\'test/e2e/%s\')" -c "qa"', test_file)
-  return run_command(cmd)
+  -- Use stdbuf to disable output buffering for real-time display
+  local base_cmd =
+    string.format('nvim --headless -u test/e2e/minimal_init.lua -c "lua dofile(\'test/e2e/%s\')" -c "qa"', test_file)
+
+  -- Try to use stdbuf if available, otherwise fall back to normal command
+  local handle = io.popen('which stdbuf >/dev/null 2>&1')
+  local has_stdbuf = handle:close()
+  handle = nil
+
+  local cmd
+  if has_stdbuf then
+    cmd = 'stdbuf -o0 -e0 ' .. base_cmd
+  else
+    cmd = base_cmd
+  end
+
+  return run_command(cmd, true)
 end
 
 local function check_prerequisites()
   print('=== Checking Prerequisites ===')
 
   -- Check if nvim is available (try both direct command and which)
-  if not run_command('nvim --version >/dev/null 2>&1') then
+  local nvim_success = run_command('nvim --version >/dev/null 2>&1')
+  if not nvim_success then
     print('❌ Error: Neovim not found. E2E tests require Neovim.')
     print('Please ensure nvim is available in your PATH.')
     return false
@@ -28,14 +67,16 @@ local function check_prerequisites()
   print('✓ Neovim available')
 
   -- Check if docker is available
-  if not run_command('docker --version >/dev/null 2>&1') then
+  local docker_success = run_command('docker --version >/dev/null 2>&1')
+  if not docker_success then
     print('❌ Error: Docker not found. E2E tests require Docker.')
     return false
   end
   print('✓ Docker CLI available')
 
   -- Check if docker daemon is running
-  if not run_command('docker ps >/dev/null 2>&1') then
+  local daemon_success = run_command('docker ps >/dev/null 2>&1')
+  if not daemon_success then
     print('❌ Error: Docker daemon not running. Please start Docker.')
     return false
   end
@@ -100,12 +141,16 @@ local function main()
     file:close()
 
     -- Run the test
+    local start_time = os.time()
+    print('⏳ Starting test execution...')
     local success = run_nvim_test(test_case.file)
+    local elapsed = os.time() - start_time
+
     if success then
       passed = passed + 1
-      print('✅ ' .. test_case.name .. ' PASSED')
+      print(string.format('✅ %s PASSED (%.1fs)', test_case.name, elapsed))
     else
-      print('❌ ' .. test_case.name .. ' FAILED')
+      print(string.format('❌ %s FAILED (%.1fs)', test_case.name, elapsed))
       table.insert(failed_tests, test_case.name)
     end
     print('')
