@@ -109,6 +109,14 @@ M.mock_vim = {
       }
       return M.mock_vim.tbl_contains(common_dirs, path) and 1 or 0
     end,
+    sha256 = function(str)
+      -- Simple hash function for testing - creates different hashes for different strings
+      local hash = 0
+      for i = 1, #str do
+        hash = (hash * 31 + string.byte(str, i)) % 0x100000000
+      end
+      return string.format('%08x', hash)
+    end,
   },
   v = { shell_error = 0 },
   loop = {
