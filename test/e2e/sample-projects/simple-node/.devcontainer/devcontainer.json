@@ -1,0 +1,14 @@
+{
+  "name": "Simple Node.js E2E Test",
+  "image": "node:18-alpine",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [3000],
+  "postCreateCommand": "npm --version && node --version",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "sh"
+      }
+    }
+  }
+}

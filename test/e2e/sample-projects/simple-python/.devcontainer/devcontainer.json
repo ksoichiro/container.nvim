@@ -1,0 +1,14 @@
+{
+  "name": "Simple Python E2E Test",
+  "image": "python:3.11-alpine",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [5000],
+  "postCreateCommand": "python --version && pip --version",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python"
+      }
+    }
+  }
+}

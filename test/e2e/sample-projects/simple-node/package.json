@@ -1,0 +1,12 @@
+{
+  "dependencies": {},
+  "description": "Simple Node.js project for E2E testing",
+  "devDependencies": {},
+  "main": "app.js",
+  "name": "simple-node-e2e-test",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Test passed\""
+  },
+  "version": "1.0.0"
+}

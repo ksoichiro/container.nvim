@@ -277,17 +277,17 @@ function M.start()
   end
 
   -- Check Docker availability (async)
-  notify.progress('start', 'Step 1: Checking Docker...')
+  notify.progress('start', 1, 6, 'Step 1: Checking Docker...')
   docker.check_docker_availability_async(function(available, err)
     vim.schedule(function()
       if not available then
         notify.critical('Docker not available: ' .. (err or 'unknown'))
         return
       end
-      notify.progress('start', 'Step 1: ✓ Docker is available')
+      notify.progress('start', 1, 6, 'Step 1: ✓ Docker is available')
 
       -- Check for existing containers (async)
-      notify.progress('start', 'Step 2: Checking for existing containers...')
+      notify.progress('start', 2, 6, 'Step 2: Checking for existing containers...')
 
       -- Generate the expected container name using the same logic as creation
       local expected_container_name = docker.generate_container_name(state.current_config)
@@ -311,16 +311,16 @@ function M.start()
             -- Check if container is already running
             if container_status:match('^Up') then
               -- Container is already running, proceed directly to final setup
-              notify.progress('start', 'Step 3: Container already running, setting up features...')
+              notify.progress('start', 3, 6, 'Step 3: Container already running, setting up features...')
               M._start_final_step(container_id)
             else
               -- Container exists but is not running, start it first
-              notify.progress('start', 'Step 3: Starting existing container...')
+              notify.progress('start', 3, 6, 'Step 3: Starting existing container...')
               M._start_stopped_container(container_id)
             end
           else
             -- Create new container (async)
-            notify.progress('start', 'Step 3: Creating new container...')
+            notify.progress('start', 3, 6, 'Step 3: Creating new container...')
             M._create_container_full_async(state.current_config, function(create_result, create_err)
               vim.schedule(function()
                 if not create_result then
@@ -329,7 +329,7 @@ function M.start()
                   return
                 end
                 container_id = create_result
-                notify.progress('start', 'Step 3: ✓ Created container: ' .. container_id:sub(1, 12))
+                notify.progress('start', 3, 6, 'Step 3: ✓ Created container: ' .. container_id:sub(1, 12))
                 state.current_container = container_id
                 clear_status_cache()
 
@@ -354,7 +354,7 @@ function M._start_stopped_container(container_id)
   docker.start_container_async(container_id, function(success, error_msg)
     vim.schedule(function()
       if success then
-        notify.progress('start', 'Step 3: ✓ Container started successfully')
+        notify.progress('start', 3, 6, 'Step 3: ✓ Container started successfully')
         log.info('Stopped container started successfully: %s', container_id)
         -- Proceed to final setup
         M._start_final_step(container_id)
@@ -364,12 +364,12 @@ function M._start_stopped_container(container_id)
         -- Check if it's a bash compatibility issue
         if error_msg and error_msg:match('bash.*executable file not found') then
           log.info('Detected bash compatibility issue, recreating container with POSIX sh')
-          notify.progress('start', 'Step 3: Fixing shell compatibility issue...')
+          notify.progress('start', 3, 6, 'Step 3: Fixing shell compatibility issue...')
 
           -- Force remove the incompatible container
           local removed = docker.force_remove_container(container_id)
           if removed then
-            notify.progress('start', 'Step 3: ✓ Removed incompatible container, creating new one...')
+            notify.progress('start', 3, 6, 'Step 3: ✓ Removed incompatible container, creating new one...')
             -- Re-parse configuration and create new container
             local current_path = vim.fn.getcwd()
             local parser = require('container.parser')
@@ -385,7 +385,7 @@ function M._start_stopped_container(container_id)
                     notify.clear_progress('start')
                   else
                     log.info('Successfully recreated container: %s', create_result)
-                    notify.progress('start', 'Step 3: ✓ Recreated container with POSIX sh')
+                    notify.progress('start', 3, 6, 'Step 3: ✓ Recreated container with POSIX sh')
                     M._start_final_step(create_result)
                   end
                 end)
@@ -409,7 +409,7 @@ end
 
 -- Final step: Container feature setup (assumes container is already running)
 function M._start_final_step(container_id)
-  notify.progress('start', 'Step 4: Setting up container features...')
+  notify.progress('start', 4, 6, 'Step 4: Setting up container features...')
 
   -- Check if container is actually running before proceeding
   docker = docker or require('container.docker.init')
@@ -417,7 +417,7 @@ function M._start_final_step(container_id)
 
   if container_status ~= 'running' then
     -- Container is not running, try to start it first
-    notify.progress('start', 'Step 4: Container not running, starting it...')
+    notify.progress('start', 4, 6, 'Step 4: Container not running, starting it...')
     docker.start_container_async(container_id, function(success, error_msg)
       vim.schedule(function()
         if success then
@@ -476,7 +476,7 @@ function M._finalize_container_setup(container_id)
 
   -- Execute post-start command (existing)
   if state.current_config.post_start_command then
-    notify.progress('start', 'Step 6: Running post-start command...')
+    notify.progress('start', 6, 6, 'Step 6: Running post-start command...')
     M.exec(state.current_config.post_start_command)
   end
 
@@ -489,11 +489,11 @@ function M._create_container_full_async(config, callback)
   local docker = require('container.docker.init')
 
   -- Step 1: Check image existence
-  notify.progress('start', 'Step 3a: Checking if image exists locally...')
+  notify.progress('start', 3, 6, 'Step 3a: Checking if image exists locally...')
   docker.check_image_exists_async(config.image, function(exists, image_id)
     vim.schedule(function()
       if exists then
-        notify.progress('start', 'Step 3a: ✓ Image found locally: ' .. config.image)
+        notify.progress('start', 3, 6, 'Step 3a: ✓ Image found locally: ' .. config.image)
         -- Image exists, create container directly
         M._create_container_direct(config, callback)
       else
@@ -604,19 +604,19 @@ end
 function M._create_container_direct(config, callback)
   local docker = require('container.docker.init')
 
-  notify.progress('start', 'Step 3c: Creating container...')
+  notify.progress('start', 3, 6, 'Step 3c: Creating container...')
 
   -- First attempt to create the container
   docker.create_container_async(config, function(container_id, error_msg)
     if container_id then
-      notify.progress('start', 'Step 3c: ✓ Container created successfully: ' .. container_id:sub(1, 12))
+      notify.progress('start', 3, 6, 'Step 3c: ✓ Container created successfully: ' .. container_id:sub(1, 12))
       log.info('Container created successfully: %s', container_id)
       callback(container_id, error_msg)
     else
       -- Check if error is due to name conflict
       if error_msg and error_msg:match('already in use') then
         log.warn('Container name conflict detected, attempting to handle existing container')
-        notify.progress('start', 'Step 3c: Name conflict detected, checking existing container...')
+        notify.progress('start', 3, 6, 'Step 3c: Name conflict detected, checking existing container...')
 
         -- Try to find and reuse the existing container
         local expected_name = docker.generate_container_name(config)
@@ -629,7 +629,12 @@ function M._create_container_direct(config, callback)
                 existing_container.id,
                 existing_container.status
               )
-              notify.progress('start', 'Step 3c: ✓ Using existing container: ' .. existing_container.id:sub(1, 12))
+              notify.progress(
+                'start',
+                3,
+                6,
+                'Step 3c: ✓ Using existing container: ' .. existing_container.id:sub(1, 12)
+              )
 
               -- Return the existing container instead of creating a new one
               callback(existing_container.id, nil)

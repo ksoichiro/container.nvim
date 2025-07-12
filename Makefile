@@ -16,7 +16,9 @@ help:
 	@echo "  test-unit    Run unit tests only"
 	@echo "  test-stable  Run stable integration tests only"
 	@echo "  test-integration Run all integration tests (may have issues)"
-	@echo "  test-e2e     Run end-to-end tests only"
+	@echo "  test-e2e     Run end-to-end tests (requires Docker)"
+	@echo "  test-e2e-quick Run quick E2E tests for development"
+	@echo "  test-real-containers Run real container integration tests"
 	@echo "  test-quick   Run essential tests for development"
 	@echo "  test-coverage Run tests with coverage measurement"
 	@echo "  install-dev  Install development dependencies"
@@ -203,17 +205,25 @@ test-e2e:
 	fi
 	@if ! command -v docker >/dev/null 2>&1; then \
 		echo "Error: Docker not found. E2E tests require Docker."; \
+		echo "E2E tests need Docker to run actual containers."; \
 		exit 1; \
 	fi
+	@echo "Checking Docker daemon..."
+	@if ! docker ps >/dev/null 2>&1; then \
+		echo "Error: Docker daemon not running. Please start Docker."; \
+		exit 1; \
+	fi
+	@echo "Docker is available and running."
+	@echo ""
 	@failed=0; \
 	for test_file in test/e2e/*.lua; do \
 		if [ -f "$$test_file" ]; then \
 			test_name=$$(basename "$$test_file"); \
 			echo "=== Running E2E test: $$test_name ==="; \
 			if lua "$$test_file"; then \
-				echo "✓ $$test_name PASSED"; \
+				echo "✅ $$test_name PASSED"; \
 			else \
-				echo "✗ $$test_name FAILED"; \
+				echo "❌ $$test_name FAILED"; \
 				failed=$$((failed + 1)); \
 			fi; \
 			echo ""; \
@@ -225,12 +235,47 @@ test-e2e:
 		exit 1; \
 	else \
 		echo "=== E2E Test Summary ==="; \
-		echo "All E2E tests passed!"; \
+		echo "🎉 All E2E tests passed!"; \
+	fi
+
+# Run quick E2E tests (faster, essential checks only)
+test-e2e-quick:
+	@echo "Running quick E2E tests..."
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "Warning: Docker not found. Skipping Docker-dependent checks."; \
+	fi
+	@if [ -f "test/e2e/test_quick_e2e.lua" ]; then \
+		lua test/e2e/test_quick_e2e.lua; \
+	else \
+		echo "Quick E2E test not found."; \
+		exit 1; \
 	fi
 
 # Quick test for development (essential tests only)
 test-quick: test-unit
 	@echo "Quick development tests completed!"
+
+# Run real container creation tests (WARNING: creates actual Docker containers)
+test-real-containers:
+	@echo "Running real container creation tests..."
+	@echo "WARNING: This will create and destroy real Docker containers"
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "Error: Docker not found. Real container tests require Docker."; \
+		exit 1; \
+	fi
+	@if ! docker ps >/dev/null 2>&1; then \
+		echo "Error: Docker daemon not running. Please start Docker."; \
+		exit 1; \
+	fi
+	@echo "Docker is available and running."
+	@echo ""
+	@if [ -f "test/integration/test_real_container_creation.lua" ]; then \
+		lua test/integration/test_real_container_creation.lua; \
+	else \
+		echo "Real container test not found."; \
+		exit 1; \
+	fi
+
 
 # Run stable integration tests (working tests only)
 test-stable:
