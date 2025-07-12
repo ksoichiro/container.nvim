@@ -19,7 +19,7 @@ This is a Neovim plugin that can be loaded using Lazy.nvim or Packer. For develo
 ### Testing Changes
 - When testing in an actual nvim environment is necessary, utilize headless mode as much as possible to eliminate manual user operations. This approach is more reliable for verifying what needs to be checked and is also more efficient.
 - When user has to test manually:
-  1. Reload the plugin: `:lua package.loaded.devcontainer = nil; require('container').setup()`
+  1. Reload the plugin: `:lua package.loaded.container = nil; require('container').setup()`
   2. Test commands: `:ContainerOpen`, `:ContainerBuild`, `:ContainerStart`
   3. Check debug info: `:ContainerDebug`
   4. View logs: `:ContainerLogs`
@@ -132,16 +132,26 @@ make help-tags  # Generate help tags
 The plugin follows a modular architecture with clear separation of concerns:
 
 ```
-lua/devcontainer/
+lua/container/
 ├── init.lua          # Main entry point, command registration, public API
 ├── config.lua        # Configuration management and defaults
 ├── parser.lua        # devcontainer.json parsing logic
 ├── docker/
 │   └── init.lua      # Docker/Podman runtime interaction layer
+├── lsp/
+│   ├── init.lua      # LSP integration and management
+│   ├── commands.lua  # LSP command implementations
+│   └── simple_transform.lua  # Path transformation utilities
+├── terminal/
+│   ├── init.lua      # Terminal session management
+│   └── session.lua   # Session state handling
+├── ui/
+│   └── picker.lua    # Picker integrations (telescope, fzf-lua)
 └── utils/
     ├── async.lua     # Asynchronous operation utilities
     ├── fs.lua        # File system operations
-    └── log.lua       # Logging system
+    ├── log.lua       # Logging system
+    └── notify.lua    # Notification utilities
 ```
 
 ### Key Design Patterns
@@ -154,8 +164,8 @@ lua/devcontainer/
 
 ### Command Flow
 1. User runs command (e.g., `:ContainerOpen`)
-2. `plugin/devcontainer.lua` defines the command
-3. Command calls into `lua/devcontainer/init.lua` public API
+2. `plugin/container.lua` defines the command
+3. Command calls into `lua/container/init.lua` public API
 4. Main module orchestrates:
    - Parse devcontainer.json via `parser.lua`
    - Execute Docker operations via `docker/init.lua`
