@@ -1,15 +1,12 @@
-#!/usr/bin/env lua
-
--- Essential E2E Tests for container.nvim
+-- Essential E2E Tests for container.nvim (nvim --headless)
 -- Focuses on core functionality that can be reliably tested
 -- without requiring specific project structures
 
--- Setup test environment
-package.path = './test/helpers/?.lua;./lua/?.lua;./lua/?/init.lua;' .. package.path
+-- Setup test environment for nvim --headless
+package.path = './test/e2e/helpers/?.lua;./test/helpers/?.lua;./lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local helpers = require('init')
-helpers.setup_vim_mock()
-helpers.setup_lua_path()
+local nvim_setup = require('nvim_setup')
+nvim_setup.setup_nvim_environment()
 
 local function run_command(cmd)
   local handle = io.popen(cmd .. ' 2>&1')

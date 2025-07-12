@@ -198,41 +198,12 @@ test-e2e:
 		echo "No E2E tests found."; \
 		exit 0; \
 	fi
-	@if ! command -v docker >/dev/null 2>&1; then \
-		echo "Error: Docker not found. E2E tests require Docker."; \
+	@if [ ! -f "test/e2e/run_test.lua" ]; then \
+		echo "Error: E2E test runner not found (test/e2e/run_test.lua)."; \
 		exit 1; \
 	fi
-	@if ! docker ps >/dev/null 2>&1; then \
-		echo "Error: Docker daemon not running. Please start Docker."; \
-		exit 1; \
-	fi
-	@if ! command -v nvim >/dev/null 2>&1; then \
-		echo "Error: Neovim not found. E2E tests require Neovim."; \
-		exit 1; \
-	fi
-	@echo "Docker and Neovim are available."
-	@failed=0; \
-	for test_file in test/e2e/*.lua; do \
-		if [ -f "$$test_file" ]; then \
-			test_name=$$(basename "$$test_file"); \
-			echo "=== Running E2E test: $$test_name ==="; \
-			if lua "$$test_file"; then \
-				echo "✅ $$test_name PASSED"; \
-			else \
-				echo "❌ $$test_name FAILED"; \
-				failed=$$((failed + 1)); \
-			fi; \
-			echo ""; \
-		fi; \
-	done; \
-	if [ $$failed -gt 0 ]; then \
-		echo "=== E2E Test Summary ==="; \
-		echo "$$failed E2E test(s) failed"; \
-		exit 1; \
-	else \
-		echo "=== E2E Test Summary ==="; \
-		echo "All E2E tests passed!"; \
-	fi
+	@echo "Starting E2E test runner..."
+	lua test/e2e/run_test.lua
 
 # Quick test for development (essential tests only)
 test-quick: test-unit test-integration

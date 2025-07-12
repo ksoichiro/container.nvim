@@ -1,15 +1,12 @@
-#!/usr/bin/env lua
-
--- End-to-End Tests for container.nvim
+-- End-to-End Tests for container.nvim (nvim --headless)
 -- Tests complete workflows with real Docker containers
 -- This provides the highest confidence in actual functionality
 
--- Setup test environment
-package.path = './test/helpers/?.lua;./lua/?.lua;./lua/?/init.lua;' .. package.path
+-- Setup test environment for nvim --headless
+package.path = './test/e2e/helpers/?.lua;./test/helpers/?.lua;./lua/?.lua;./lua/?/init.lua;' .. package.path
 
-local helpers = require('init')
-helpers.setup_vim_mock()
-helpers.setup_lua_path()
+local nvim_setup = require('nvim_setup')
+nvim_setup.setup_nvim_environment()
 
 -- E2E specific utilities
 local function run_command(cmd)

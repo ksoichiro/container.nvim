@@ -1,8 +1,12 @@
-#!/usr/bin/env lua
-
--- Container Lifecycle E2E Test
+-- Container Lifecycle E2E Test (nvim --headless)
 -- Focused test for container start/stop functionality
 -- This is a streamlined test for daily development workflow
+
+-- Setup test environment for nvim --headless
+package.path = './test/e2e/helpers/?.lua;./test/helpers/?.lua;./lua/?.lua;./lua/?/init.lua;' .. package.path
+
+local nvim_setup = require('nvim_setup')
+nvim_setup.setup_nvim_environment()
 
 local function run_cmd(cmd, timeout)
   timeout = timeout or 15
