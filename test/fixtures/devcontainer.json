@@ -1,0 +1,49 @@
+{
+  "name": "Test Development Container",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true,
+      "username": "vscode",
+      "uid": "1000",
+      "gid": "1000"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "enableNonRootDocker": "true",
+      "moby": "true"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.gopath": "/go"
+      },
+      "extensions": [
+        "golang.Go",
+        "ms-vscode.vscode-json"
+      ]
+    }
+  },
+  "forwardPorts": [3000, 8080],
+  "portsAttributes": {
+    "3000": {
+      "label": "Application",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Web Server",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "go version && echo 'Development environment ready!'",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind"
+  ]
+}

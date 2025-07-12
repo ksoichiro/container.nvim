@@ -1,0 +1,7 @@
+{
+  "features": "this should be an object",
+  "forwardPorts": "this should be an array",
+  "image": "",
+  "invalidField": "this should cause validation errors",
+  "name": "Invalid Configuration"
+}

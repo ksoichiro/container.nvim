@@ -1,0 +1,28 @@
+{
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylint"
+      ],
+      "settings": {
+        "python.formatting.provider": "black",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true
+      }
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "username": "vscode"
+    }
+  },
+  "forwardPorts": [
+    5000
+  ],
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "name": "Python Development Container",
+  "postCreateCommand": "pip install --user pylsp black pylint",
+  "remoteUser": "vscode"
+}

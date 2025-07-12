@@ -12,7 +12,12 @@ help:
 	@echo "  lint-fix     Run luacheck and attempt to fix some issues"
 	@echo "  format       Format Lua code with stylua"
 	@echo "  format-check Check if Lua code is properly formatted"
-	@echo "  test         Run test suite"
+	@echo "  test         Run all tests (unit + integration)"
+	@echo "  test-unit    Run unit tests only"
+	@echo "  test-integration Run integration tests only"
+	@echo "  test-e2e     Run end-to-end tests only"
+	@echo "  test-quick   Run essential tests for development"
+	@echo "  test-coverage Run tests with coverage measurement"
 	@echo "  install-dev  Install development dependencies"
 	@echo "  install-hooks Install pre-commit hooks"
 	@echo "  help-tags    Generate Neovim help tags"
@@ -118,31 +123,135 @@ format-check:
 	fi
 	stylua --check lua/ plugin/ test/
 
-# Run tests
-test:
-	@echo "Running test suite..."
-	@echo "Found test files:"
-	@ls test/test_*.lua | sed 's|test/||'
-	@echo ""
+# Run all tests (backwards compatibility)
+test: test-unit test-integration
+	@echo "All test suites completed!"
+
+# Run unit tests
+test-unit:
+	@echo "Running unit tests..."
+	@if [ ! -d "test/unit" ]; then \
+		echo "No unit tests found."; \
+		exit 0; \
+	fi
 	@failed=0; \
-	for test_file in test/test_*.lua; do \
-		test_name=$$(basename "$$test_file"); \
-		echo "=== Running $$test_name ==="; \
-		if lua "$$test_file"; then \
-			echo "✓ $$test_name PASSED"; \
-		else \
-			echo "✗ $$test_name FAILED"; \
-			failed=$$((failed + 1)); \
+	for test_file in test/unit/*.lua; do \
+		if [ -f "$$test_file" ]; then \
+			test_name=$$(basename "$$test_file"); \
+			echo "=== Running unit test: $$test_name ==="; \
+			if lua "$$test_file"; then \
+				echo "✓ $$test_name PASSED"; \
+			else \
+				echo "✗ $$test_name FAILED"; \
+				failed=$$((failed + 1)); \
+			fi; \
+			echo ""; \
 		fi; \
-		echo ""; \
 	done; \
 	if [ $$failed -gt 0 ]; then \
-		echo "=== Test Summary ==="; \
-		echo "$$failed test(s) failed"; \
+		echo "=== Unit Test Summary ==="; \
+		echo "$$failed unit test(s) failed"; \
 		exit 1; \
 	else \
-		echo "=== Test Summary ==="; \
-		echo "All tests passed!"; \
+		echo "=== Unit Test Summary ==="; \
+		echo "All unit tests passed!"; \
+	fi
+
+# Run integration tests
+test-integration:
+	@echo "Running integration tests..."
+	@if [ ! -d "test/integration" ]; then \
+		echo "No integration tests found."; \
+		exit 0; \
+	fi
+	@if ! command -v nvim >/dev/null 2>&1; then \
+		echo "Error: Neovim not found. Integration tests require Neovim."; \
+		exit 1; \
+	fi
+	@failed=0; \
+	for test_file in test/integration/*.lua; do \
+		if [ -f "$$test_file" ]; then \
+			test_name=$$(basename "$$test_file"); \
+			echo "=== Running integration test: $$test_name ==="; \
+			if nvim --headless -u NONE \
+				-c "lua package.path = './test/helpers/?.lua;./lua/?.lua;./lua/?/init.lua;' .. package.path" \
+				-c "lua dofile('$$test_file')" \
+				-c "qa"; then \
+				echo "✓ $$test_name PASSED"; \
+			else \
+				echo "✗ $$test_name FAILED"; \
+				failed=$$((failed + 1)); \
+			fi; \
+			echo ""; \
+		fi; \
+	done; \
+	if [ $$failed -gt 0 ]; then \
+		echo "=== Integration Test Summary ==="; \
+		echo "$$failed integration test(s) failed"; \
+		exit 1; \
+	else \
+		echo "=== Integration Test Summary ==="; \
+		echo "All integration tests passed!"; \
+	fi
+
+# Run end-to-end tests
+test-e2e:
+	@echo "Running end-to-end tests..."
+	@if [ ! -d "test/e2e" ]; then \
+		echo "No E2E tests found."; \
+		exit 0; \
+	fi
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "Error: Docker not found. E2E tests require Docker."; \
+		exit 1; \
+	fi
+	@failed=0; \
+	for test_file in test/e2e/*.lua; do \
+		if [ -f "$$test_file" ]; then \
+			test_name=$$(basename "$$test_file"); \
+			echo "=== Running E2E test: $$test_name ==="; \
+			if lua "$$test_file"; then \
+				echo "✓ $$test_name PASSED"; \
+			else \
+				echo "✗ $$test_name FAILED"; \
+				failed=$$((failed + 1)); \
+			fi; \
+			echo ""; \
+		fi; \
+	done; \
+	if [ $$failed -gt 0 ]; then \
+		echo "=== E2E Test Summary ==="; \
+		echo "$$failed E2E test(s) failed"; \
+		exit 1; \
+	else \
+		echo "=== E2E Test Summary ==="; \
+		echo "All E2E tests passed!"; \
+	fi
+
+# Quick test for development (essential tests only)
+test-quick: test-unit
+	@echo "Quick development tests completed!"
+
+# Test with coverage measurement
+test-coverage:
+	@echo "Running tests with coverage measurement..."
+	@if ! command -v luacov >/dev/null 2>&1; then \
+		echo "Warning: luacov not found. Install with: luarocks install luacov"; \
+		echo "Running tests without coverage..."; \
+		make test; \
+	else \
+		echo "Cleaning previous coverage data..."; \
+		rm -f luacov.stats.out luacov.report.out; \
+		echo "Running unit tests with coverage..."; \
+		LUA_PATH="./lua/?.lua;./lua/?/init.lua;$$LUA_PATH" \
+		lua -lluacov test/unit/*.lua; \
+		echo "Generating coverage report..."; \
+		luacov; \
+		echo "Coverage report generated: luacov.report.out"; \
+		if [ -f luacov.report.out ]; then \
+			echo "=== Coverage Summary ==="; \
+			head -20 luacov.report.out; \
+		fi; \
 	fi
 
 # Clean temporary files
@@ -163,5 +272,5 @@ help-tags:
 	fi
 
 # Lint and format check before commit (git hook helper)
-pre-commit: lint format-check test
+pre-commit: lint format-check test-quick
 	@echo "Pre-commit checks passed!"
