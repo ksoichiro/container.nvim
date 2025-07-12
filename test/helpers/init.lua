@@ -86,6 +86,29 @@ M.mock_vim = {
       end
       return path
     end,
+    filereadable = function(path)
+      return M.mock_file_exists(path) and 1 or 0
+    end,
+    executable = function(cmd)
+      if cmd == 'docker' then
+        return 1
+      end
+      return 0
+    end,
+    readfile = function(path)
+      local content = M.mock_read_file(path)
+      return M.mock_vim.split(content, '\n')
+    end,
+    isdirectory = function(path)
+      -- Mock some common directories as existing
+      local common_dirs = {
+        '/test',
+        '/test/workspace',
+        '.',
+        '..',
+      }
+      return M.mock_vim.tbl_contains(common_dirs, path) and 1 or 0
+    end,
   },
   v = { shell_error = 0 },
   loop = {
@@ -149,6 +172,24 @@ M.mock_vim = {
   bo = {
     filetype = 'go',
   },
+  defer_fn = function(fn, timeout)
+    -- Mock defer_fn - just call the function immediately in test
+    if type(fn) == 'function' then
+      fn()
+    end
+  end,
+  inspect = function(obj)
+    -- Simple inspect implementation for tests
+    if type(obj) == 'table' then
+      local parts = {}
+      for k, v in pairs(obj) do
+        table.insert(parts, tostring(k) .. '=' .. tostring(v))
+      end
+      return '{' .. table.concat(parts, ', ') .. '}'
+    else
+      return tostring(obj)
+    end
+  end,
 }
 
 -- Setup mock vim environment
