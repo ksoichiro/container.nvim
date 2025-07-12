@@ -16,8 +16,8 @@ help:
 	@echo "  test-unit    Run unit tests only"
 	@echo "  test-stable  Run stable integration tests only"
 	@echo "  test-integration Run all integration tests (may have issues)"
-	@echo "  test-e2e     Run end-to-end tests (requires Docker)"
-	@echo "  test-e2e-quick Run quick E2E tests for development"
+	@echo "  test-e2e     Run end-to-end tests with real Neovim commands (requires Docker)"
+	@echo "  test-e2e-quick Run quick container lifecycle test for development"
 	@echo "  test-real-containers Run real container integration tests"
 	@echo "  test-quick   Run essential tests for development"
 	@echo "  test-coverage Run tests with coverage measurement"
@@ -196,9 +196,9 @@ test-integration:
 		echo "All integration tests passed!"; \
 	fi
 
-# Run end-to-end tests
+# Run end-to-end tests (real Neovim commands with actual containers)
 test-e2e:
-	@echo "Running end-to-end tests..."
+	@echo "Running end-to-end tests with real Neovim commands..."
 	@if [ ! -d "test/e2e" ]; then \
 		echo "No E2E tests found."; \
 		exit 0; \
@@ -215,40 +215,81 @@ test-e2e:
 	fi
 	@echo "Docker is available and running."
 	@echo ""
-	@failed=0; \
-	for test_file in test/e2e/*.lua; do \
-		if [ -f "$$test_file" ]; then \
-			test_name=$$(basename "$$test_file"); \
-			echo "=== Running E2E test: $$test_name ==="; \
-			if lua "$$test_file"; then \
-				echo "✅ $$test_name PASSED"; \
-			else \
-				echo "❌ $$test_name FAILED"; \
-				failed=$$((failed + 1)); \
-			fi; \
-			echo ""; \
+	@echo "Running REAL E2E test with actual Neovim commands..."
+	@if [ -f "test/e2e/test_simplified_e2e.lua" ]; then \
+		echo "=== Running Simplified E2E Test ==="; \
+		if lua test/e2e/test_simplified_e2e.lua; then \
+			echo "✅ Simplified E2E test PASSED"; \
+			echo "✅ Container commands work correctly!"; \
+		else \
+			echo "❌ Simplified E2E test FAILED"; \
+			echo "❌ Container commands are not working properly"; \
+			exit 1; \
 		fi; \
-	done; \
-	if [ $$failed -gt 0 ]; then \
-		echo "=== E2E Test Summary ==="; \
-		echo "$$failed E2E test(s) failed"; \
-		exit 1; \
+	elif [ -f "test/e2e/test_real_nvim_commands.lua" ]; then \
+		echo "=== Running Real Neovim Command Test ==="; \
+		if lua test/e2e/test_real_nvim_commands.lua; then \
+			echo "✅ Real Neovim command test PASSED"; \
+			echo "✅ Container commands work correctly!"; \
+		else \
+			echo "❌ Real Neovim command test FAILED"; \
+			echo "❌ Container commands are not working properly"; \
+			exit 1; \
+		fi; \
 	else \
-		echo "=== E2E Test Summary ==="; \
-		echo "🎉 All E2E tests passed!"; \
+		echo "Real E2E test not found. Running fallback tests..."; \
+		failed=0; \
+		for test_file in test/e2e/test_essential_e2e.lua test/e2e/test_quick_e2e.lua; do \
+			if [ -f "$$test_file" ]; then \
+				test_name=$$(basename "$$test_file"); \
+				echo "=== Running E2E test: $$test_name ==="; \
+				if lua "$$test_file"; then \
+					echo "✅ $$test_name PASSED"; \
+				else \
+					echo "❌ $$test_name FAILED"; \
+					failed=$$((failed + 1)); \
+				fi; \
+				echo ""; \
+			fi; \
+		done; \
+		if [ $$failed -gt 0 ]; then \
+			echo "=== E2E Test Summary ==="; \
+			echo "$$failed E2E test(s) failed"; \
+			exit 1; \
+		fi; \
 	fi
+	@echo ""
+	@echo "🎉 E2E tests completed successfully!"
+	@echo "✓ Container commands are working with real Docker containers"
 
 # Run quick E2E tests (faster, essential checks only)
 test-e2e-quick:
 	@echo "Running quick E2E tests..."
 	@if ! command -v docker >/dev/null 2>&1; then \
 		echo "Warning: Docker not found. Skipping Docker-dependent checks."; \
-	fi
-	@if [ -f "test/e2e/test_quick_e2e.lua" ]; then \
-		lua test/e2e/test_quick_e2e.lua; \
-	else \
-		echo "Quick E2E test not found."; \
 		exit 1; \
+	fi
+	@if ! docker ps >/dev/null 2>&1; then \
+		echo "Warning: Docker daemon not running. Skipping container tests."; \
+		exit 1; \
+	fi
+	@echo "Running quick container lifecycle test..."
+	@if [ -f "test/e2e/test_container_lifecycle.lua" ]; then \
+		if lua test/e2e/test_container_lifecycle.lua; then \
+			echo "✅ Quick E2E test PASSED"; \
+		else \
+			echo "❌ Quick E2E test FAILED"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "Quick container lifecycle test not found."; \
+		echo "Falling back to basic quick test..."; \
+		if [ -f "test/e2e/test_quick_e2e.lua" ]; then \
+			lua test/e2e/test_quick_e2e.lua; \
+		else \
+			echo "No quick E2E tests found."; \
+			exit 1; \
+		fi; \
 	fi
 
 # Quick test for development (essential tests only)

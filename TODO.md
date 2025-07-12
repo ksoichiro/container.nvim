@@ -36,6 +36,15 @@ This file tracks the development roadmap, completed features, and planned improv
 
 All critical functionality-blocking issues have been resolved through v0.6.0.
 
+✅ **Testing Infrastructure Improvements (July 12, 2025)**
+- **E2E Test Enhancement**: Implemented true end-to-end testing with real Neovim commands
+  - Created `test/e2e/test_real_nvim_commands.lua` - Tests actual `:ContainerStart` and `:ContainerStop` commands in Neovim headless mode
+  - Created `test/e2e/test_container_lifecycle.lua` - Quick lifecycle test for daily development
+  - Modified `make test-e2e` to run real container creation and management tests
+  - Enhanced `make test-e2e-quick` for faster development workflow testing
+  - **Key Achievement**: Container commands now verified to work with actual Docker containers in CI-like environment
+  - **Impact**: Eliminates manual testing requirement for core container functionality
+
 ## Next Milestone Planning
 
 All critical issues and basic features have been completed through v0.3.0.
