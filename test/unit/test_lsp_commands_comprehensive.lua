@@ -232,6 +232,32 @@ _G.vim = {
     get_active_clients = function()
       return test_state.lsp_clients
     end,
+    buf_request = function(bufnr, method, params, callback)
+      table.insert(test_state.lsp_requests, {
+        bufnr = bufnr,
+        method = method,
+        params = params,
+        callback = callback,
+      })
+
+      -- Simulate successful response
+      if callback then
+        local result = nil
+        if method == 'textDocument/hover' then
+          result = { contents = { kind = 'markdown', value = 'Test hover' } }
+        elseif method == 'textDocument/definition' then
+          result = { { uri = 'file:///workspace/main.go', range = { start = { line = 0, character = 0 } } } }
+        elseif method == 'textDocument/references' then
+          result = { { uri = 'file:///workspace/main.go', range = { start = { line = 0, character = 0 } } } }
+        end
+
+        vim.schedule(function()
+          callback(nil, result)
+        end)
+      end
+
+      return true
+    end,
     handlers = {
       hover = function(err, result, ctx)
         test_state.lsp_requests[#test_state.lsp_requests + 1] = {
@@ -291,6 +317,19 @@ _G.vim = {
       end
       local buffer = test_state.buffers[bufnr]
       return buffer and buffer.loaded or false
+    end,
+    nvim_buf_get_option = function(bufnr, option)
+      if bufnr == 0 then
+        bufnr = test_state.current_buf
+      end
+      local buffer = test_state.buffers[bufnr]
+      if not buffer then
+        return nil
+      end
+      if option == 'filetype' then
+        return buffer.filetype or ''
+      end
+      return nil
     end,
     nvim_buf_get_name = function(bufnr)
       if bufnr == 0 then
@@ -410,7 +449,14 @@ local function reset_test_state()
   test_state.quickfix = nil
   test_state.current_buf = 1
 
-  -- Reset buffer state
+  -- Reset buffer state - ensure buffer 1 is properly configured
+  test_state.buffers[1] = {
+    name = '/test/workspace/main.go',
+    lines = { 'package main', 'func main() {}' },
+    filetype = 'go',
+    valid = true,
+    loaded = true,
+  }
   vim.bo[1] = { filetype = 'go' }
   vim.b[1] = { changedtick = 1 }
 
@@ -847,26 +893,19 @@ function tests.test_hover_request_error()
   local commands = require('container.lsp.commands')
   commands.setup()
 
-  -- Mock pcall to simulate request error
-  local original_pcall = pcall
-  _G.pcall = function(func, ...)
-    if type(func) == 'function' then
-      local args = { ... }
-      if args[1] and type(args[1]) == 'table' and args[1].request then
-        return false, 'Simulated request error'
-      end
-    end
-    return original_pcall(func, ...)
-  end
-
-  local mock_client = create_mock_lsp_client('gopls')
+  -- Mock client to simulate request method failure
+  local mock_client = create_mock_lsp_client('gopls', {
+    request_fails = true,
+  })
   test_state.lsp_clients = { mock_client }
+
+  -- Override the client's request to throw an error when called inside pcall
+  mock_client.request = function(method, params, callback, bufnr)
+    error('Simulated client.request failure')
+  end
 
   local success = commands.hover()
   assert_equals(success, false, 'Should return false when request fails')
-
-  -- Restore original pcall
-  _G.pcall = original_pcall
 end
 
 function tests.test_definition_no_client()
