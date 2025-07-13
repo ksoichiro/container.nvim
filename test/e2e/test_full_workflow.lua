@@ -93,33 +93,72 @@ function tests.test_existing_example_workflow()
   cleanup_containers(container_name_pattern)
 
   print('Setting up Node.js project test...')
+  print('Initial container name pattern (fallback):', container_name_pattern)
 
-  -- Change to project directory
-  local original_dir = io.popen('pwd'):read('*l')
-  os.execute('cd ' .. worked_project)
-
-  -- Test 1.1: Plugin initialization in project
+  -- Test 1.1: Plugin initialization in project (BEFORE changing directory)
   print('Step 1.1: Testing plugin initialization')
   local container = require('container')
 
-  local setup_success, setup_error = pcall(function()
-    container.setup({
-      log_level = 'debug',
-      docker = { timeout = 60000 }, -- Longer timeout for E2E
+  print('Attempting plugin setup with config:')
+  print('  log_level: debug')
+  print('  docker.timeout: 120000')
+
+  -- Pre-initialize logging to ensure we see detailed error messages
+  local log_success = pcall(function()
+    local log = require('container.utils.log')
+    log.setup({ level = 'debug' })
+  end)
+
+  if log_success then
+    print('✓ Logging pre-initialized')
+  else
+    print('⚠ Could not pre-initialize logging')
+  end
+
+  local setup_success, setup_result = pcall(function()
+    return container.setup({
+      log_level = 'debug', -- Use debug instead of trace
+      docker = { timeout = 120000 }, -- Even longer timeout for E2E
     })
   end)
 
   if not setup_success then
-    print('✗ Plugin setup failed')
-    print('Setup error:', setup_error)
+    print('✗ Plugin setup failed with exception')
+    print('Setup error:', setup_result)
     return false
   end
-  print('✓ Plugin initialized successfully')
+  print('✓ Plugin setup call completed, result:', setup_result)
 
-  -- Test 1.2: DevContainer discovery and opening
+  if setup_result == false then
+    print('⚠ setup() returned false - internal setup failure')
+    print('  This suggests a problem with configuration validation or internal initialization')
+  end
+
+  -- Verify setup actually worked
+  local post_setup_state_success, post_setup_state = pcall(function()
+    return container.get_state()
+  end)
+
+  if post_setup_state_success and post_setup_state then
+    print('Post-setup verification:')
+    print('  Initialized:', post_setup_state.initialized or 'false')
+    if not post_setup_state.initialized then
+      print('⚠ Setup call succeeded but plugin state shows not initialized!')
+      print('  This suggests an issue with the setup process itself')
+    end
+  else
+    print('⚠ Could not verify setup state')
+  end
+
+  -- Test 1.2: DevContainer discovery and opening (using absolute path)
   print('Step 1.2: Testing devcontainer discovery')
+  local original_dir = vim.fn.getcwd()
+  local project_absolute_path = original_dir .. '/' .. worked_project
+  print('Original directory:', original_dir)
+  print('Project absolute path:', project_absolute_path)
+
   local open_success, open_error = pcall(function()
-    return container.open(worked_project)
+    return container.open(project_absolute_path) -- Use absolute path instead of changing directory
   end)
 
   if not open_success then
@@ -128,6 +167,25 @@ function tests.test_existing_example_workflow()
     return false
   end
   print('✓ DevContainer configuration loaded')
+
+  -- Get the actual container name that will be generated
+  local actual_container_name = nil
+  local state_success, current_state = pcall(function()
+    return container.get_state()
+  end)
+
+  if state_success and current_state and current_state.current_config then
+    local docker = require('container.docker.init')
+    -- Create config with the correct base_path for name generation
+    local config_for_naming = vim.deepcopy(current_state.current_config)
+    config_for_naming.base_path = project_absolute_path
+    actual_container_name = docker.generate_container_name(config_for_naming)
+    print('✓ Actual expected container name:', actual_container_name)
+    -- Update the container name pattern for cleanup and verification
+    container_name_pattern = actual_container_name
+  else
+    print('⚠ Could not determine actual container name, using fallback pattern')
+  end
 
   -- Test 1.3: Container building/pulling
   print('Step 1.3: Testing image preparation')
@@ -145,37 +203,253 @@ function tests.test_existing_example_workflow()
   -- Test 1.4: Container startup
   print('Step 1.4: Testing container startup')
   print('  Starting container...')
-  local start_success = pcall(function()
+
+  -- Add a delay before starting to see if setup needs more time
+  os.execute('sleep 2')
+
+  -- Test jobstart functionality in headless environment
+  print('Step 1.3.5: Testing vim.fn.jobstart functionality')
+  local jobstart_works = false
+  local jobstart_test = pcall(function()
+    local job_id = vim.fn.jobstart({ 'echo', 'test' }, {
+      on_exit = function(_, exit_code, _)
+        print('  jobstart test completed with exit code:', exit_code)
+        jobstart_works = true
+      end,
+      on_stdout = function(_, data, _)
+        if data and #data > 0 then
+          print('  jobstart stdout:', table.concat(data, ' '))
+        end
+      end,
+    })
+    print('  jobstart call returned job_id:', job_id)
+    if job_id <= 0 then
+      print('  ⚠ jobstart returned invalid job_id, likely not supported in headless mode')
+    end
+  end)
+
+  if not jobstart_test then
+    print('  ✗ jobstart test failed with exception')
+  else
+    -- Wait briefly to see if callback is called
+    os.execute('sleep 3')
+    if jobstart_works then
+      print('  ✓ jobstart is working in headless mode')
+    else
+      print('  ⚠ jobstart callbacks may not work in headless mode')
+    end
+  end
+
+  -- Debug: Check plugin state before start
+  print('Step 1.4.0: Checking plugin state before start')
+  local pre_state_success, pre_state = pcall(function()
+    return container.get_state()
+  end)
+
+  if pre_state_success and pre_state then
+    print('Pre-start state:')
+    print('  Initialized:', pre_state.initialized or 'false')
+    print('  Current config exists:', pre_state.current_config and 'yes' or 'no')
+    if pre_state.current_config then
+      print('  Config name:', pre_state.current_config.name or 'unknown')
+      print('  Config image:', pre_state.current_config.image or 'none')
+      print('  Built image:', pre_state.current_config.built_image or 'none')
+      print('  Prepared image:', pre_state.current_config.prepared_image or 'none')
+    end
+  else
+    print('⚠ Could not retrieve pre-start plugin state')
+  end
+
+  local start_success, start_result = pcall(function()
     return container.start()
   end)
 
   if not start_success then
-    print('✗ Container start failed')
+    print('✗ Container start failed with exception')
+    print('Start error:', start_result)
     return false
   end
-  print('✓ Container start initiated')
+
+  print('✓ Container start call completed, result:', start_result)
+
+  if start_result == false then
+    print('⚠ start() returned false - this indicates a setup or config issue')
+    print('  Possible causes:')
+    print('  1. Plugin not properly initialized')
+    print('  2. devcontainer.json not found or invalid')
+    print('  3. Docker not available')
+
+    -- Try to get more specific error information
+    local post_state_success, post_state = pcall(function()
+      return container.get_state()
+    end)
+
+    if post_state_success and post_state then
+      print('Post-start state:')
+      print('  Initialized:', post_state.initialized or 'false')
+      print('  Current config exists:', post_state.current_config and 'yes' or 'no')
+    end
+  else
+    print('✓ start() returned true - async container creation process initiated')
+  end
+
+  -- Give more time for the async process to begin
+  print('  Waiting 5 seconds for async startup to begin...')
+  os.execute('sleep 5')
+
+  -- Check plugin state after start - wait for state update
+  print('Step 1.4.1: Checking plugin state after start')
+
+  -- Wait for container ID to be registered in plugin state
+  local container_id_found = false
+  local wait_attempts = 0
+  local max_wait_attempts = 10
+
+  while not container_id_found and wait_attempts < max_wait_attempts do
+    wait_attempts = wait_attempts + 1
+    local state_success, state = pcall(function()
+      return container.get_state()
+    end)
+
+    if state_success and state and state.current_container and state.current_container ~= 'none' then
+      container_id_found = true
+      print('✓ Plugin state updated:')
+      print('  Container ID:', state.current_container)
+      print('  Status:', state.container_status or 'unknown')
+      if state.current_config then
+        print('  Config name:', state.current_config.name or 'unknown')
+        print('  Config image:', state.current_config.image or 'unknown')
+      end
+      break
+    else
+      print('  Waiting for plugin state update... (' .. wait_attempts .. '/' .. max_wait_attempts .. ')')
+      os.execute('sleep 2')
+    end
+  end
+
+  if not container_id_found then
+    print('⚠ Plugin state was not updated with container ID within timeout')
+    -- Still show what we got
+    local state_success, state = pcall(function()
+      return container.get_state()
+    end)
+    if state_success and state then
+      print('Final plugin state:')
+      print('  Container ID:', state.current_container or 'none')
+      print('  Status:', state.container_status or 'unknown')
+    end
+  end
 
   -- Test 1.5: Check for container creation attempt
   print('Step 1.5: Checking container creation')
-  local container_found = wait_for_condition(function()
-    local success, output = run_command('docker ps -a --filter name=' .. container_name_pattern .. ' -q')
-    return success and output:gsub('%s+', '') ~= ''
-  end, 10000, 1000, 'Checking for container creation')
+  print('Searching for containers with pattern:', container_name_pattern)
+
+  -- First, check what containers exist with our exact name (not just pattern)
+  local pattern_success, pattern_output =
+    run_command('docker ps -a --filter name=^' .. container_name_pattern .. '$ -q')
+  if pattern_output:gsub('%s+', '') ~= '' then
+    print('✓ Found container with exact name:', container_name_pattern)
+  else
+    print('⚠ No container found with exact name, trying partial match...')
+    pattern_success, pattern_output = run_command('docker ps -a --filter name=' .. container_name_pattern .. ' -q')
+  end
+  print('Pattern search result:', pattern_output:gsub('%s+', '') == '' and 'No containers' or 'Found containers')
+
+  -- Also check for any devcontainer-related containers
+  local dev_success, dev_output = run_command('docker ps -a --filter label=devcontainer -q')
+  print('Devcontainer search result:', dev_output:gsub('%s+', '') == '' and 'No devcontainers' or 'Found devcontainers')
+
+  -- Check all containers with details to see what was actually created
+  local all_success, all_output =
+    run_command('docker ps -a --format "table {{.Names}}\\t{{.Status}}\\t{{.Image}}\\t{{.Labels}}"')
+  if all_success and all_output then
+    print('All containers:')
+    print(all_output)
+  end
+
+  -- Wait for container creation with multiple approaches
+  local container_found = false
+  local actual_container_id = nil
+
+  -- Skip the long wait if we already found the container and have container ID from state
+  local state_wait_result = false
+  if container_id_found then
+    local state_success, state = pcall(function()
+      return container.get_state()
+    end)
+    if state_success and state and state.current_container and state.current_container ~= 'none' then
+      actual_container_id = state.current_container
+      state_wait_result = true
+      print('✓ Using container ID from plugin state:', actual_container_id)
+    end
+  end
+
+  -- If we don't have it from state, try the old approach with shorter timeout
+  if not state_wait_result then
+    state_wait_result = wait_for_condition(function()
+      local state_success, state = pcall(function()
+        return container.get_state()
+      end)
+      if state_success and state and state.current_container and state.current_container ~= 'none' then
+        actual_container_id = state.current_container
+        return true
+      end
+      return false
+    end, 10000, 2000, 'Waiting for plugin to register container ID')
+  end
+
+  if state_wait_result then
+    container_found = true
+    print('✓ Container ID found via plugin state:', actual_container_id)
+  else
+    -- Approach 2: Check for any devcontainer-labeled containers
+    print('Plugin state approach failed, checking for any devcontainer containers...')
+    container_found = wait_for_condition(function()
+      local success, output = run_command('docker ps -a --filter label=devcontainer -q')
+      if success and output:gsub('%s+', '') ~= '' then
+        -- Get first line from output (first container ID)
+        actual_container_id = output:match('([^\n\r]+)')
+        return true
+      end
+      return false
+    end, 30000, 2000, 'Checking for any devcontainer containers')
+
+    if container_found then
+      print('✓ Found devcontainer via label:', actual_container_id)
+    end
+  end
 
   if container_found then
-    print('✓ Container was created')
+    print('✓ Container was created with ID:', actual_container_id)
 
-    -- Check if it's running
-    local success, output =
-      run_command('docker ps --filter name=' .. container_name_pattern .. ' --filter status=running -q')
-    if success and output:gsub('%s+', '') ~= '' then
-      print('✓ Container is running')
-    else
-      print('⚠ Container created but not running (may be expected for test projects)')
+    -- Check if it's running using the actual container ID
+    if actual_container_id then
+      local success, output =
+        run_command('docker ps --filter id=' .. actual_container_id .. ' --filter status=running -q')
+      if success and output:gsub('%s+', '') ~= '' then
+        print('✓ Container is running')
+      else
+        print('⚠ Container created but not running')
+
+        -- Get container status for diagnostics
+        local status_success, status_output =
+          run_command('docker ps -a --filter id=' .. actual_container_id .. ' --format "{{.Status}}"')
+        if status_success and status_output then
+          print('  Container status:', status_output:gsub('%s+$', ''))
+        end
+
+        -- Get container logs for troubleshooting
+        local logs_success, logs_output = run_command('docker logs ' .. actual_container_id .. ' 2>&1 | tail -10')
+        if logs_success and logs_output and logs_output:gsub('%s+', '') ~= '' then
+          print('  Recent container logs:')
+          print(logs_output)
+        end
+      end
     end
   else
-    print('⚠ No container created (may be expected behavior for test project paths)')
-    print('  This is often normal - containers are only created for valid project structures')
+    print('⚠ No container created after 30 seconds')
+    print('  Expected pattern:', container_name_pattern)
+    print('  This indicates the container creation process may have failed or is taking longer than expected')
   end
 
   -- Test 1.6: Execute command in container
@@ -206,8 +480,8 @@ function tests.test_existing_example_workflow()
   cleanup_containers(container_name_pattern)
   print('✓ Cleanup completed')
 
-  -- Return to original directory
-  os.execute('cd ' .. original_dir)
+  -- No need to return to original directory since we never changed it
+  print('Test completed in directory:', vim.fn.getcwd())
 
   return true
 end

@@ -83,11 +83,62 @@ function M.check_docker_availability()
 end
 
 -- Docker command availability check (async version)
+-- Helper function to detect headless mode
+local function is_headless_mode()
+  -- Check if we're in headless mode where jobstart callbacks may not work
+  return vim.v.servername == '' or vim.fn.argc() == 0
+end
+
+-- Helper function to run jobstart with proper event loop handling in headless mode
+local function run_job_with_wait(cmd_args, job_opts, timeout_ms)
+  timeout_ms = timeout_ms or 30000 -- 30 second default timeout
+
+  if not is_headless_mode() then
+    -- Normal mode: just use jobstart as usual
+    return vim.fn.jobstart(cmd_args, job_opts)
+  end
+
+  -- Headless mode: use vim.wait() to ensure event loop processes callbacks
+  log.debug('Headless mode: Using vim.wait() for jobstart event loop processing')
+
+  local job_completed = false
+  local job_result = nil
+
+  -- Wrap the original callbacks to track completion
+  local original_on_exit = job_opts.on_exit
+  job_opts.on_exit = function(job_id, exit_code, event)
+    job_completed = true
+    if original_on_exit then
+      original_on_exit(job_id, exit_code, event)
+    end
+  end
+
+  -- Start the job
+  local job_id = vim.fn.jobstart(cmd_args, job_opts)
+
+  if job_id <= 0 then
+    return job_id -- Return error immediately
+  end
+
+  -- Use vim.wait() to process the event loop until job completes
+  local wait_result = vim.wait(timeout_ms, function()
+    return job_completed
+  end, 100) -- Check every 100ms
+
+  if not wait_result then
+    log.warn('Job timed out after %dms in headless mode', timeout_ms)
+    -- Try to stop the job
+    vim.fn.jobstop(job_id)
+  end
+
+  return job_id
+end
+
 function M.check_docker_availability_async(callback)
   log.debug('Checking Docker availability (async)')
 
   -- Docker version check
-  vim.fn.jobstart({ 'docker', '--version' }, {
+  local version_job_opts = {
     on_exit = function(_, exit_code, _)
       if exit_code ~= 0 then
         log.error('Docker is not available')
@@ -97,7 +148,7 @@ function M.check_docker_availability_async(callback)
       end
 
       -- Docker daemon check
-      vim.fn.jobstart({ 'docker', 'info' }, {
+      local daemon_job_opts = {
         on_exit = function(_, daemon_exit_code, _)
           if daemon_exit_code ~= 0 then
             log.error('Docker daemon is not running')
@@ -110,11 +161,15 @@ function M.check_docker_availability_async(callback)
         end,
         stdout_buffered = true,
         stderr_buffered = true,
-      })
+      }
+
+      run_job_with_wait({ 'docker', 'info' }, daemon_job_opts, 15000)
     end,
     stdout_buffered = true,
     stderr_buffered = true,
-  })
+  }
+
+  run_job_with_wait({ 'docker', '--version' }, version_job_opts, 10000)
 end
 
 -- Execute command synchronously
@@ -227,7 +282,9 @@ function M.run_docker_command_async(args, opts, callback)
     job_opts.cwd = opts.cwd
   end
 
-  return vim.fn.jobstart(cmd_args, job_opts)
+  -- Use the new helper function that handles headless mode properly
+  local timeout_ms = (opts.timeout or 30) * 1000 -- Convert seconds to milliseconds
+  return run_job_with_wait(cmd_args, job_opts, timeout_ms)
 end
 
 -- Check Docker image existence
@@ -280,7 +337,7 @@ function M.pull_image_async(image_name, on_progress, on_complete, retry_count)
 
   log.debug('About to start docker pull job for: %s', image_name)
 
-  local job_id = vim.fn.jobstart({ 'docker', 'pull', image_name }, {
+  local job_id = run_job_with_wait({ 'docker', 'pull', image_name }, {
     on_stdout = function(job_id, data, event)
       log.debug('Docker pull stdout callback triggered (job: %d, event: %s)', job_id, event)
       data_received = true
@@ -415,7 +472,7 @@ function M.pull_image_async(image_name, on_progress, on_complete, retry_count)
     -- Try without buffering to see if that helps
     stdout_buffered = false,
     stderr_buffered = false,
-  })
+  }, 300000) -- 5 minute timeout for image pulls
 
   log.debug('jobstart returned job_id: %s', tostring(job_id))
 
@@ -1395,6 +1452,18 @@ function M.execute_command_stream(container_id, command, opts)
   opts = opts or {}
   log.debug('Executing command with streaming in container %s: %s', container_id, vim.inspect(command))
 
+  -- In headless mode, fall back to non-streaming execution
+  if is_headless_mode() then
+    log.debug('Headless mode detected, using non-streaming command execution')
+    local result = M.execute_command(container_id, command, opts)
+    if opts.on_exit then
+      vim.schedule(function()
+        opts.on_exit(result.success and 0 or 1)
+      end)
+    end
+    return 1 -- Return a dummy job ID for compatibility
+  end
+
   local cmd_args = { 'docker', 'exec' }
 
   -- Interactive mode
@@ -1472,7 +1541,8 @@ function M.execute_command_stream(container_id, command, opts)
   end
 
   -- Start job and return job ID for control
-  local job_id = vim.fn.jobstart(cmd_args, job_opts)
+  local timeout_ms = (opts.timeout or 60) * 1000 -- Default 60 second timeout
+  local job_id = run_job_with_wait(cmd_args, job_opts, timeout_ms)
 
   if job_id == 0 then
     log.error('Failed to start command stream job')
