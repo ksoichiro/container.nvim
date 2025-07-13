@@ -243,6 +243,9 @@ end
 
 function tests.test_normalize_path_nil_handling()
   test_helpers.assert_equals(fs.normalize_path(nil), nil, 'Nil input handled correctly')
+  -- Ensure the nil path is actually tested
+  local result = fs.normalize_path(nil)
+  test_helpers.assert_equals(result, nil, 'Nil input returns nil')
 end
 
 function tests.test_normalize_path_windows()
@@ -269,6 +272,13 @@ function tests.test_join_path_edge_cases()
   -- Note: ipairs doesn't handle nil in the middle of arguments properly, so this test is different
   test_helpers.assert_equals(fs.join_path('a', 'b'), 'a/b', 'Normal case without nil')
   test_helpers.assert_equals(fs.join_path('./a', 'b/'), 'a/b', 'Normalized parts')
+
+  -- Test with single empty argument
+  test_helpers.assert_equals(fs.join_path(''), '', 'Single empty argument')
+
+  -- Test with mix of empty and valid parts
+  test_helpers.assert_equals(fs.join_path('', '', 'valid'), 'valid', 'Multiple empty parts with valid')
+  test_helpers.assert_equals(fs.join_path('valid', '', ''), 'valid', 'Valid part with trailing empty parts')
 end
 
 -- Absolute path tests
@@ -282,6 +292,9 @@ end
 
 function tests.test_is_absolute_path_nil()
   test_helpers.assert_equals(fs.is_absolute_path(nil), false, 'Nil input returns false')
+  -- Ensure the nil path is actually tested
+  local result = fs.is_absolute_path(nil)
+  test_helpers.assert_equals(result, false, 'Nil input explicitly tested')
 end
 
 -- Path resolution tests
@@ -481,6 +494,27 @@ function tests.test_list_directory_with_pattern()
   end
 end
 
+-- Test vim.loop.fs_scandir failure
+function tests.test_list_directory_scandir_failure()
+  reset_fs_state()
+  setup_test_files()
+
+  -- Mock vim.loop.fs_scandir to return nil (failure)
+  local original_fs_scandir = vim.loop.fs_scandir
+  vim.loop.fs_scandir = function(path)
+    if path == '/test/workspace/fail_scan' then
+      return nil -- Simulate scandir failure
+    end
+    return original_fs_scandir(path)
+  end
+
+  local files = fs.list_directory('/test/workspace/fail_scan')
+  test_helpers.assert_equals(#files, 0, 'Empty list when scandir fails')
+
+  -- Restore original function
+  vim.loop.fs_scandir = original_fs_scandir
+end
+
 -- Find files tests
 function tests.test_find_files()
   reset_fs_state()
@@ -504,6 +538,15 @@ function tests.test_find_files()
   for _, file_path in ipairs(py_files) do
     test_helpers.assert_contains(file_path, '.py', 'Python file found')
   end
+end
+
+-- Test find_files with non-directory path
+function tests.test_find_files_non_directory()
+  reset_fs_state()
+  setup_test_files()
+
+  local files = fs.find_files('/test/workspace/file.txt')
+  test_helpers.assert_equals(#files, 0, 'Empty list for non-directory path')
 end
 
 function tests.test_find_files_max_depth()
@@ -613,6 +656,18 @@ function tests.test_get_temp_dir()
   local temp_dir = fs.get_temp_dir()
   test_helpers.assert_type(temp_dir, 'string', 'Returns string')
   test_helpers.assert_equals(temp_dir:match('^/'), '/', 'Returns absolute path')
+
+  -- Test edge case where tempname doesn't contain directory separator
+  local original_tempname = vim.fn.tempname
+  vim.fn.tempname = function()
+    return 'just_filename' -- No directory separator
+  end
+
+  local temp_dir_fallback = fs.get_temp_dir()
+  test_helpers.assert_equals(temp_dir_fallback, '/tmp', 'Returns /tmp fallback when tempname has no directory')
+
+  -- Restore original function
+  vim.fn.tempname = original_tempname
 end
 
 function tests.test_temp_file()
@@ -642,6 +697,124 @@ function tests.test_error_handling()
   -- Test list_directory on file
   local files = fs.list_directory('/test/workspace/file.txt')
   test_helpers.assert_equals(#files, 0, 'Empty list for file path')
+end
+
+-- Additional nil and edge case tests
+function tests.test_additional_nil_cases()
+  -- Test various functions with nil inputs to ensure coverage
+  test_helpers.assert_equals(fs.normalize_path(nil), nil, 'normalize_path nil input')
+  test_helpers.assert_equals(fs.is_absolute_path(nil), false, 'is_absolute_path nil input')
+  test_helpers.assert_equals(fs.exists(nil), false, 'exists nil input')
+  test_helpers.assert_equals(fs.is_file(nil), false, 'is_file nil input')
+  test_helpers.assert_equals(fs.is_directory(nil), false, 'is_directory nil input')
+  test_helpers.assert_equals(fs.basename(nil), nil, 'basename nil input')
+  test_helpers.assert_equals(fs.dirname(nil), nil, 'dirname nil input')
+  test_helpers.assert_equals(fs.extension(nil), nil, 'extension nil input')
+  test_helpers.assert_equals(fs.stem(nil), nil, 'stem nil input')
+
+  -- Test get_file_size with nil
+  test_helpers.assert_equals(fs.get_file_size(nil), nil, 'get_file_size nil input')
+
+  -- Test get_mtime with nil
+  test_helpers.assert_equals(fs.get_mtime(nil), nil, 'get_mtime nil input')
+end
+
+-- Test vim.loop.fs_stat edge cases
+function tests.test_fs_stat_edge_cases()
+  reset_fs_state()
+
+  -- Mock vim.loop.fs_stat to return nil for specific paths
+  local original_fs_stat = vim.loop.fs_stat
+  vim.loop.fs_stat = function(path)
+    if path == '/test/fail_stat' then
+      return nil -- Simulate fs_stat failure
+    end
+    return original_fs_stat(path)
+  end
+
+  -- Test get_file_size with stat failure
+  local size = fs.get_file_size('/test/fail_stat')
+  test_helpers.assert_equals(size, nil, 'get_file_size returns nil on stat failure')
+
+  -- Test get_mtime with stat failure
+  local mtime = fs.get_mtime('/test/fail_stat')
+  test_helpers.assert_equals(mtime, nil, 'get_mtime returns nil on stat failure')
+
+  -- Restore original function
+  vim.loop.fs_stat = original_fs_stat
+end
+
+-- Test actual file system operations with direct calls
+function tests.test_real_file_operations()
+  reset_fs_state()
+
+  -- Setup file structure for real operations
+  fs_test_state.files['/test/workspace/real_file.txt'] = true
+  fs_test_state.file_contents['/test/workspace/real_file.txt'] = 'real content'
+  fs_test_state.directories['/test/workspace/real_dir'] = true
+
+  -- Test normalize_path with nil (force call the nil path)
+  local norm_result = fs.normalize_path(nil)
+  test_helpers.assert_equals(norm_result, nil, 'normalize_path with nil path')
+
+  -- Test is_absolute_path with nil
+  local abs_result = fs.is_absolute_path(nil)
+  test_helpers.assert_equals(abs_result, false, 'is_absolute_path with nil path')
+
+  -- Test exists with nil
+  local exists_result = fs.exists(nil)
+  test_helpers.assert_equals(exists_result, false, 'exists with nil path')
+
+  -- Test is_file with nil
+  local is_file_result = fs.is_file(nil)
+  test_helpers.assert_equals(is_file_result, false, 'is_file with nil path')
+
+  -- Test is_directory with nil
+  local is_dir_result = fs.is_directory(nil)
+  test_helpers.assert_equals(is_dir_result, false, 'is_directory with nil path')
+
+  -- Test ensure_directory with nil
+  local success, err = fs.ensure_directory(nil)
+  test_helpers.assert_equals(success, false, 'ensure_directory with nil path fails')
+  test_helpers.assert_not_nil(err, 'ensure_directory with nil path has error')
+
+  -- Test read_file with non-existent file
+  local content, read_err = fs.read_file('/completely/nonexistent/file.txt')
+  test_helpers.assert_equals(content, nil, 'read_file with non-existent file returns nil')
+  test_helpers.assert_not_nil(read_err, 'read_file with non-existent file has error')
+
+  -- Test list_directory with valid directory
+  local files = fs.list_directory('/test/workspace/real_dir')
+  test_helpers.assert_type(files, 'table', 'list_directory returns table')
+
+  -- Test list_directory with non-existent directory
+  local empty_files = fs.list_directory('/completely/nonexistent/directory')
+  test_helpers.assert_equals(#empty_files, 0, 'list_directory with non-existent directory returns empty')
+
+  -- Test find_files with existing directory
+  local found_files = fs.find_files('/test/workspace', '%.txt$')
+  test_helpers.assert_type(found_files, 'table', 'find_files returns table')
+
+  -- Test find_files with non-existent directory
+  local empty_found = fs.find_files('/completely/nonexistent/directory')
+  test_helpers.assert_equals(#empty_found, 0, 'find_files with non-existent directory returns empty')
+end
+
+-- Test complex write operations
+function tests.test_write_operations_coverage()
+  reset_fs_state()
+  setup_test_files()
+
+  -- Create a real file to test the write path
+  fs_test_state.directories['/test/write_test'] = true
+
+  -- Test write_file to create new directory structure
+  local success, err = fs.write_file('/test/write_test/new_dir/file.txt', 'test content')
+  test_helpers.assert_equals(success, true, 'write_file creates directory structure')
+
+  -- Test write_file with existing directory
+  success, err = fs.write_file('/test/write_test/file2.txt', 'more content')
+  test_helpers.assert_equals(success, true, 'write_file in existing directory')
 end
 
 -- Cross-platform compatibility tests
@@ -697,6 +870,7 @@ local function run_fs_tests()
   print('  exists, is_file, is_directory, read_file, write_file, ensure_directory,')
   print('  list_directory, find_files, find_file_upward, get_file_size, get_mtime,')
   print('  basename, dirname, extension, stem, relative_path, get_temp_dir, temp_file')
+  print('Enhanced coverage: nil input handling, fs_stat edge cases, scandir failures')
   print('\n=== Coverage Summary ===')
   print('✓ Path manipulation functions')
   print('✓ File existence and type checking')
