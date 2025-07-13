@@ -166,17 +166,25 @@ test-integration:
 		exit 0; \
 	fi
 	@failed=0; \
-	# Run only lightweight integration tests, skip heavy container creation tests
-	integration_tests="test_docker_integration.lua test_main_api.lua"; \
+	integration_tests="test_docker_integration.lua test_main_api.lua test_lsp_real.lua"; \
 	for test_name in $$integration_tests; do \
 		test_file="test/integration/$$test_name"; \
 		if [ -f "$$test_file" ]; then \
 			echo "=== Running integration test: $$test_name ==="; \
-			if lua "$$test_file"; then \
-				echo "✓ $$test_name PASSED"; \
+			if [ "$$test_name" = "test_lsp_real.lua" ]; then \
+				if nvim --headless -u NONE -c "lua dofile('$$test_file')" -c "qa" 2>/dev/null; then \
+					echo "✓ $$test_name PASSED"; \
+				else \
+					echo "✗ $$test_name FAILED"; \
+					failed=$$((failed + 1)); \
+				fi; \
 			else \
-				echo "✗ $$test_name FAILED"; \
-				failed=$$((failed + 1)); \
+				if lua "$$test_file"; then \
+					echo "✓ $$test_name PASSED"; \
+				else \
+					echo "✗ $$test_name FAILED"; \
+					failed=$$((failed + 1)); \
+				fi; \
 			fi; \
 			echo ""; \
 		else \
