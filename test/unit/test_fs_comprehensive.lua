@@ -6,10 +6,51 @@
 -- Add project lua directory to package path
 package.path = './lua/?.lua;./lua/?/init.lua;../lua/?.lua;../lua/?/init.lua;' .. package.path
 
--- Import test helpers
-local test_helpers = require('test.helpers.init')
-test_helpers.setup_lua_path()
-test_helpers.setup_vim_mock()
+-- Setup vim mock for testing
+_G.vim = _G.vim or {}
+vim.uv = vim.uv or {}
+vim.fn = vim.fn or {}
+vim.api = vim.api or {}
+
+-- Add required vim functions
+vim.fn.fnamemodify = vim.fn.fnamemodify
+  or function(path, modifier)
+    if modifier == ':p' then
+      return path
+    elseif modifier == ':h' then
+      return path:gsub('/[^/]*$', '')
+    elseif modifier == ':t' then
+      return path:match('[^/]*$')
+    end
+    return path
+  end
+
+vim.fn.isdirectory = vim.fn.isdirectory
+  or function(path)
+    -- Simple mock - assume paths ending with / are directories
+    return path:match('/$') and 1 or 0
+  end
+
+vim.fn.mkdir = vim.fn.mkdir or function(path, mode)
+  -- Simple mock - always succeed
+  return 1
+end
+
+vim.tbl_deep_extend = vim.tbl_deep_extend
+  or function(behavior, ...)
+    local tables = { ... }
+    local result = {}
+    for _, tbl in ipairs(tables) do
+      for k, v in pairs(tbl) do
+        if type(v) == 'table' and type(result[k]) == 'table' then
+          result[k] = vim.tbl_deep_extend(behavior, result[k], v)
+        else
+          result[k] = v
+        end
+      end
+    end
+    return result
+  end
 
 -- Add missing functions
 vim.tbl_count = vim.tbl_count
@@ -20,6 +61,64 @@ vim.tbl_count = vim.tbl_count
     end
     return count
   end
+
+-- Define simple test helper functions to replace test_helpers dependency
+local test_helpers = {}
+
+function test_helpers.assert_equals(actual, expected, message)
+  if actual ~= expected then
+    error(
+      string.format('%s\nExpected: %s\nActual: %s', message or 'Assertion failed', tostring(expected), tostring(actual))
+    )
+  end
+end
+
+function test_helpers.assert_not_nil(value, message)
+  if value == nil then
+    error(message or 'Expected non-nil value')
+  end
+end
+
+function test_helpers.assert_contains(str, substr, message)
+  if type(str) == 'table' then
+    for _, v in ipairs(str) do
+      if tostring(v):find(substr, 1, true) then
+        return
+      end
+    end
+    error(message or string.format('Table does not contain %s', substr))
+  else
+    if not tostring(str):find(substr, 1, true) then
+      error(message or string.format('String "%s" does not contain "%s"', tostring(str), substr))
+    end
+  end
+end
+
+function test_helpers.assert_type(value, expected_type, message)
+  if type(value) ~= expected_type then
+    error(
+      string.format(
+        '%s\nExpected type: %s\nActual type: %s',
+        message or 'Type assertion failed',
+        expected_type,
+        type(value)
+      )
+    )
+  end
+end
+
+function test_helpers.run_test_suite(tests, suite_name)
+  print('Running test suite: ' .. suite_name)
+  for _, test in ipairs(tests) do
+    local success, err = pcall(test)
+    if not success then
+      print('Test failed: ' .. tostring(err))
+      return 1
+    end
+  end
+  print('All tests passed!')
+  return 0
+end
 
 -- Lua 5.1/5.2 compatibility
 local unpack = unpack or table.unpack

@@ -61,6 +61,14 @@ _G.vim = {
     end
     return inspect_value(obj)
   end,
+  tbl_contains = function(tbl, val)
+    for _, v in ipairs(tbl) do
+      if v == val then
+        return true
+      end
+    end
+    return false
+  end,
   fn = {
     getcwd = function()
       return '/test/workspace'
@@ -99,6 +107,25 @@ _G.vim = {
         return 0
       end
       return 0
+    end,
+    fnamemodify = function(path, modifier)
+      -- Simple mock for path modification
+      if modifier == ':p' then
+        return path
+      elseif modifier == ':h' then
+        return path:gsub('/[^/]*$', '')
+      elseif modifier == ':t' then
+        return path:match('[^/]*$')
+      end
+      return path
+    end,
+    isdirectory = function(path)
+      -- Simple mock - assume paths ending with / are directories
+      return path:match('/$') and 1 or 0
+    end,
+    mkdir = function(path, mode)
+      -- Simple mock - always succeed
+      return 1
     end,
   },
   uv = {
@@ -372,8 +399,9 @@ success, result = config.setup({
     exclude_patterns = 'not_an_array', -- This should replace the array
   },
 })
-assert_equals(success, true, 'Type conflict setup should succeed (validation may log errors)')
-print('✓ Configuration type conflicts handled')
+assert_equals(success, false, 'Type conflict setup should fail due to validation errors')
+assert_equals(type(result), 'table', 'Should return validation errors')
+print('✓ Configuration type conflicts properly rejected')
 
 -- Test 2: Advanced Project Configuration Scenarios
 print('\n=== Test 2: Advanced Project Configuration Scenarios ===')

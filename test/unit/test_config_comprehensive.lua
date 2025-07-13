@@ -39,6 +39,14 @@ _G.vim = {
     end
     return tostring(obj)
   end,
+  tbl_contains = function(tbl, val)
+    for _, v in ipairs(tbl) do
+      if v == val then
+        return true
+      end
+    end
+    return false
+  end,
   fn = {
     getcwd = function()
       return '/test/workspace'
@@ -65,6 +73,25 @@ _G.vim = {
         return 1
       end
       return 0
+    end,
+    fnamemodify = function(path, modifier)
+      -- Simple mock for path modification
+      if modifier == ':p' then
+        return path
+      elseif modifier == ':h' then
+        return path:gsub('/[^/]*$', '')
+      elseif modifier == ':t' then
+        return path:match('[^/]*$')
+      end
+      return path
+    end,
+    isdirectory = function(path)
+      -- Simple mock - assume paths ending with / are directories
+      return path:match('/$') and 1 or 0
+    end,
+    mkdir = function(path, mode)
+      -- Simple mock - always succeed
+      return 1
     end,
   },
   uv = {
@@ -490,7 +517,7 @@ print('\n=== Test 6: Configuration Value Access ===')
 
 -- Setup known configuration
 local setup_success, setup_result = config.setup({
-  log_level = 'trace',
+  log_level = 'debug',
   lsp = {
     timeout = 15000,
     port_range = { 9000, 10000 },
@@ -500,7 +527,7 @@ assert_equals(setup_success, true, 'Setup should succeed before value access tes
 
 -- Test get_value with simple path
 local value = config.get_value('log_level')
-assert_equals(value, 'trace', 'Simple path value access should work')
+assert_equals(value, 'debug', 'Simple path value access should work')
 
 -- Test get_value with nested path
 value = config.get_value('lsp.timeout')

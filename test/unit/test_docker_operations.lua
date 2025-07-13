@@ -271,6 +271,12 @@ function tests.test_container_operations()
     'get_container_status',
     'get_container_info',
     'list_containers',
+    'wait_for_container_ready',
+    'stop_and_remove_container',
+    'attach_to_container',
+    'start_existing_container',
+    'stop_existing_container',
+    'restart_container',
   }
 
   for _, func_name in ipairs(required_container_functions) do
@@ -281,6 +287,135 @@ function tests.test_container_operations()
   end
 
   print('✓ All container operation functions present')
+
+  return true
+end
+
+-- Test async command execution with errors
+function tests.test_async_command_errors()
+  print('\n=== Async Command Errors Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test async availability check exists
+  if type(docker.check_docker_availability_async) ~= 'function' then
+    print('✗ check_docker_availability_async function missing')
+    return false
+  end
+
+  print('✓ Async availability check function present')
+
+  -- Test async image checks
+  if type(docker.check_image_exists_async) ~= 'function' then
+    print('✗ check_image_exists_async function missing')
+    return false
+  end
+
+  print('✓ Async image check function present')
+
+  return true
+end
+
+-- Test pull image operations
+function tests.test_pull_image_operations()
+  print('\n=== Pull Image Operations Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test pull image functions exist
+  local pull_functions = {
+    'pull_image',
+    'pull_image_async',
+  }
+
+  for _, func_name in ipairs(pull_functions) do
+    if type(docker[func_name]) ~= 'function' then
+      print('✗ Missing pull function:', func_name)
+      return false
+    end
+  end
+
+  print('✓ All pull operation functions present')
+
+  return true
+end
+
+-- Test logs and port operations
+function tests.test_logs_and_ports()
+  print('\n=== Logs and Port Operations Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test logs function
+  if type(docker.get_logs) ~= 'function' then
+    print('✗ get_logs function missing')
+    return false
+  end
+  print('✓ get_logs function present')
+
+  -- Test port operations
+  local port_functions = {
+    'get_forwarded_ports',
+    'stop_port_forward',
+  }
+
+  for _, func_name in ipairs(port_functions) do
+    if type(docker[func_name]) ~= 'function' then
+      print('✗ Missing port function:', func_name)
+      return false
+    end
+  end
+
+  print('✓ All port operation functions present')
+
+  return true
+end
+
+-- Test streaming operations
+function tests.test_streaming_operations()
+  print('\n=== Streaming Operations Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test streaming functions
+  local streaming_functions = {
+    'execute_command_stream',
+    'build_command',
+  }
+
+  for _, func_name in ipairs(streaming_functions) do
+    if type(docker[func_name]) ~= 'function' then
+      print('✗ Missing streaming function:', func_name)
+      return false
+    end
+  end
+
+  print('✓ All streaming operation functions present')
+
+  return true
+end
+
+-- Test error handling functions
+function tests.test_error_handling_functions()
+  print('\n=== Error Handling Functions Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test error handling functions
+  local error_functions = {
+    'handle_network_error',
+    'handle_container_error',
+    'force_remove_container',
+  }
+
+  for _, func_name in ipairs(error_functions) do
+    if type(docker[func_name]) ~= 'function' then
+      print('✗ Missing error handling function:', func_name)
+      return false
+    end
+  end
+
+  print('✓ All error handling functions present')
 
   return true
 end
@@ -299,6 +434,11 @@ local function run_docker_unit_tests()
     tests.test_docker_command_execution_dry,
     tests.test_image_operations,
     tests.test_container_operations,
+    tests.test_async_command_errors,
+    tests.test_pull_image_operations,
+    tests.test_logs_and_ports,
+    tests.test_streaming_operations,
+    tests.test_error_handling_functions,
   }
 
   local passed = 0
