@@ -738,14 +738,15 @@ local function run_e2e_tests()
   end
 
   print('')
-  print('=== E2E Test Results ===')
+  print('=== Full Workflow Test Results ===')
   print(string.format('Passed: %d/%d', passed, total))
 
   if passed == total then
-    print('🎉 All E2E tests passed!')
+    print('🎉 All full workflow tests passed!')
+    print('✓ Complete development workflows validated successfully')
     return 0
   else
-    print('⚠ Some E2E tests failed.')
+    print('⚠ Some full workflow tests failed.')
     return 1
   end
 end
