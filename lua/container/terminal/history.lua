@@ -179,7 +179,6 @@ function M.cleanup_old_history(config, days_to_keep)
   days_to_keep = days_to_keep or 30
   local cutoff_time = os.time() - (days_to_keep * 24 * 60 * 60)
 
-  local fs = require('container.utils.fs')
   local history_dir = config.history_dir
 
   if vim.fn.isdirectory(history_dir) == 0 then

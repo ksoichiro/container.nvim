@@ -68,7 +68,7 @@ function M.terminal(opts)
 
   -- Create terminal buffer with specified position
   local position = opts.position or config.terminal.default_position
-  local buf_id, win_id, create_err = display.create_terminal_buffer(session, position, opts)
+  local buf_id, _, create_err = display.create_terminal_buffer(session, position, opts)
 
   if not buf_id then
     session_manager.close_session(session_name)

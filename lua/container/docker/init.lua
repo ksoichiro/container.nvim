@@ -102,7 +102,6 @@ local function run_job_with_wait(cmd_args, job_opts, timeout_ms)
   log.debug('Headless mode: Using vim.wait() for jobstart event loop processing')
 
   local job_completed = false
-  local job_result = nil
 
   -- Wrap the original callbacks to track completion
   local original_on_exit = job_opts.on_exit
@@ -2038,7 +2037,6 @@ function M.with_timeout_and_retry(operation_name, operation_func, timeout_ms, ma
 
   local function attempt(retry_count)
     local success = false
-    local result = nil
     local timed_out = false
 
     -- Set up timeout
@@ -2051,7 +2049,6 @@ function M.with_timeout_and_retry(operation_name, operation_func, timeout_ms, ma
     operation_func(function(op_success, op_result)
       if not timed_out then
         success = op_success
-        result = op_result
         pcall(vim.fn.timer_stop, timeout_timer) -- Stop timeout timer
 
         if not success and retry_count < max_retries then

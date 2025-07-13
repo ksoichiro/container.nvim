@@ -9,8 +9,7 @@ function M.create_terminal_buffer(session, position, opts)
   opts = opts or {}
 
   local config = session.config
-  local buf_id = nil
-  local win_id = nil
+  local buf_id, win_id
 
   -- Determine positioning
   position = position or config.default_position or 'split'

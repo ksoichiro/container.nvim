@@ -317,7 +317,7 @@ local function transform_paths_recursive(obj, path_patterns, direction)
         return nil
       end
 
-      local current_value = get_nested_value(result, vim.split(pattern, '.', { plain = true }))
+      local current_value = get_nested_value(result, path_parts)
       if current_value then
         log.debug('Interceptor: Found value for pattern %s: %s', pattern, current_value)
         local transformed_value = transform_uri(current_value, direction)

@@ -213,8 +213,8 @@ function M.run_test_in_container(test_command, opts)
       -- Try to get existing test session first
       local session_manager = require('container.terminal.session')
       local existing_session = session_manager.get_session(session_name)
+      local success
 
-      local success = false
       if existing_session then
         -- Switch to existing terminal and clear it
         local display = require('container.terminal.display')
@@ -506,7 +506,7 @@ function M._setup_loaded_plugins()
     end
   end
 
-  local available_plugins, installable_plugins = M._check_test_plugins_availability()
+  local _, installable_plugins = M._check_test_plugins_availability()
 
   if setup_count == 0 then
     if #installable_plugins > 0 then
@@ -524,7 +524,7 @@ end
 
 -- Manual test runner for when no plugin is available
 function M.run_nearest_test(opts)
-  local container_id, config = get_container_info()
+  local container_id = get_container_info()
   if not container_id then
     vim.api.nvim_err_writeln('No active devcontainer')
     return
@@ -586,7 +586,7 @@ end
 
 -- Run all tests in current file
 function M.run_file_tests(opts)
-  local container_id, config = get_container_info()
+  local container_id = get_container_info()
   if not container_id then
     vim.api.nvim_err_writeln('No active devcontainer')
     return
@@ -609,7 +609,7 @@ end
 
 -- Run entire test suite
 function M.run_suite_tests(opts)
-  local container_id, config = get_container_info()
+  local container_id = get_container_info()
   if not container_id then
     vim.api.nvim_err_writeln('No active devcontainer')
     return

@@ -85,7 +85,6 @@ end
 -- Helper function to format log messages for explicit notification use
 -- This allows other modules to get formatted log messages for user notifications
 function M.format_message(level, msg, ...)
-  local level_name = log_level_names[level] or 'UNKNOWN'
   return string.format(msg, ...)
 end
 

@@ -70,8 +70,7 @@ function M.get_status()
   if state.current_container then
     -- Get container status
     local status = state.container_status
-    local icon = ''
-    local format_key = ''
+    local icon, format_key
 
     if status == 'running' then
       icon = icons.running or '✅'
@@ -88,7 +87,7 @@ function M.get_status()
     end
 
     -- Determine container name
-    local container_name = ''
+    local container_name
     if show_container_name and state.current_config and state.current_config.name then
       container_name = state.current_config.name
     else
@@ -100,7 +99,7 @@ function M.get_status()
     status_text = format_status(format_template, icon, container_name, status, labels)
   else
     -- No container - check if devcontainer.json exists
-    local devcontainer_available = false
+    local devcontainer_available
 
     -- Check cached result or refresh if needed
     if

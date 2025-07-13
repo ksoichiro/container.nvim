@@ -52,11 +52,6 @@ read_globals = {
 -- Warning configuration
 -- Disable specific warnings
 ignore = {
-  "211",  -- Unused local variable (for variables assigned but not read)
-  "212",  -- Unused argument (for callback parameters we don't use)
-  "213",  -- Unused loop variable
-  "231",  -- Variable is never accessed
-  "311",  -- Value assigned to variable is unused
   "431",  -- Shadowing upvalue (for common names like 'config', 'log')
   "542",  -- Empty if branch
   "561",  -- Cyclomatic complexity (we'll address these case by case)

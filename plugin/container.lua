@@ -407,7 +407,7 @@ local function create_commands()
     if args.args == '' then
       config.show_config()
     elseif args.args == 'reload' then
-      local success, result = config.reload()
+      local success = config.reload()
       if success then
         require('container.utils.notify').status('Configuration reloaded successfully')
       else

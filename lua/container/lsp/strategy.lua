@@ -79,7 +79,6 @@ function M.select_strategy(server_name, container_id, config)
   log.debug('Strategy Selector: Current strategy config: %s', vim.inspect(strategy_config))
 
   local chosen_strategy = strategy_config.default
-  local strategy_specific_config = {}
 
   log.info('Strategy Selector: Default strategy: %s', chosen_strategy)
 
@@ -114,7 +113,7 @@ function M.select_strategy(server_name, container_id, config)
   end
 
   -- Get strategy-specific configuration
-  strategy_specific_config = M._get_strategy_config(chosen_strategy, server_name, config)
+  local strategy_specific_config = M._get_strategy_config(chosen_strategy, server_name, config)
 
   log.info(
     'Strategy Selector: Final selected %s strategy for %s in container %s',

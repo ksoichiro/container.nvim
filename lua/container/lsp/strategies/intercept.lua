@@ -207,7 +207,7 @@ function M.is_available(server_name, container_id)
 
   -- Check if server exists in container
   local cmd_check = { 'docker', 'exec', container_id, 'which', server_name }
-  local result = vim.fn.system(cmd_check)
+  vim.fn.system(cmd_check)
   local exit_code = vim.v.shell_error
 
   if exit_code ~= 0 then

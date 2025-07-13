@@ -636,8 +636,6 @@ end
 
 -- Prepare LSP configuration for a server
 function M._prepare_lsp_config(name, server_config)
-  local path_utils = require('container.lsp.path')
-
   local config = vim.tbl_deep_extend('force', {
     -- Base configuration - use unique name for container-based LSP
     name = 'container_' .. name,
@@ -1275,7 +1273,7 @@ function M.retry_lsp_server_setup(server_name, max_attempts)
 
     -- Wait a moment and check if client started successfully
     vim.defer_fn(function()
-      local exists, client_id = M.client_exists(server_name)
+      local exists = M.client_exists(server_name)
       if exists then
         log.info('LSP: Successfully setup %s on attempt %d', server_name, attempt_num)
         local notify = require('container.utils.notify')

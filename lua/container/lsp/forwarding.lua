@@ -197,7 +197,7 @@ function M.create_client_middleware()
 
           -- Also show as vim notification if available
           if vim.notify then
-            local notify_level = vim.log.levels.INFO
+            local notify_level = vim.log.levels.INFO -- luacheck: ignore 311
             if level == 1 then
               notify_level = vim.log.levels.ERROR
             elseif level == 2 then

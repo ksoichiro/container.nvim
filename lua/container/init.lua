@@ -45,7 +45,7 @@ function M.setup(user_config)
   config = require('container.config')
   notify = require('container.utils.notify')
 
-  local success, result = config.setup(user_config)
+  local success = config.setup(user_config)
   if not success then
     log.error('Failed to setup configuration')
     return false
@@ -1990,7 +1990,7 @@ function M._try_reconnect_existing_container()
   local cwd = vim.fn.getcwd()
   parser = parser or require('container.parser')
 
-  local devcontainer_config, parse_err = parser.find_and_parse(cwd)
+  local devcontainer_config = parser.find_and_parse(cwd)
   if not devcontainer_config then
     -- Do nothing if devcontainer.json is not found
     return

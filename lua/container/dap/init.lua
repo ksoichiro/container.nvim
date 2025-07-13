@@ -2,8 +2,8 @@ local M = {}
 
 local log = require('container.utils.log')
 local docker = require('container.docker')
-local port = require('container.utils.port')
-local async = require('container.utils.async')
+-- local port = require('container.utils.port')
+-- local async = require('container.utils.async')
 local config = require('container.config')
 local notify = require('container.utils.notify')
 
@@ -17,7 +17,7 @@ M._state = {
 function M.setup()
   log.debug('Setting up nvim-dap integration')
 
-  local ok, dap = pcall(require, 'dap')
+  local ok = pcall(require, 'dap')
   if not ok then
     log.debug('nvim-dap not installed, skipping DAP integration')
     return false

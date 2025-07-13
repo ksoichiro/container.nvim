@@ -24,6 +24,8 @@ function M.containers(opts)
     return
   end
 
+  local _ = opts -- Suppress unused variable warning
+
   log.debug('FzfPicker: Starting containers picker')
 
   -- Get devcontainer projects (similar to telescope implementation)
@@ -114,6 +116,8 @@ function M.sessions(opts)
     return
   end
 
+  local _ = opts -- Suppress unused variable warning
+
   log.debug('FzfPicker: Starting sessions picker')
 
   local terminal = require('container.terminal')
@@ -183,6 +187,8 @@ function M.ports(opts)
   if not ok then
     return
   end
+
+  local _ = opts -- Suppress unused variable warning
 
   log.debug('FzfPicker: Starting ports picker')
 
@@ -268,6 +274,8 @@ function M.history(opts)
   if not ok then
     return
   end
+
+  local _ = opts -- Suppress unused variable warning
 
   log.debug('FzfPicker: Starting history picker')
 

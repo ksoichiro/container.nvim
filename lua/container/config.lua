@@ -221,7 +221,7 @@ end
 -- Validate configuration (uses new validator module)
 local function validate_config(config)
   local v = get_validator()
-  local valid, errors = v.validate(config)
+  local _, errors = v.validate(config)
   return errors
 end
 
