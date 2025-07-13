@@ -1,0 +1,59 @@
+-- LuaCov configuration file for container.nvim
+-- This file configures code coverage analysis for the plugin
+
+return {
+  -- Statistics file where coverage data is stored
+  statsfile = "luacov.stats.out",
+
+  -- Report file where the coverage report is written
+  reportfile = "luacov.report.out",
+
+  -- Modules to include in coverage analysis
+  -- Include all container.nvim modules
+  include = {
+    "container",
+    "container%..*", -- All submodules
+  },
+
+  -- Modules to exclude from coverage analysis
+  exclude = {
+    -- Exclude test files
+    "test/.*",
+
+    -- Exclude external dependencies
+    "vim",
+    "vim%..*",
+
+    -- Exclude examples
+    "examples/.*",
+
+    -- Exclude third-party modules
+    "nvim%-.*",
+    "telescope",
+    "fzf%-lua",
+    "dap",
+
+    -- Exclude temporary test modules
+    "test_.*",
+  },
+
+  -- Coverage reporting options
+  runreport = false, -- Don't auto-generate report, we'll do it manually
+
+  -- Delete stats file before running (start fresh)
+  deletestats = false,
+
+  -- Coverage target percentages for reporting
+  -- These are informational and don't affect the actual coverage collection
+  coverage_targets = {
+    minimum = 70,  -- Minimum acceptable coverage
+    good = 80,     -- Good coverage level
+    excellent = 90 -- Excellent coverage level
+  },
+
+  -- Output format options
+  cobertura = false, -- Don't generate Cobertura XML by default
+
+  -- Tick function for custom instrumentation (optional)
+  -- tick = function(file, line) end,
+}

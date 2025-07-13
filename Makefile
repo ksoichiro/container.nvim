@@ -235,22 +235,72 @@ test-quick: test-unit test-integration
 # Test with coverage measurement
 test-coverage:
 	@echo "Running tests with coverage measurement..."
-	@if ! command -v luacov >/dev/null 2>&1; then \
-		echo "Warning: luacov not found. Install with: luarocks install luacov"; \
+	@export PATH="$$HOME/.luarocks/bin:$$PATH"; \
+	if [ ! -f "$$HOME/.luarocks/bin/luacov" ] && ! command -v luacov >/dev/null 2>&1; then \
+		echo "Warning: luacov not found. Install with: luarocks install --local luacov"; \
 		echo "Running tests without coverage..."; \
 		make test; \
 	else \
 		echo "Cleaning previous coverage data..."; \
 		rm -f luacov.stats.out luacov.report.out; \
+		echo "Setting up Lua path for coverage..."; \
+		export LUA_PATH="./lua/?.lua;./lua/?/init.lua;$$(luarocks path --lr-path)"; \
+		export LUA_CPATH="$$(luarocks path --lr-cpath)"; \
 		echo "Running unit tests with coverage..."; \
-		LUA_PATH="./lua/?.lua;./lua/?/init.lua;$$LUA_PATH" \
-		lua -lluacov test/unit/*.lua; \
+		if [ -d "test/unit" ] && [ -n "$$(ls test/unit/*.lua 2>/dev/null)" ]; then \
+			for test_file in test/unit/*.lua; do \
+				echo "  Coverage testing: $$(basename $$test_file)"; \
+				lua -lluacov "$$test_file" || echo "  Warning: Test failed but continuing coverage"; \
+			done; \
+		fi; \
+		echo "Running integration tests with coverage..."; \
+		integration_tests="test_docker_integration.lua test_main_api.lua"; \
+		for test_name in $$integration_tests; do \
+			test_file="test/integration/$$test_name"; \
+			if [ -f "$$test_file" ]; then \
+				echo "  Coverage testing: $$test_name"; \
+				lua -lluacov "$$test_file" || echo "  Warning: Test failed but continuing coverage"; \
+			fi; \
+		done; \
 		echo "Generating coverage report..."; \
-		luacov; \
+		if [ -f "$$HOME/.luarocks/bin/luacov" ]; then \
+			$$HOME/.luarocks/bin/luacov; \
+		elif command -v luacov >/dev/null 2>&1; then \
+			luacov; \
+		else \
+			echo "Error: luacov command not found"; \
+			exit 1; \
+		fi; \
 		echo "Coverage report generated: luacov.report.out"; \
 		if [ -f luacov.report.out ]; then \
 			echo "=== Coverage Summary ==="; \
-			head -20 luacov.report.out; \
+			echo "Coverage Report for container.nvim"; \
+			echo "===================================="; \
+			echo ""; \
+			echo "Overall Coverage Statistics:"; \
+			tail -15 luacov.report.out | grep -A 20 "Summary" || tail -15 luacov.report.out; \
+			echo ""; \
+			echo "📊 Key Modules Coverage:"; \
+			grep "lua/container" luacov.report.out | grep -E "\.[0-9]+%" | head -8; \
+			echo ""; \
+			echo "📁 Full report: luacov.report.out"; \
+			echo "📈 Raw data: luacov.stats.out"; \
+			echo ""; \
+			total_coverage=$$(tail -1 luacov.report.out | grep -o '[0-9]*\.[0-9]*%' | tail -1); \
+			if [ -n "$$total_coverage" ]; then \
+				coverage_num=$$(echo $$total_coverage | sed 's/%//'); \
+				if [ "$$(echo "$$coverage_num >= 80" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
+					echo "🎉 Excellent coverage: $$total_coverage"; \
+				elif [ "$$(echo "$$coverage_num >= 70" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
+					echo "✅ Good coverage: $$total_coverage"; \
+				elif [ "$$(echo "$$coverage_num >= 50" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
+					echo "⚠️  Moderate coverage: $$total_coverage"; \
+				else \
+					echo "❌ Low coverage: $$total_coverage - improvement needed"; \
+				fi; \
+			fi; \
+		else \
+			echo "Warning: Coverage report not generated"; \
 		fi; \
 	fi
 
@@ -259,6 +309,8 @@ clean:
 	@echo "Cleaning temporary files..."
 	find . -name "*.tmp" -delete
 	find . -name "*.bak" -delete
+	rm -f luacov.stats.out luacov.report.out
+	@echo "Temporary files and coverage data cleaned!"
 
 # Generate Neovim help tags
 help-tags:
