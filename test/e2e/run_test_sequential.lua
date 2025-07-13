@@ -85,24 +85,39 @@ local function check_prerequisites()
   return true
 end
 
--- Define test cases to run
-local test_cases = {
-  {
-    file = 'test_essential_e2e.lua',
-    name = 'Essential E2E Tests',
-    description = 'Core functionality verification',
-  },
-  {
-    file = 'test_container_lifecycle.lua',
-    name = 'Container Lifecycle Tests',
-    description = 'Container creation, management, and cleanup',
-  },
-  {
-    file = 'test_full_workflow.lua',
-    name = 'Full Workflow Tests',
-    description = 'Complete development workflow scenarios',
-  },
-}
+-- Auto-discover test cases based on file naming convention
+local function discover_test_cases()
+  -- Try to load the discovery helper
+  local discovery_path = 'test/e2e/helpers/test_discovery.lua'
+  local discovery_module = loadfile(discovery_path)
+
+  if discovery_module then
+    local discovery = discovery_module()
+    return discovery.discover_test_files()
+  else
+    -- Fallback: manual glob pattern discovery
+    local test_files = {}
+    local handle = io.popen('find test/e2e -name "test_*.lua" -type f 2>/dev/null | sort')
+
+    if handle then
+      for line in handle:lines() do
+        local filename = line:match('test/e2e/(.+)$')
+        if filename and not filename:match('helpers/') then
+          table.insert(test_files, {
+            file = filename,
+            name = filename:gsub('%.lua$', ''):gsub('_', ' '):gsub('^%l', string.upper),
+            description = 'E2E functionality testing',
+          })
+        end
+      end
+      handle:close()
+    end
+
+    return test_files
+  end
+end
+
+local test_cases = discover_test_cases()
 
 local function main()
   print('=== container.nvim E2E Test Runner ===')
