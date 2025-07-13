@@ -1,6 +1,6 @@
 # Makefile for container.nvim
 
-.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-quick test-coverage install-dev clean install-hooks help-tags pre-commit
+.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage install-dev clean install-hooks help-tags pre-commit
 
 # Default target
 help:
@@ -15,7 +15,8 @@ help:
 	@echo "  test         Run all tests (unit + integration + e2e)"
 	@echo "  test-unit    Run unit tests only"
 	@echo "  test-integration Run integration tests only"
-	@echo "  test-e2e     Run end-to-end tests (requires Docker)"
+	@echo "  test-e2e     Run end-to-end tests in parallel (requires Docker)"
+	@echo "  test-e2e-sequential Run end-to-end tests sequentially (slower)"
 	@echo "  test-quick   Run essential tests for development"
 	@echo "  test-coverage Run tests with coverage measurement"
 	@echo "  install-dev  Install development dependencies"
@@ -204,6 +205,20 @@ test-e2e:
 	fi
 	@echo "Starting E2E test runner..."
 	lua test/e2e/run_test.lua
+
+# Run end-to-end tests sequentially (slower but available as fallback)
+test-e2e-sequential:
+	@echo "Running end-to-end tests sequentially..."
+	@if [ ! -d "test/e2e" ]; then \
+		echo "No E2E tests found."; \
+		exit 0; \
+	fi
+	@if [ ! -f "test/e2e/run_test_sequential.lua" ]; then \
+		echo "Error: Sequential E2E test runner not found (test/e2e/run_test_sequential.lua)."; \
+		exit 1; \
+	fi
+	@echo "Starting sequential E2E test runner..."
+	lua test/e2e/run_test_sequential.lua
 
 # Quick test for development (essential tests only)
 test-quick: test-unit test-integration
