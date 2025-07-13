@@ -1,0 +1,17 @@
+{
+  "image": "ubuntu",
+  "mounts": [
+    "source=${localWorkspaceFolder}/data,target=/data,type=bind",
+    {
+      "source": "${localEnv:HOME}/.ssh",
+      "target": "/home/vscode/.ssh",
+      "type": "bind"
+    }
+  ],
+  "name": "Variables Test",
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/custom/bin",
+    "WORKSPACE": "${containerWorkspaceFolder}"
+  },
+  "workspaceFolder": "${containerWorkspaceFolder}/src"
+}

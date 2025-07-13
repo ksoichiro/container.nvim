@@ -1,0 +1,30 @@
+{
+  "build": {
+    "args": {
+      "NODE_VERSION": "16"
+    },
+    "context": ".."
+  },
+  "customizations": {
+    "container.nvim": {
+      "dynamicPorts": [
+        "auto:9000",
+        "range:8000-8010:3001"
+      ]
+    },
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-json"
+      ]
+    }
+  },
+  "dockerFile": "../Dockerfile",
+  "forwardPorts": [
+    3000,
+    "8080:80"
+  ],
+  "name": "Docker Build Test",
+  "postCreateCommand": "npm install",
+  "remoteUser": "node",
+  "workspaceFolder": "/workspace"
+}
