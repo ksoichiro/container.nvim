@@ -5,180 +5,189 @@
 
 package.path = './test/helpers/?.lua;./lua/?.lua;./lua/?/init.lua;' .. package.path
 
--- Enhanced vim mock for better test coverage
-_G.vim = {
-  fn = {
-    system = function(cmd)
-      -- Enhanced mock system with more scenarios
-      if cmd:match('docker --version') then
-        return 'Docker version 20.10.8, build 3967b7d\n'
-      elseif cmd:match('docker info') then
-        if _G.test_docker_daemon_failure then
-          _G.vim.v.shell_error = 1
-          return 'Cannot connect to Docker daemon'
-        end
-        return 'Client:\n Context: default\n Debug Mode: false\n'
-      elseif cmd:match('docker inspect.*State.Status') then
-        if _G.test_container_not_running then
-          _G.vim.v.shell_error = 1
-          return ''
-        end
-        return 'running\n'
-      elseif cmd:match('docker exec.*which bash') then
-        if _G.test_no_bash then
-          _G.vim.v.shell_error = 1
-          return ''
-        end
-        return '/bin/bash\n'
-      elseif cmd:match('docker exec.*which zsh') then
-        _G.vim.v.shell_error = 1
-        return ''
-      elseif cmd:match('docker exec.*which sh') then
-        return '/bin/sh\n'
-      elseif cmd:match('docker images.*-q') then
-        if _G.test_image_not_found then
-          return ''
-        end
-        return 'sha256:abc123def456\n'
-      elseif cmd:match('docker create') then
-        if _G.test_create_failure then
-          _G.vim.v.shell_error = 1
-          return 'Error: Failed to create container'
-        end
-        return 'container_id_12345\n'
-      elseif cmd:match('docker start') then
-        if _G.test_start_failure then
-          _G.vim.v.shell_error = 1
-          return 'Error: Failed to start container'
-        end
-        return 'container_id_12345\n'
-      elseif cmd:match('docker stop') then
-        if _G.test_stop_failure then
-          _G.vim.v.shell_error = 1
-          return 'Error: Failed to stop container'
-        end
-        return 'container_id_12345\n'
-      elseif cmd:match('docker exec.*echo ready') then
-        if _G.test_exec_failure then
-          _G.vim.v.shell_error = 1
-          return 'Error: Container not ready'
-        end
-        return 'ready\n'
-      elseif cmd:match('docker ps') then
-        return 'CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\n12345\tubuntu\tbash\t1min\tUp 1 min\t3000:3000\ttest-container\n'
-      elseif cmd:match('docker build') then
-        if _G.test_build_failure then
-          _G.vim.v.shell_error = 1
-          return 'Error: Build failed'
-        end
-        return 'Successfully built abc123\n'
-      elseif cmd:match('docker pull') then
-        if _G.test_pull_failure then
-          _G.vim.v.shell_error = 1
-          return 'Error: Pull failed'
-        end
-        return 'Status: Downloaded newer image\n'
-      else
-        return ''
-      end
-    end,
-    jobstart = function(cmd, opts)
-      -- Enhanced job mock
-      local job_id = 1
-      if _G.test_job_failure then
-        return 0 -- Job failed to start
-      end
+-- Load common test helpers
+local test_helpers = require('test_helpers_common')
+test_helpers.setup_lua_path()
+test_helpers.setup_vim_mock()
 
-      -- Simulate job execution
-      if opts and opts.on_exit then
-        _G.vim.defer_fn(function()
-          opts.on_exit(job_id, _G.test_job_exit_code or 0, 'exit')
-        end, 100)
-      end
+-- Enhanced vim mock for better test coverage (extend existing)
+vim.fn = vim.fn or {}
 
-      return job_id
-    end,
-    jobstop = function(job_id)
-      return true
-    end,
-    jobwait = function(jobs, timeout)
-      if timeout == 0 then
-        return { -1 } -- Job still running
+vim.fn.system = function(cmd)
+  -- Enhanced mock system with more scenarios
+  if cmd:match('docker --version') then
+    return 'Docker version 20.10.8, build 3967b7d\n'
+  elseif cmd:match('docker info') then
+    if _G.test_docker_daemon_failure then
+      _G.vim.v.shell_error = 1
+      return 'Cannot connect to Docker daemon'
+    end
+    return 'Client:\n Context: default\n Debug Mode: false\n'
+  elseif cmd:match('docker inspect.*State.Status') then
+    if _G.test_container_not_running then
+      _G.vim.v.shell_error = 1
+      return ''
+    end
+    return 'running\n'
+  elseif cmd:match('docker exec.*which bash') then
+    if _G.test_no_bash then
+      _G.vim.v.shell_error = 1
+      return ''
+    end
+    return '/bin/bash\n'
+  elseif cmd:match('docker exec.*which zsh') then
+    _G.vim.v.shell_error = 1
+    return ''
+  elseif cmd:match('docker exec.*which sh') then
+    return '/bin/sh\n'
+  elseif cmd:match('docker images.*-q') then
+    if _G.test_image_not_found then
+      return ''
+    end
+    return 'sha256:abc123def456\n'
+  elseif cmd:match('docker create') then
+    if _G.test_create_failure then
+      _G.vim.v.shell_error = 1
+      return 'Error: Failed to create container'
+    end
+    return 'container_id_12345\n'
+  elseif cmd:match('docker start') then
+    if _G.test_start_failure then
+      _G.vim.v.shell_error = 1
+      return 'Error: Failed to start container'
+    end
+    return 'container_id_12345\n'
+  elseif cmd:match('docker stop') then
+    if _G.test_stop_failure then
+      _G.vim.v.shell_error = 1
+      return 'Error: Failed to stop container'
+    end
+    return 'container_id_12345\n'
+  elseif cmd:match('docker exec.*echo ready') then
+    if _G.test_exec_failure then
+      _G.vim.v.shell_error = 1
+      return 'Error: Container not ready'
+    end
+    return 'ready\n'
+  elseif cmd:match('docker ps') then
+    return 'CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\n12345\tubuntu\tbash\t1min\tUp 1 min\t3000:3000\ttest-container\n'
+  elseif cmd:match('docker build') then
+    if _G.test_build_failure then
+      _G.vim.v.shell_error = 1
+      return 'Error: Build failed'
+    end
+    return 'Successfully built abc123\n'
+  elseif cmd:match('docker pull') then
+    if _G.test_pull_failure then
+      _G.vim.v.shell_error = 1
+      return 'Error: Pull failed'
+    end
+    return 'Status: Downloaded newer image\n'
+  else
+    return ''
+  end
+end
+
+vim.fn.jobstart = function(cmd, opts)
+  -- Enhanced job mock
+  local job_id = 1
+  if _G.test_job_failure then
+    return 0 -- Job failed to start
+  end
+
+  -- Simulate job execution
+  if opts and opts.on_exit then
+    _G.vim.defer_fn(function()
+      opts.on_exit(job_id, _G.test_job_exit_code or 0, 'exit')
+    end, 100)
+  end
+
+  return job_id
+end
+
+vim.fn.jobstop = function(job_id)
+  return true
+end
+
+vim.fn.jobwait = function(jobs, timeout)
+  if timeout == 0 then
+    return { -1 } -- Job still running
+  end
+  return { 0 } -- Job finished
+end
+
+vim.fn.getcwd = function()
+  return '/test/workspace'
+end
+
+vim.fn.sha256 = function(str)
+  return string.format('%08x%08x%08x%08x', str:len() * 12345, str:len() * 67890, str:len() * 11111, str:len() * 22222)
+end
+
+vim.fn.shellescape = function(str)
+  return "'" .. str:gsub("'", "'\"'\"'") .. "'"
+end
+
+vim.fn.fnamemodify = function(path, modifier)
+  if modifier == ':t' then
+    return path:match('[^/]+$') or path
+  end
+  return path
+end
+
+_G.vim = _G.vim
+  or {
+    fn = vim.fn,
+    v = {
+      shell_error = 0,
+      servername = 'nvim-test',
+    },
+    defer_fn = function(fn, timeout)
+      -- Execute immediately for tests
+      if type(fn) == 'function' then
+        fn()
       end
-      return { 0 } -- Job finished
     end,
-    getcwd = function()
-      return '/test/workspace'
-    end,
-    sha256 = function(str)
-      return string.format(
-        '%08x%08x%08x%08x',
-        str:len() * 12345,
-        str:len() * 67890,
-        str:len() * 11111,
-        str:len() * 22222
-      )
-    end,
-    shellescape = function(str)
-      return "'" .. str:gsub("'", "'\"'\"'") .. "'"
-    end,
-    fnamemodify = function(path, modifier)
-      if modifier == ':t' then
-        return path:match('[^/]+$') or path
+    schedule = function(fn)
+      if type(fn) == 'function' then
+        fn()
       end
-      return path
     end,
-  },
-  v = {
-    shell_error = 0,
-    servername = 'nvim-test',
-  },
-  defer_fn = function(fn, timeout)
-    -- Execute immediately for tests
-    if type(fn) == 'function' then
-      fn()
-    end
-  end,
-  schedule = function(fn)
-    if type(fn) == 'function' then
-      fn()
-    end
-  end,
-  wait = function(timeout, condition, interval)
-    if condition and condition() then
-      return 0
-    end
-    return -1
-  end,
-  loop = {
-    hrtime = function()
-      return os.clock() * 1000000000
+    wait = function(timeout, condition, interval)
+      if condition and condition() then
+        return 0
+      end
+      return -1
     end,
-    now = function()
-      return os.clock() * 1000
-    end,
-  },
-  json = {
-    decode = function(str)
-      -- Simple JSON decode mock
-      if str:match('"State"') then
-        return {
-          {
-            State = { Status = 'running' },
-            NetworkSettings = {
-              Ports = {
-                ['3000/tcp'] = { { HostPort = '3000', HostIp = '0.0.0.0' } },
-                ['8080/tcp'] = { { HostPort = '8080', HostIp = '127.0.0.1' } },
+    loop = {
+      hrtime = function()
+        return os.clock() * 1000000000
+      end,
+      now = function()
+        return os.clock() * 1000
+      end,
+    },
+    json = {
+      decode = function(str)
+        -- Simple JSON decode mock
+        if str:match('"State"') then
+          return {
+            {
+              State = { Status = 'running' },
+              NetworkSettings = {
+                Ports = {
+                  ['3000/tcp'] = { { HostPort = '3000', HostIp = '0.0.0.0' } },
+                  ['8080/tcp'] = { { HostPort = '8080', HostIp = '127.0.0.1' } },
+                },
               },
             },
-          },
-        }
-      end
-      return {}
-    end,
-  },
-  NIL = {},
-}
+          }
+        end
+        return {}
+      end,
+    },
+    NIL = {},
+  }
 
 local tests = {}
 
