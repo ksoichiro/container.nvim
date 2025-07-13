@@ -14,7 +14,7 @@ help:
 	@echo "  format-check Check if Lua code is properly formatted"
 	@echo "  test         Run all tests (unit + integration + e2e)"
 	@echo "  test-unit    Run unit tests only"
-	@echo "  test-integration Run integration tests only (includes async operations)"
+	@echo "  test-integration Run integration tests only (includes async operations and error scenarios)"
 	@echo "  test-e2e     Run end-to-end tests in parallel (requires Docker)"
 	@echo "  test-e2e-sequential Run end-to-end tests sequentially (slower)"
 	@echo "  test-quick   Run essential tests for development"
@@ -166,12 +166,12 @@ test-integration:
 		exit 0; \
 	fi
 	@failed=0; \
-	integration_tests="test_docker_integration.lua test_main_api.lua test_lsp_real.lua test_async_operations_simplified.lua"; \
+	integration_tests="test_docker_integration.lua test_main_api.lua test_lsp_real.lua test_async_operations_simplified.lua test_error_scenarios_simplified.lua"; \
 	for test_name in $$integration_tests; do \
 		test_file="test/integration/$$test_name"; \
 		if [ -f "$$test_file" ]; then \
 			echo "=== Running integration test: $$test_name ==="; \
-			if [ "$$test_name" = "test_lsp_real.lua" ] || [ "$$test_name" = "test_async_operations_simplified.lua" ]; then \
+			if [ "$$test_name" = "test_lsp_real.lua" ] || [ "$$test_name" = "test_async_operations_simplified.lua" ] || [ "$$test_name" = "test_error_scenarios_simplified.lua" ]; then \
 				if nvim --headless -u NONE -c "lua dofile('$$test_file')" -c "qa" 2>/dev/null; then \
 					echo "✓ $$test_name PASSED"; \
 				else \
