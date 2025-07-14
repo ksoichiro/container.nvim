@@ -1,6 +1,6 @@
 # Makefile for container.nvim
 
-.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage install-dev clean install-hooks help-tags pre-commit
+.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage test-coverage-check install-dev clean install-hooks help-tags pre-commit
 
 # Default target
 help:
@@ -19,6 +19,7 @@ help:
 	@echo "  test-e2e-sequential Run end-to-end tests sequentially (slower)"
 	@echo "  test-quick   Run essential tests for development"
 	@echo "  test-coverage Run tests with coverage measurement"
+	@echo "  test-coverage-check Run tests with coverage and fail if below 70%"
 	@echo "  install-dev  Install development dependencies"
 	@echo "  install-hooks Install pre-commit hooks"
 	@echo "  help-tags    Generate Neovim help tags"
@@ -303,6 +304,11 @@ test-coverage:
 			echo "Warning: Coverage report not generated"; \
 		fi; \
 	fi
+
+# Test with coverage and fail if below threshold
+test-coverage-check:
+	@echo "Running tests with coverage check (threshold: 70%)..."
+	@./scripts/check_coverage.sh
 
 # Clean temporary files
 clean:

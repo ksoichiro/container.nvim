@@ -62,6 +62,14 @@ repos:
         files: \.lua$
         pass_filenames: false
 
+      # Check test coverage (70% threshold)
+      - id: coverage-check
+        name: Check test coverage (70% minimum)
+        entry: make test-coverage-check
+        language: system
+        files: \.lua$
+        pass_filenames: false
+
       # Check that CLAUDE.md is up to date
       - id: check-claude-md
         name: Verify CLAUDE.md exists and contains required sections
