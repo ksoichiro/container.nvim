@@ -1,0 +1,13 @@
+{
+  "_comment1": "This is a test configuration with comments",
+  "_comment2": "Another line comment",
+  "_comment3": "Multi-line comment with multiple lines",
+  "forwardPorts": [
+    3000,
+    8080
+  ],
+  "image": "ubuntu",
+  "name": "Comments Test",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace"
+}

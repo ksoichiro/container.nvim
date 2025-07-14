@@ -7,7 +7,7 @@ local log = require('container.utils.log')
 
 -- Check if config has legacy environment settings
 local function has_legacy_env_settings(config)
-  if not config.customizations or not config.customizations['container.nvim'] then
+  if not config or not config.customizations or not config.customizations['container.nvim'] then
     return false
   end
 

@@ -1,0 +1,12 @@
+{
+  "dockerComposeFile": "../docker-compose.yml",
+  "forwardPorts": [
+    3000,
+    5000
+  ],
+  "name": "Docker Compose Test",
+  "remoteUser": "vscode",
+  "service": "app",
+  "shutdownAction": "stopCompose",
+  "workspaceFolder": "/workspace"
+}

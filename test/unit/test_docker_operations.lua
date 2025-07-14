@@ -9,6 +9,14 @@ local helpers = require('init')
 helpers.setup_vim_mock()
 helpers.setup_lua_path()
 
+-- Additional vim function mocks for Docker tests
+_G.vim.list_extend = function(list, items)
+  for _, item in ipairs(items) do
+    table.insert(list, item)
+  end
+  return list
+end
+
 local tests = {}
 
 -- Test Docker module initialization
@@ -271,6 +279,12 @@ function tests.test_container_operations()
     'get_container_status',
     'get_container_info',
     'list_containers',
+    'wait_for_container_ready',
+    'stop_and_remove_container',
+    'attach_to_container',
+    'start_existing_container',
+    'stop_existing_container',
+    'restart_container',
   }
 
   for _, func_name in ipairs(required_container_functions) do
@@ -281,6 +295,269 @@ function tests.test_container_operations()
   end
 
   print('✓ All container operation functions present')
+
+  return true
+end
+
+-- Test async command execution with errors
+function tests.test_async_command_errors()
+  print('\n=== Async Command Errors Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test async availability check exists
+  if type(docker.check_docker_availability_async) ~= 'function' then
+    print('✗ check_docker_availability_async function missing')
+    return false
+  end
+
+  print('✓ Async availability check function present')
+
+  -- Test async image checks
+  if type(docker.check_image_exists_async) ~= 'function' then
+    print('✗ check_image_exists_async function missing')
+    return false
+  end
+
+  print('✓ Async image check function present')
+
+  return true
+end
+
+-- Test pull image operations
+function tests.test_pull_image_operations()
+  print('\n=== Pull Image Operations Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test pull image functions exist
+  local pull_functions = {
+    'pull_image',
+    'pull_image_async',
+  }
+
+  for _, func_name in ipairs(pull_functions) do
+    if type(docker[func_name]) ~= 'function' then
+      print('✗ Missing pull function:', func_name)
+      return false
+    end
+  end
+
+  print('✓ All pull operation functions present')
+
+  return true
+end
+
+-- Test logs and port operations
+function tests.test_logs_and_ports()
+  print('\n=== Logs and Port Operations Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test logs function
+  if type(docker.get_logs) ~= 'function' then
+    print('✗ get_logs function missing')
+    return false
+  end
+  print('✓ get_logs function present')
+
+  -- Test port operations
+  local port_functions = {
+    'get_forwarded_ports',
+    'stop_port_forward',
+  }
+
+  for _, func_name in ipairs(port_functions) do
+    if type(docker[func_name]) ~= 'function' then
+      print('✗ Missing port function:', func_name)
+      return false
+    end
+  end
+
+  print('✓ All port operation functions present')
+
+  return true
+end
+
+-- Test streaming operations
+function tests.test_streaming_operations()
+  print('\n=== Streaming Operations Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test streaming functions
+  local streaming_functions = {
+    'execute_command_stream',
+    'build_command',
+  }
+
+  for _, func_name in ipairs(streaming_functions) do
+    if type(docker[func_name]) ~= 'function' then
+      print('✗ Missing streaming function:', func_name)
+      return false
+    end
+  end
+
+  print('✓ All streaming operation functions present')
+
+  return true
+end
+
+-- Test error handling functions
+function tests.test_error_handling_functions()
+  print('\n=== Error Handling Functions Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test error handling functions
+  local error_functions = {
+    'handle_network_error',
+    'handle_container_error',
+    'force_remove_container',
+  }
+
+  for _, func_name in ipairs(error_functions) do
+    if type(docker[func_name]) ~= 'function' then
+      print('✗ Missing error handling function:', func_name)
+      return false
+    end
+  end
+
+  print('✓ All error handling functions present')
+
+  return true
+end
+
+-- Test additional Docker functions for coverage
+function tests.test_additional_coverage_functions()
+  print('\n=== Additional Coverage Functions Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test error message builders
+  local docker_not_found = docker._build_docker_not_found_error()
+  if type(docker_not_found) ~= 'string' or docker_not_found == '' then
+    print('✗ _build_docker_not_found_error failed')
+    return false
+  end
+  print('✓ Docker not found error message generated')
+
+  local daemon_error = docker._build_docker_daemon_error()
+  if type(daemon_error) ~= 'string' or daemon_error == '' then
+    print('✗ _build_docker_daemon_error failed')
+    return false
+  end
+  print('✓ Docker daemon error message generated')
+
+  -- Test network error handling
+  local network_error = docker.handle_network_error('Test error details')
+  if type(network_error) ~= 'string' or not network_error:find('Test error details') then
+    print('✗ handle_network_error failed')
+    return false
+  end
+  print('✓ Network error handling worked')
+
+  -- Test container error handling
+  local container_error = docker.handle_container_error('create', 'test_container', 'Test error')
+  if type(container_error) ~= 'string' or not container_error:find('create') then
+    print('✗ handle_container_error failed')
+    return false
+  end
+  print('✓ Container error handling worked')
+
+  -- Test build_command helper
+  local simple_cmd = docker.build_command('ls -la')
+  if simple_cmd ~= 'ls -la' then
+    print('✗ build_command simple case failed')
+    return false
+  end
+  print('✓ Simple command building worked')
+
+  local complex_cmd = docker.build_command('npm test', { cd = '/app', setup_env = true })
+  if type(complex_cmd) ~= 'string' or not complex_cmd:find('npm test') then
+    print('✗ build_command complex case failed')
+    return false
+  end
+  print('✓ Complex command building worked')
+
+  -- Test get_container_name utility
+  local container_name = docker.get_container_name('/test/project')
+  if type(container_name) ~= 'string' or not container_name:find('devcontainer') then
+    print('✗ get_container_name failed')
+    return false
+  end
+  print('✓ Container name utility worked')
+
+  return true
+end
+
+-- Test Docker availability checks
+function tests.test_docker_availability_checks()
+  print('\n=== Docker Availability Checks Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test sync availability check (this will likely fail in test environment, but we want coverage)
+  local available, error_msg = docker.check_docker_availability()
+  if type(available) ~= 'boolean' then
+    print('✗ check_docker_availability returned invalid type')
+    return false
+  end
+  print('✓ Docker availability check executed (available:', available, ')')
+
+  -- Test shell cache operations
+  docker.clear_shell_cache('test_container')
+  print('✓ Shell cache cleared for specific container')
+
+  docker.clear_shell_cache() -- Clear all
+  print('✓ All shell cache cleared')
+
+  return true
+end
+
+-- Test mock functions with safe arguments
+function tests.test_safe_mock_operations()
+  print('\n=== Safe Mock Operations Test ===')
+
+  local docker = require('container.docker')
+
+  -- Test image existence check (safe operation)
+  local exists = docker.check_image_exists('nonexistent:test')
+  if type(exists) ~= 'boolean' then
+    print('✗ check_image_exists returned invalid type')
+    return false
+  end
+  print('✓ Image existence check executed')
+
+  -- Test port operations (these should be safe)
+  local ports = docker.get_forwarded_ports()
+  if type(ports) ~= 'table' then
+    print('✗ get_forwarded_ports returned invalid type')
+    return false
+  end
+  print('✓ Port forwarding check executed')
+
+  local success, error_msg = docker.stop_port_forward({ port = 3000 })
+  if type(success) ~= 'boolean' then
+    print('✗ stop_port_forward returned invalid type')
+    return false
+  end
+  print('✓ Port forward stop executed (expected to fail)')
+
+  -- Test container listing (safe operation)
+  local containers = docker.list_containers()
+  if type(containers) ~= 'table' then
+    print('✗ list_containers returned invalid type')
+    return false
+  end
+  print('✓ Container listing executed')
+
+  local devcontainers = docker.list_devcontainers()
+  if type(devcontainers) ~= 'table' then
+    print('✗ list_devcontainers returned invalid type')
+    return false
+  end
+  print('✓ Devcontainer listing executed')
 
   return true
 end
@@ -299,6 +576,14 @@ local function run_docker_unit_tests()
     tests.test_docker_command_execution_dry,
     tests.test_image_operations,
     tests.test_container_operations,
+    tests.test_async_command_errors,
+    tests.test_pull_image_operations,
+    tests.test_logs_and_ports,
+    tests.test_streaming_operations,
+    tests.test_error_handling_functions,
+    tests.test_additional_coverage_functions,
+    tests.test_docker_availability_checks,
+    tests.test_safe_mock_operations,
   }
 
   local passed = 0

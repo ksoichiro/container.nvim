@@ -140,7 +140,7 @@ test-unit:
 		if [ -f "$$test_file" ]; then \
 			test_name=$$(basename "$$test_file"); \
 			echo "=== Running unit test: $$test_name ==="; \
-			if lua "$$test_file"; then \
+			if LUA_PATH="./lua/?.lua;./lua/?/init.lua;$$LUA_PATH" lua "$$test_file"; then \
 				echo "✓ $$test_name PASSED"; \
 			else \
 				echo "✗ $$test_name FAILED"; \
