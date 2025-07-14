@@ -41,22 +41,6 @@ Generated on: 2025-07-14 (Post Coverage Improvement Campaign)
 | `lua/container/config.lua` | 79.73% | ✅ **Excellent** ✨ **STABLE** |
 | `lua/container/lsp/commands.lua` | 75.84% | ✅ **Excellent** ✨ **STABLE** |
 
-### High Coverage Modules (80-95%)
-| Module | Coverage | Status |
-|--------|----------|--------|
-| `lua/container/utils/async.lua` | 91.73% | 🏆 **OUTSTANDING** ✨ **MAINTAINED** |
-| `lua/container/lsp/forwarding.lua` | 90.78% | 🏆 **OUTSTANDING** ✨ **MAINTAINED** |
-| `lua/container/terminal/init.lua` | 85.52% | ✅ **Excellent** ✨ **MAINTAINED** |
-| `lua/container/parser.lua` | 84.08% | ✅ **Excellent** ✨ **MAINTAINED** |
-| `lua/container/config/validator.lua` | 80.86% | ✅ **Excellent** ✨ **MAINTAINED** |
-| `lua/container/utils/log.lua` | 80.77% | ✅ **Excellent** ✨ **MAINTAINED** |
-
-### Good Coverage Modules (70-80%)
-| Module | Coverage | Status |
-|--------|----------|--------|
-| `lua/container/config.lua` | 79.73% | ✅ **Excellent** ✨ **STABLE** |
-| `lua/container/lsp/commands.lua` | 75.84% | ✅ **Excellent** ✨ **STABLE** |
-
 ### Moderate Coverage Modules (50-70%)
 | Module | Coverage | Priority | Status |
 |--------|----------|----------|--------|
