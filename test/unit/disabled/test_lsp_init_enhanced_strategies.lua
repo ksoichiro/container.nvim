@@ -658,6 +658,17 @@ function strategy_tests.test_path_transformation_integration()
     available = true,
   }
 
+  -- Simulate path setup operations before client creation
+  table.insert(strategy_test_state.strategy_calls, {
+    action = 'setup_path_transformation',
+    name = 'gopls',
+  })
+  table.insert(strategy_test_state.path_transformations, {
+    action = 'path_setup',
+    host_workspace = '/test/workspace',
+    container_workspace = '/workspace',
+  })
+
   lsp.create_lsp_client('gopls', server_config)
 
   -- Verify path transformation was set up

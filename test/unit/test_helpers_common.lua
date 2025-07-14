@@ -116,6 +116,38 @@ function M.setup_vim_mock()
     return path
   end
 
+  vim.fn.jobstart = vim.fn.jobstart or function(cmd, opts)
+    return 1
+  end
+
+  vim.fn.jobstop = vim.fn.jobstop or function(job_id)
+    return 1
+  end
+
+  vim.fn.chanclose = vim.fn.chanclose or function(id)
+    return 0
+  end
+
+  vim.fn.chansend = vim.fn.chansend or function(id, data)
+    return 0
+  end
+
+  vim.fn.getftime = vim.fn.getftime or function(file)
+    return os.time()
+  end
+
+  vim.fn.tempname = vim.fn.tempname or function()
+    return '/tmp/test_temp_' .. math.random(10000)
+  end
+
+  -- Timing functions
+  vim.uv = vim.uv or {}
+  vim.uv.hrtime = vim.uv.hrtime or function()
+    return os.clock() * 1000000000
+  end
+
+  vim.loop = vim.loop or vim.uv
+
   -- API namespace
   vim.api = vim.api or {}
 
@@ -165,6 +197,46 @@ function M.setup_vim_mock()
     fn()
   end
 
+  -- LSP utilities
+  vim.lsp = vim.lsp or {}
+  vim.lsp.util = vim.lsp.util or {}
+  vim.lsp.util.is_stopped = vim.lsp.util.is_stopped
+    or function(client)
+      return client and client.is_stopped and client.is_stopped()
+    end
+
+  vim.lsp.get_clients = vim.lsp.get_clients or function(opts)
+    return {}
+  end
+
+  vim.lsp.start = vim.lsp.start
+    or function(config, opts)
+      return {
+        id = math.random(1000),
+        is_stopped = function()
+          return false
+        end,
+      }
+    end
+
+  vim.lsp.buf_attach_client = vim.lsp.buf_attach_client or function(bufnr, client_id)
+    return true
+  end
+
+  vim.lsp.buf = vim.lsp.buf or {}
+  vim.lsp.buf.hover = vim.lsp.buf.hover or function() end
+  vim.lsp.buf.definition = vim.lsp.buf.definition or function() end
+  vim.lsp.buf.references = vim.lsp.buf.references or function() end
+
+  vim.lsp.handlers = vim.lsp.handlers or {}
+
+  -- Diagnostic utilities
+  vim.diagnostic = vim.diagnostic or {}
+  vim.diagnostic.config = vim.diagnostic.config or function() end
+  vim.diagnostic.get = vim.diagnostic.get or function()
+    return {}
+  end
+
   -- Other utilities
   vim.v = vim.v or { shell_error = 0 }
   vim.bo = vim.bo or {}
@@ -173,6 +245,18 @@ function M.setup_vim_mock()
   vim.notify = vim.notify or function(msg, level) end
   vim.inspect = vim.inspect or function(obj)
     return tostring(obj)
+  end
+
+  -- JSON utilities
+  vim.json = vim.json or {}
+  vim.json.decode = vim.json.decode
+    or function(str)
+      -- Simple mock - just return empty table for now
+      return {}
+    end
+
+  vim.json.encode = vim.json.encode or function(obj)
+    return '{}'
   end
 end
 

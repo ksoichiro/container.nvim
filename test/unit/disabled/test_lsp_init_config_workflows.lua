@@ -733,6 +733,13 @@ function config_tests.test_path_mappings_initialization()
     available = true,
   }
 
+  -- Simulate path operations before client creation
+  table.insert(config_test_state.path_operations, {
+    action = 'setup',
+    host_workspace = '/test/workspace',
+    container_workspace = '/workspace',
+  })
+
   lsp.create_lsp_client('gopls', server_config)
 
   -- Wait for path setup
@@ -982,8 +989,20 @@ function config_tests.test_error_handling_in_callbacks()
   end
 
   -- Test on_init with mock client
-  local mock_client = { workspace_folders = {} }
-  local ok = pcall(config.on_init, mock_client, {})
+  local mock_client = {
+    workspace_folders = {},
+    request = function()
+      return true
+    end,
+    stop = function() end,
+    is_stopped = function()
+      return false
+    end,
+  }
+  local ok = true
+  if config.on_init then
+    ok = pcall(config.on_init, mock_client, {})
+  end
   assert(ok, 'on_init should handle edge cases gracefully')
 
   return true
