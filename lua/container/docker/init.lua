@@ -925,8 +925,16 @@ function M._build_create_args(config)
   table.insert(args, '-v')
   table.insert(args, workspace_source .. ':' .. workspace_target)
 
+  -- Override any bash-dependent entrypoint from base image
+  table.insert(args, '--entrypoint')
+  table.insert(args, '/bin/sh')
+
   -- Image
   table.insert(args, config.image)
+
+  -- Default command (keep container running with POSIX sh)
+  table.insert(args, '-c')
+  table.insert(args, 'while true; do sleep 3600; done')
 
   return args
 end
@@ -1007,7 +1015,7 @@ function M.create_container(config)
   end
   -- Override any bash-dependent entrypoint from base image
   table.insert(args, '--entrypoint')
-  table.insert(args, 'sh')
+  table.insert(args, '/bin/sh')
 
   table.insert(args, image)
 
