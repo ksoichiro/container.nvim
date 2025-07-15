@@ -39,11 +39,21 @@ local function clear_status_cache()
   state.status_cache.updating = false
 end
 
+-- Clear all state including current container
+local function clear_all_state()
+  state.current_container = nil
+  state.current_config = nil
+  clear_status_cache()
+end
+
 -- Configuration setup
 function M.setup(user_config)
   log = require('container.utils.log')
   config = require('container.config')
   notify = require('container.utils.notify')
+
+  -- Clear any previous state
+  clear_all_state()
 
   local success = config.setup(user_config)
   if not success then
@@ -1689,7 +1699,7 @@ end
 function M.get_state()
   local container_status = nil
 
-  if state.current_container and docker then
+  if state.current_container and docker and state.current_container ~= '' then
     local now = vim.loop.now()
     local cache = state.status_cache
 
@@ -1813,6 +1823,12 @@ function M._get_container_status_async(container_id, callback)
       status = vim.trim(result.stdout)
     else
       log.debug('Failed to get container status: %s', result.stderr or 'unknown error')
+
+      -- If container doesn't exist, clear the current container state
+      if result.stderr and result.stderr:match('No such object') then
+        log.info('Container %s no longer exists, clearing state', container_id)
+        clear_all_state()
+      end
     end
 
     callback(status)

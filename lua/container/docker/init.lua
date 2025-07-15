@@ -86,7 +86,8 @@ end
 -- Helper function to detect headless mode
 local function is_headless_mode()
   -- Check if we're in headless mode where jobstart callbacks may not work
-  return vim.v.servername == '' or vim.fn.argc() == 0
+  -- Only consider truly headless when --headless flag is used
+  return vim.v.argv and vim.tbl_contains(vim.v.argv, '--headless')
 end
 
 -- Helper function to run jobstart with proper event loop handling in headless mode
@@ -126,8 +127,10 @@ local function run_job_with_wait(cmd_args, job_opts, timeout_ms)
 
   if not wait_result then
     log.warn('Job timed out after %dms in headless mode', timeout_ms)
-    -- Try to stop the job
-    vim.fn.jobstop(job_id)
+    -- Try to stop the job gracefully
+    pcall(vim.fn.jobstop, job_id)
+    -- Mark as completed to prevent hanging
+    job_completed = true
   end
 
   return job_id
@@ -162,13 +165,21 @@ function M.check_docker_availability_async(callback)
         stderr_buffered = true,
       }
 
-      run_job_with_wait({ 'docker', 'info' }, daemon_job_opts, 15000)
+      if is_headless_mode() then
+        run_job_with_wait({ 'docker', 'info' }, daemon_job_opts, 5000)
+      else
+        vim.fn.jobstart({ 'docker', 'info' }, daemon_job_opts)
+      end
     end,
     stdout_buffered = true,
     stderr_buffered = true,
   }
 
-  run_job_with_wait({ 'docker', '--version' }, version_job_opts, 10000)
+  if is_headless_mode() then
+    run_job_with_wait({ 'docker', '--version' }, version_job_opts, 3000)
+  else
+    vim.fn.jobstart({ 'docker', '--version' }, version_job_opts)
+  end
 end
 
 -- Execute command synchronously
@@ -283,7 +294,11 @@ function M.run_docker_command_async(args, opts, callback)
 
   -- Use the new helper function that handles headless mode properly
   local timeout_ms = (opts.timeout or 30) * 1000 -- Convert seconds to milliseconds
-  return run_job_with_wait(cmd_args, job_opts, timeout_ms)
+  if is_headless_mode() then
+    return run_job_with_wait(cmd_args, job_opts, timeout_ms)
+  else
+    return vim.fn.jobstart(cmd_args, job_opts)
+  end
 end
 
 -- Check Docker image existence
@@ -336,123 +351,229 @@ function M.pull_image_async(image_name, on_progress, on_complete, retry_count)
 
   log.debug('About to start docker pull job for: %s', image_name)
 
-  local job_id = run_job_with_wait({ 'docker', 'pull', image_name }, {
-    on_stdout = function(job_id, data, event)
-      log.debug('Docker pull stdout callback triggered (job: %d, event: %s)', job_id, event)
-      data_received = true
+  local job_id
+  if is_headless_mode() then
+    job_id = run_job_with_wait({ 'docker', 'pull', image_name }, {
+      on_stdout = function(job_id, data, event)
+        log.debug('Docker pull stdout callback triggered (job: %d, event: %s)', job_id, event)
+        data_received = true
 
-      if data then
-        log.debug('Docker pull stdout data length: %d', #data)
-        for i, line in ipairs(data) do
-          log.debug("Docker pull stdout[%d]: '%s'", i, line or '<nil>')
-          if line and line ~= '' then
-            table.insert(stdout_lines, line)
-            if on_progress then
-              local progress_line = '   [stdout] ' .. line
-              on_progress(progress_line)
+        if data then
+          log.debug('Docker pull stdout data length: %d', #data)
+          for i, line in ipairs(data) do
+            log.debug("Docker pull stdout[%d]: '%s'", i, line or '<nil>')
+            if line and line ~= '' then
+              table.insert(stdout_lines, line)
+              if on_progress then
+                local progress_line = '   [stdout] ' .. line
+                on_progress(progress_line)
 
-              -- Special handling for common docker pull messages
-              if
-                line:match('Pulling')
-                or line:match('Downloading')
-                or line:match('Extracting')
-                or line:match('Pull complete')
-              then
-                log.info('Docker pull progress: %s', line)
+                -- Special handling for common docker pull messages
+                if
+                  line:match('Pulling')
+                  or line:match('Downloading')
+                  or line:match('Extracting')
+                  or line:match('Pull complete')
+                then
+                  log.info('Docker pull progress: %s', line)
+                end
+              end
+            end
+          end
+        else
+          log.debug('Docker pull stdout: data is nil')
+        end
+      end,
+
+      on_stderr = function(job_id, data, event)
+        log.debug('Docker pull stderr callback triggered (job: %d, event: %s)', job_id, event)
+        data_received = true
+
+        if data then
+          log.debug('Docker pull stderr data length: %d', #data)
+          for i, line in ipairs(data) do
+            log.debug("Docker pull stderr[%d]: '%s'", i, line or '<nil>')
+            if line and line ~= '' then
+              table.insert(stderr_lines, line)
+              if on_progress then
+                local progress_line = '   [stderr] ' .. line
+                on_progress(progress_line)
+              end
+            end
+          end
+        else
+          log.debug('Docker pull stderr: data is nil')
+        end
+      end,
+
+      on_exit = function(job_id, exit_code, event)
+        local end_time = vim.loop.hrtime()
+        local duration = (end_time - start_time) / 1e9 -- seconds
+
+        log.debug(
+          'Docker pull exit callback (job: %d, exit_code: %d, event: %s, duration: %.1fs)',
+          job_id,
+          exit_code,
+          event,
+          duration
+        )
+        log.debug('Data received during job: %s', tostring(data_received))
+        log.debug('Total stdout lines: %d', #stdout_lines)
+        log.debug('Total stderr lines: %d', #stderr_lines)
+
+        local result = {
+          success = exit_code == 0,
+          code = exit_code,
+          stdout = table.concat(stdout_lines, '\n'),
+          stderr = table.concat(stderr_lines, '\n'),
+          duration = duration,
+          data_received = data_received,
+        }
+
+        if exit_code == 0 then
+          log.info('Successfully pulled Docker image: %s (%.1fs)', image_name, duration)
+          if on_progress then
+            on_progress(string.format('✓ Image pull completed (%.1fs)', duration))
+          end
+        else
+          log.error('Failed to pull Docker image: %s (exit code: %d)', image_name, exit_code)
+          local error_msg = M.handle_network_error(table.concat(stderr_lines, '\n'))
+          if on_progress then
+            on_progress('✗ Image pull failed (exit code: ' .. exit_code .. ')')
+            on_progress('Network error details:')
+            for line in error_msg:gmatch('[^\n]+') do
+              on_progress('  ' .. line)
+            end
+          end
+        end
+
+        if on_complete then
+          vim.schedule(function()
+            -- Retry logic for network failures
+            if not result.success and retry_count < max_retries then
+              -- Check if error is potentially retryable (network-related)
+              local stderr_output = table.concat(stderr_lines, '\n'):lower()
+              local is_retryable = stderr_output:match('timeout')
+                or stderr_output:match('network')
+                or stderr_output:match('connection')
+                or stderr_output:match('temporary failure')
+                or exit_code == 124 -- timeout exit code
+
+              if is_retryable then
+                local wait_time = (retry_count + 1) * 2000 -- 2s, 4s, 6s
+                log.info('Retrying image pull in %d seconds...', wait_time / 1000)
+                if on_progress then
+                  on_progress(
+                    string.format(
+                      'Retrying in %d seconds... (attempt %d/%d)',
+                      wait_time / 1000,
+                      retry_count + 2,
+                      max_retries + 1
+                    )
+                  )
+                end
+
+                vim.defer_fn(function()
+                  M.pull_image_async(image_name, on_progress, on_complete, retry_count + 1)
+                end, wait_time)
+                return
+              end
+            end
+
+            on_complete(result.success, result)
+          end)
+        end
+      end,
+
+      -- Try without buffering to see if that helps
+      stdout_buffered = false,
+      stderr_buffered = false,
+    }, 300000) -- 5 minute timeout for image pulls
+  else
+    -- Use normal jobstart for non-headless mode
+    job_id = vim.fn.jobstart({ 'docker', 'pull', image_name }, {
+      on_stdout = function(job_id, data, event)
+        log.debug('Docker pull stdout callback triggered (job: %d, event: %s)', job_id, event)
+        data_received = true
+
+        if data then
+          log.debug('Docker pull stdout data length: %d', #data)
+          for i, line in ipairs(data) do
+            log.debug("Docker pull stdout[%d]: '%s'", i, line or '<nil>')
+            if line and line ~= '' then
+              table.insert(stdout_lines, line)
+              if on_progress then
+                local progress_line = '   [stdout] ' .. line
+                on_progress(progress_line)
+
+                -- Special handling for common docker pull messages
+                if
+                  line:match('Pulling')
+                  or line:match('Downloading')
+                  or line:match('Pull complete')
+                  or line:match('Already exists')
+                  or line:match('Waiting')
+                  or line:match('Extracting')
+                  or line:match('Verifying')
+                then
+                  on_progress('   ' .. line)
+                end
               end
             end
           end
         end
-      else
-        log.debug('Docker pull stdout: data is nil')
-      end
-    end,
+      end,
 
-    on_stderr = function(job_id, data, event)
-      log.debug('Docker pull stderr callback triggered (job: %d, event: %s)', job_id, event)
-      data_received = true
-
-      if data then
-        log.debug('Docker pull stderr data length: %d', #data)
-        for i, line in ipairs(data) do
-          log.debug("Docker pull stderr[%d]: '%s'", i, line or '<nil>')
-          if line and line ~= '' then
-            table.insert(stderr_lines, line)
-            if on_progress then
-              local progress_line = '   [stderr] ' .. line
-              on_progress(progress_line)
+      on_stderr = function(job_id, data, event)
+        log.debug('Docker pull stderr callback triggered (job: %d, event: %s)', job_id, event)
+        if data then
+          for i, line in ipairs(data) do
+            log.debug("Docker pull stderr[%d]: '%s'", i, line or '<nil>')
+            if line and line ~= '' then
+              table.insert(stderr_lines, line)
+              if on_progress then
+                on_progress('   [stderr] ' .. line)
+              end
             end
           end
         end
-      else
-        log.debug('Docker pull stderr: data is nil')
-      end
-    end,
+      end,
 
-    on_exit = function(job_id, exit_code, event)
-      local end_time = vim.loop.hrtime()
-      local duration = (end_time - start_time) / 1e9 -- seconds
+      on_exit = function(job_id, exit_code, event)
+        local end_time = vim.fn.localtime()
+        local duration = end_time - start_time
+        log.debug('Docker pull job exit: job_id=%d, exit_code=%d, event=%s', job_id, exit_code, event)
 
-      log.debug(
-        'Docker pull exit callback (job: %d, exit_code: %d, event: %s, duration: %.1fs)',
-        job_id,
-        exit_code,
-        event,
-        duration
-      )
-      log.debug('Data received during job: %s', tostring(data_received))
-      log.debug('Total stdout lines: %d', #stdout_lines)
-      log.debug('Total stderr lines: %d', #stderr_lines)
-
-      local result = {
-        success = exit_code == 0,
-        code = exit_code,
-        stdout = table.concat(stdout_lines, '\n'),
-        stderr = table.concat(stderr_lines, '\n'),
-        duration = duration,
-        data_received = data_received,
-      }
-
-      if exit_code == 0 then
-        log.info('Successfully pulled Docker image: %s (%.1fs)', image_name, duration)
-        if on_progress then
-          on_progress(string.format('✓ Image pull completed (%.1fs)', duration))
-        end
-      else
-        log.error('Failed to pull Docker image: %s (exit code: %d)', image_name, exit_code)
-        local error_msg = M.handle_network_error(table.concat(stderr_lines, '\n'))
-        if on_progress then
-          on_progress('✗ Image pull failed (exit code: ' .. exit_code .. ')')
-          on_progress('Network error details:')
-          for line in error_msg:gmatch('[^\n]+') do
-            on_progress('  ' .. line)
+        if exit_code == 0 then
+          log.info('Successfully pulled Docker image: %s (%.1fs)', image_name, duration)
+          if on_progress then
+            on_progress(string.format('✓ Image pull completed (%.1fs)', duration))
+          end
+        else
+          log.error('Failed to pull Docker image: %s (exit code: %d)', image_name, exit_code)
+          local error_msg = M.handle_network_error(table.concat(stderr_lines, '\n'))
+          if on_progress then
+            on_progress('✗ Image pull failed: ' .. error_msg)
           end
         end
-      end
 
-      if on_complete then
-        vim.schedule(function()
-          -- Retry logic for network failures
-          if not result.success and retry_count < max_retries then
-            -- Check if error is potentially retryable (network-related)
-            local stderr_output = table.concat(stderr_lines, '\n'):lower()
-            local is_retryable = stderr_output:match('timeout')
-              or stderr_output:match('network')
-              or stderr_output:match('connection')
-              or stderr_output:match('temporary failure')
-              or exit_code == 124 -- timeout exit code
+        if on_complete then
+          vim.schedule(function()
+            local result = {
+              success = exit_code == 0,
+              stdout = table.concat(stdout_lines, '\n'),
+              stderr = table.concat(stderr_lines, '\n'),
+              exit_code = exit_code,
+              error = exit_code ~= 0 and table.concat(stderr_lines, '\n') or nil,
+            }
 
-            if is_retryable then
-              local wait_time = (retry_count + 1) * 2000 -- 2s, 4s, 6s
-              log.info('Retrying image pull in %d seconds...', wait_time / 1000)
+            -- Handle retry logic here
+            if not result.success and retry_count < max_retries then
+              local wait_time = (2 ^ retry_count) * 1000
+              log.info('Retrying image pull in %dms (attempt %d/%d)', wait_time, retry_count + 1, max_retries)
               if on_progress then
                 on_progress(
-                  string.format(
-                    'Retrying in %d seconds... (attempt %d/%d)',
-                    wait_time / 1000,
-                    retry_count + 2,
-                    max_retries + 1
-                  )
+                  string.format('Retrying in %.1fs (attempt %d/%d)...', wait_time / 1000, retry_count + 1, max_retries)
                 )
               end
 
@@ -461,17 +582,13 @@ function M.pull_image_async(image_name, on_progress, on_complete, retry_count)
               end, wait_time)
               return
             end
-          end
 
-          on_complete(result.success, result)
-        end)
-      end
-    end,
-
-    -- Try without buffering to see if that helps
-    stdout_buffered = false,
-    stderr_buffered = false,
-  }, 300000) -- 5 minute timeout for image pulls
+            on_complete(result.success, result)
+          end)
+        end
+      end,
+    })
+  end
 
   log.debug('jobstart returned job_id: %s', tostring(job_id))
 
@@ -1541,7 +1658,12 @@ function M.execute_command_stream(container_id, command, opts)
 
   -- Start job and return job ID for control
   local timeout_ms = (opts.timeout or 60) * 1000 -- Default 60 second timeout
-  local job_id = run_job_with_wait(cmd_args, job_opts, timeout_ms)
+  local job_id
+  if is_headless_mode() then
+    job_id = run_job_with_wait(cmd_args, job_opts, timeout_ms)
+  else
+    job_id = vim.fn.jobstart(cmd_args, job_opts)
+  end
 
   if job_id == 0 then
     log.error('Failed to start command stream job')
