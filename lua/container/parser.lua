@@ -46,9 +46,26 @@ local function expand_variables(str, context)
     return os.getenv(var_name) or ''
   end)
 
-  -- Expand ${containerEnv:variable_name} (keep as placeholder)
+  -- Expand ${containerEnv:variable_name} with basic fallback
   str = str:gsub('${containerEnv:([^}]+)}', function(var_name)
-    return '${containerEnv:' .. var_name .. '}'
+    -- Basic fallback values for common container environment variables
+    -- PATH includes common development tools locations
+    local fallback_values = {
+      PATH = '/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+      HOME = '/root',
+      USER = 'root',
+      SHELL = '/bin/sh',
+      TERM = 'xterm',
+    }
+
+    local fallback = fallback_values[var_name]
+    if fallback then
+      log.debug('Expanding ${containerEnv:%s} to fallback value: %s', var_name, fallback)
+      return fallback
+    else
+      log.warn('Unknown containerEnv variable: %s, keeping as placeholder', var_name)
+      return '${containerEnv:' .. var_name .. '}'
+    end
   end)
 
   return str

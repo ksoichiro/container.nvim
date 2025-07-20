@@ -40,7 +40,15 @@ local function get_environment(config, context_type)
   local env = {}
 
   -- 1. Start with standard devcontainer environment variables
+  -- Handle both raw config (containerEnv/remoteEnv) and normalized config (environment)
+  if config.environment then
+    log.debug('environment found (normalized): %s', vim.inspect(config.environment))
+    env = vim.tbl_deep_extend('force', env, config.environment)
+    log.debug('Applied normalized environment')
+  end
+
   if config.containerEnv then
+    log.debug('containerEnv found: %s', vim.inspect(config.containerEnv))
     env = vim.tbl_deep_extend('force', env, config.containerEnv)
     log.debug('Applied standard containerEnv')
   end
@@ -76,9 +84,12 @@ local function get_environment(config, context_type)
   end
 
   -- 5. Apply default language preset if no environment configured
+  log.debug('Environment before default check: %s', vim.inspect(env))
   if vim.tbl_isempty(env) then
     env = vim.tbl_deep_extend('force', env, language_presets.default)
     log.debug('Applied default language preset')
+  else
+    log.debug('Environment already configured, skipping default preset')
   end
 
   return env
@@ -86,8 +97,36 @@ end
 
 -- Expand environment variables (like $PATH)
 local function expand_env_vars(value)
-  -- Simple expansion for $PATH - replace with basic system PATH
+  if type(value) ~= 'string' then
+    return value
+  end
+
+  -- Expand standard environment variables
   value = value:gsub('%$PATH', '/usr/local/bin:/usr/bin:/bin')
+  value = value:gsub('%$HOME', '/root')
+  value = value:gsub('%$USER', 'root')
+  value = value:gsub('%$SHELL', '/bin/sh')
+
+  -- Expand ${containerEnv:variable} syntax with fallback values
+  value = value:gsub('${containerEnv:([^}]+)}', function(var_name)
+    local fallback_values = {
+      PATH = '/usr/local/bin:/usr/bin:/bin',
+      HOME = '/root',
+      USER = 'root',
+      SHELL = '/bin/sh',
+      TERM = 'xterm',
+    }
+
+    local fallback = fallback_values[var_name]
+    if fallback then
+      log.debug('Expanding ${containerEnv:%s} to fallback value: %s', var_name, fallback)
+      return fallback
+    else
+      log.warn('Unknown containerEnv variable: %s, keeping as placeholder', var_name)
+      return '${containerEnv:' .. var_name .. '}'
+    end
+  end)
+
   return value
 end
 

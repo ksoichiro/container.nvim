@@ -1,0 +1,30 @@
+{
+  "name": "Environment Variable Expansion Example",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.24-bookworm",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "remoteUser": "vscode",
+
+  // Test environment variable expansion with ${containerEnv:variable}
+  "containerEnv": {
+    "PATH": "/usr/local/custom/bin:${containerEnv:PATH}",
+    "GOPATH": "/go",
+    "GOROOT": "/usr/local/go",
+    "HOME_VAR": "${containerEnv:HOME}",
+    "SHELL_VAR": "${containerEnv:SHELL}",
+    "USER_VAR": "${containerEnv:USER}",
+    "CUSTOM_VAR": "This is a custom value without expansion"
+  },
+
+  // Commands to verify environment variable expansion
+  "postCreateCommand": [
+    "echo Starting postCreateCommand",
+    "echo PATH is set",
+    "echo HOME_VAR is set",
+    "echo USER_VAR is set",
+    "echo CUSTOM_VAR is set",
+    "which go",
+    "go version",
+    "echo postCreateCommand completed"
+  ]
+}

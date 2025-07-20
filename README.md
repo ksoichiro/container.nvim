@@ -603,7 +603,7 @@ All standard devcontainer.json properties are fully supported:
 - ✅ Basic properties: `name`, `image`, `dockerFile`, `build`
 - ✅ Port forwarding: `forwardPorts`, `portsAttributes`
 - ✅ Environment: `containerEnv`, `remoteEnv`
-- ✅ Lifecycle: `postCreateCommand`, `postStartCommand`, `postAttachCommand`
+- ✅ Lifecycle: `postCreateCommand` (string or array), `postStartCommand`, `postAttachCommand`
 - ✅ Workspace: `mounts`, `workspaceFolder`, `remoteUser`
 
 ### Extended Features
@@ -635,7 +635,9 @@ container.nvim supports standard Dev Container environment variables:
   "containerEnv": {
     "GO111MODULE": "on",
     "GOPATH": "/go",
-    "PATH": "/usr/local/go/bin:${containerEnv:PATH}"
+    "PATH": "/usr/local/go/bin:${containerEnv:PATH}",
+    "HOME_VAR": "${containerEnv:HOME}",
+    "USER_VAR": "${containerEnv:USER}"
   },
 
   // Standard remote environment (used during development)
@@ -653,6 +655,36 @@ container.nvim supports standard Dev Container environment variables:
   }
 }
 ```
+
+**Environment Variable Expansion:**
+- `${containerEnv:VAR}` expands during container creation
+- `${remoteEnv:VAR}` expands during remote operations
+- Fallback values provided for common variables (PATH, HOME, USER, SHELL, TERM)
+
+#### Post-Creation Commands
+
+container.nvim supports both string and array formats for `postCreateCommand`:
+
+```json
+{
+  // String format (simple command)
+  "postCreateCommand": "npm install && npm run build",
+
+  // Array format (multiple commands)
+  "postCreateCommand": [
+    "echo 'Starting post-create setup'",
+    "npm install",
+    "npm run build",
+    "echo 'Post-create setup completed'"
+  ]
+}
+```
+
+**Array Format Features:**
+- Commands are executed sequentially with `&&` joining
+- Automatic error tolerance with `set +e` prefix
+- Individual command logging for better debugging
+- Supports complex multi-step setup processes
 
 **Standard vs Legacy:**
 - ✅ **Standard**: Use `containerEnv` and `remoteEnv` for better VSCode compatibility

@@ -2118,8 +2118,17 @@ function M._run_post_create_command(container_id, callback)
   end
 
   local command = state.current_config.post_create_command
+
+  -- Convert array-style commands to shell command string
+  if type(command) == 'table' then
+    -- Join commands with && and add error handling to prevent entire script failure
+    command = 'set +e; ' .. table.concat(command, ' && ')
+    log.debug('Converted array postCreateCommand to shell command: %s', command)
+  end
+
   notify.progress('container_setup', 5, 5, 'Running postCreateCommand...')
   log.info('Executing postCreateCommand: %s', command)
+  log.debug('postCreateCommand container_id: %s', container_id)
 
   local docker = require('container.docker.init')
   local environment = require('container.environment')
@@ -2131,36 +2140,54 @@ function M._run_post_create_command(container_id, callback)
   }
 
   -- Add environment-specific args (includes user and env vars)
+  log.debug('postCreateCommand state.current_config.containerEnv: %s', vim.inspect(state.current_config.containerEnv))
   local env_args = environment.build_postcreate_args(state.current_config)
+  log.debug('postCreateCommand env_args: %s', vim.inspect(env_args))
   for _, arg in ipairs(env_args) do
     table.insert(exec_args, arg)
   end
 
-  -- Set working directory to workspace
-  local workspace_folder = state.current_config.workspaceFolder or '/workspace'
+  -- Set working directory to workspace (handle both normalized and raw config)
+  local workspace_folder = state.current_config.workspace_folder or state.current_config.workspaceFolder or '/workspace'
+  log.debug('postCreateCommand workspace_folder: %s', workspace_folder)
   table.insert(exec_args, '-w')
   table.insert(exec_args, workspace_folder)
 
   -- Add container and command
   table.insert(exec_args, container_id)
-  -- Use dynamic shell detection instead of hardcoded bash
-  local shell = docker.detect_shell and docker.detect_shell(container_id) or 'sh'
+  -- Use bash for better command execution compatibility
+  local shell = 'bash'
   table.insert(exec_args, shell)
   table.insert(exec_args, '-c')
   table.insert(exec_args, command)
 
-  docker.run_docker_command_async(exec_args, {}, function(result)
+  log.debug('postCreateCommand final exec_args: %s', vim.inspect(exec_args))
+
+  docker.run_docker_command_async(exec_args, { timeout = 60, verbose = true }, function(result)
     vim.schedule(function()
-      if result.success then
+      -- Improved success detection: consider success if exit code is 0, even with stderr
+      local is_success = result.success and result.code == 0
+
+      if is_success then
         notify.success('postCreateCommand completed successfully')
         log.info('postCreateCommand output: %s', result.stdout)
         if result.stderr and result.stderr ~= '' then
-          log.debug('postCreateCommand stderr: %s', result.stderr)
+          log.debug('postCreateCommand stderr (non-fatal): %s', result.stderr)
         end
         callback(true)
       else
-        notify.critical('postCreateCommand failed')
+        -- More detailed error analysis
+        if result.code == 127 then
+          notify.critical('postCreateCommand failed: command not found')
+        elseif result.code == 126 then
+          notify.critical('postCreateCommand failed: permission denied')
+        else
+          notify.critical('postCreateCommand failed')
+        end
+
         log.error('postCreateCommand failed with code %d', result.code)
+        log.error('Full exec args: %s', table.concat(exec_args, ' '))
+        log.error('Converted command: %s', command)
         log.error('Error output: %s', result.stderr or '')
         log.error('Stdout: %s', result.stdout or '')
         callback(false)
