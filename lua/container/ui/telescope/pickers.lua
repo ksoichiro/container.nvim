@@ -12,7 +12,7 @@ local previewers = require('telescope.previewers')
 
 -- Helper to create container display string
 local function create_container_display(container)
-  local status_icon = container.running and '✅' or '⏹️'
+  local status_icon = container.running and '🚀' or '📦'
   return string.format(
     '%-20s %s %-15s %-30s %s',
     container.name,

@@ -827,6 +827,10 @@ require('lualine').setup({
 })
 ```
 
+**Progress Display**: During container operations (e.g., stopping), the statusline will show progress indicators:
+- `⏹️ ⠋ Stopping...` (with animated spinner)
+- Icons and animation indicate operation status in real-time
+
 #### Lightline Integration
 
 ```vim
@@ -1077,6 +1081,10 @@ require('lualine').setup({
   }
 })
 ```
+
+**Progress Display**: During container operations (e.g., stopping), the statusline will show progress indicators:
+- `⏹️ ⠋ Stopping...` (with animated spinner)
+- Icons and animation indicate operation status in real-time
 
 #### Lightline Integration
 

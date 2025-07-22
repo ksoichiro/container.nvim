@@ -692,9 +692,20 @@ function M.stop()
   log.info('Stopping container: %s', state.current_container)
   notify.container('Stopping container...', 'info')
 
+  -- Set stopping state for statusline display
+  local statusline_ok, statusline = pcall(require, 'container.ui.statusline')
+  if statusline_ok then
+    statusline.set_stopping_state(true, state.current_config and state.current_config.name or 'Container')
+  end
+
   -- Use async version to prevent freezing
   docker.stop_container_async(state.current_container, function(success, error_msg)
     vim.schedule(function()
+      -- Clear stopping state
+      if statusline_ok then
+        statusline.set_stopping_state(false)
+      end
+
       if success then
         notify.container('Container stopped successfully', 'info')
         log.info('Container stopped successfully: %s', state.current_container)
@@ -1037,24 +1048,38 @@ end
 function M.stop_container(container_name)
   log = log or require('container.utils.log')
   docker = docker or require('container.docker')
+  notify = notify or require('container.utils.notify')
+
+  -- Set stopping state for statusline display
+  local statusline_ok, statusline = pcall(require, 'container.ui.statusline')
+  if statusline_ok then
+    statusline.set_stopping_state(true, container_name)
+  end
 
   docker.stop_existing_container(container_name, function(success, error_msg)
-    if success then
-      log.info('Stopped container: %s', container_name)
-      notify.container('Stopped container: ' .. container_name)
+    vim.schedule(function()
+      -- Clear stopping state
+      if statusline_ok then
+        statusline.set_stopping_state(false)
+      end
 
-      -- Trigger ContainerStopped event
-      vim.api.nvim_exec_autocmds('User', {
-        pattern = 'ContainerStopped',
-        data = {
-          container_id = container_name,
-          container_name = container_name,
-        },
-      })
-    else
-      log.error('Failed to stop container: %s', error_msg)
-      notify.critical('Failed to stop: ' .. error_msg)
-    end
+      if success then
+        log.info('Stopped container: %s', container_name)
+        notify.container('Stopped container: ' .. container_name)
+
+        -- Trigger ContainerStopped event
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'ContainerStopped',
+          data = {
+            container_id = container_name,
+            container_name = container_name,
+          },
+        })
+      else
+        log.error('Failed to stop container: %s', error_msg)
+        notify.critical('Failed to stop: ' .. error_msg)
+      end
+    end)
   end)
 end
 

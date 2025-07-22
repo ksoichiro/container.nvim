@@ -109,10 +109,12 @@ M.defaults = {
     status_line = true,
     icons = {
       container = '🐳',
-      running = '✅',
-      stopped = '⏹️',
+      running = '🚀',
+      stopping = '🚫',
+      stopped = '📦',
       building = '🔨',
       error = '❌',
+      available = '📋',
     },
     statusline = {
       -- Display format for statusline
