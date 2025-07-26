@@ -8,8 +8,12 @@ package.path = './test/e2e/helpers/?.lua;./test/helpers/?.lua;./lua/?.lua;./lua/
 local nvim_setup = require('nvim_setup')
 nvim_setup.setup_nvim_environment()
 
-local function run_command(cmd)
-  local handle = io.popen(cmd .. ' 2>&1')
+local function run_command(cmd, timeout)
+  timeout = timeout or 30 -- Default 30 second timeout
+
+  -- Use timeout command to prevent hanging
+  local timeout_cmd = string.format('timeout %ds %s 2>&1', timeout, cmd)
+  local handle = io.popen(timeout_cmd)
   local result = handle:read('*a')
   local success = handle:close()
   return success, result
@@ -29,8 +33,8 @@ function tests.test_docker_environment()
   end
   print('✓ Docker CLI available:', docker_output:gsub('%s+$', ''))
 
-  -- Test Docker daemon connectivity
-  local daemon_available, daemon_output = run_command('docker info')
+  -- Test Docker daemon connectivity with timeout
+  local daemon_available, daemon_output = run_command('docker ps', 15)
   if not daemon_available then
     print('✗ Docker daemon not accessible')
     print('Error:', daemon_output)

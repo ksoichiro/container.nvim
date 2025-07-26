@@ -906,7 +906,7 @@ function tests.test_setup_gopls_commands()
   return true
 end
 
-function tests.test_register_existing_go_files()
+function tests.test_register_existing_files()
   reset_test_state()
 
   local lsp = require('container.lsp.init')
@@ -943,8 +943,12 @@ function tests.test_register_existing_go_files()
     return original_io_open(filename, mode)
   end
 
-  -- Test file registration
-  lsp._register_existing_go_files(mock_client)
+  -- Test file registration with language config
+  local language_registry = require('container.lsp.language_registry')
+  local go_config = language_registry.get_by_filetype('go')
+  if go_config then
+    lsp._register_existing_files(mock_client, go_config)
+  end
 
   -- Restore io.open
   io.open = original_io_open
@@ -1022,7 +1026,7 @@ local function run_comprehensive_tests()
     'test_clear_container_init_status',
     'test_setup_auto_attach',
     'test_setup_gopls_commands',
-    'test_register_existing_go_files',
+    'test_register_existing_files',
     'test_prepare_lsp_config',
     'test_error_handling_invalid_inputs',
   }

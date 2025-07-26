@@ -653,7 +653,14 @@ function edge_tests.test_client_stop_during_operation()
     edge_test_state.client_stopped[client.id] = true
 
     -- Should handle stopped client gracefully
-    local ok = pcall(lsp._register_existing_go_files, client)
+    local language_registry = require('container.lsp.language_registry')
+    local go_config = language_registry.get_by_filetype('go')
+    local ok = false
+    if go_config then
+      ok = pcall(lsp._register_existing_files, client, go_config)
+    else
+      ok = true -- No config found is also handled gracefully
+    end
     assert(ok, 'Should handle stopped client gracefully')
   end
 

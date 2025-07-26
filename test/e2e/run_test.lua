@@ -144,7 +144,7 @@ local function check_process_status(pid_file)
 end
 
 local function wait_for_all_tests(pid_files, timeout_seconds)
-  local timeout = timeout_seconds or 600 -- 10 minutes default timeout
+  local timeout = timeout_seconds or 300 -- 5 minutes default timeout
   local start_time = os.time()
 
   while os.time() - start_time < timeout do
@@ -276,13 +276,13 @@ local function main()
   print('')
   print('⏳ Waiting for all tests to complete...')
 
-  -- Wait for all tests to complete
-  local completed = wait_for_all_tests(pid_files, 600) -- 10 minutes timeout
+  -- Wait for all tests to complete (reduced timeout for CI/testing environments)
+  local completed = wait_for_all_tests(pid_files, 300) -- 5 minutes timeout
 
   local total_elapsed = os.time() - start_time
 
   if not completed then
-    print('❌ Tests timed out after 10 minutes')
+    print('❌ Tests timed out after 5 minutes')
     os.execute('rm -rf ' .. temp_dir)
     os.exit(1)
   end

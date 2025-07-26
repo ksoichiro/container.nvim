@@ -5,6 +5,10 @@ local M = {}
 
 -- Initialize minimal vim environment for headless mode
 function M.setup_nvim_environment()
+  -- Set E2E test environment flag
+  vim.env = vim.env or {}
+  vim.env.NVIM_E2E_TEST = '1'
+
   -- Set up basic vim globals and functions that the plugin expects
   vim = vim or {}
   vim.g = vim.g or {}
@@ -34,10 +38,19 @@ function M.setup_nvim_environment()
   end
   vim.fn.system = vim.fn.system
     or function(cmd)
-      local handle = io.popen(cmd .. ' 2>&1')
+      -- Add timeout for E2E tests to prevent hanging
+      local timeout_cmd = string.format('timeout 30s %s 2>&1', cmd)
+      local handle = io.popen(timeout_cmd)
       local result = handle:read('*a')
-      handle:close()
+      local success = handle:close()
+      -- Set shell error based on timeout result
+      vim.v.shell_error = success and 0 or 124 -- 124 is timeout exit code
       return result
+    end
+  vim.fn.shellescape = vim.fn.shellescape
+    or function(str)
+      -- Simple shell escaping for E2E tests
+      return "'" .. str:gsub("'", "'\\''") .. "'"
     end
 
   -- Mock essential vim.api functions

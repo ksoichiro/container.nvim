@@ -127,9 +127,9 @@ function M._setup_auto_initialization()
   -- Strategy: Listen for container detection, then check for Go buffers
   -- This solves the timing issue where BufEnter fires before container detection
 
-  -- Helper function to check and setup LSP for Go buffers
-  local function check_go_buffers_and_setup(container_id)
-    log.debug('LSP: Checking Go buffers for container %s', container_id)
+  -- Helper function to check and setup LSP for supported language buffers
+  local function check_language_buffers_and_setup(container_id)
+    log.debug('LSP: Checking language buffers for container %s', container_id)
 
     -- Prevent duplicate initialization for this container
     if container_init_status[container_id] == 'in_progress' then
@@ -142,20 +142,20 @@ function M._setup_auto_initialization()
       return
     end
 
-    -- Check if container_gopls is already running and functional
-    local existing_container_gopls = get_lsp_clients({ name = 'container_gopls' })
-    local functional_gopls = nil
-    for _, client in ipairs(existing_container_gopls) do
-      if not client.is_stopped() and client.initialized then
-        functional_gopls = client
-        break
-      end
-    end
+    -- Import language registry for language detection
+    local language_registry = require('container.lsp.language_registry')
 
-    if functional_gopls then
-      log.debug('LSP: Functional container_gopls already exists (ID: %d), skipping setup', functional_gopls.id)
-      container_init_status[container_id] = 'completed'
-      return
+    -- Check if any container LSP clients are already running and functional
+    local container_clients = language_registry.get_all_container_clients()
+    for _, client_name in ipairs(container_clients) do
+      local existing_clients = get_lsp_clients({ name = client_name })
+      for _, client in ipairs(existing_clients) do
+        if not client.is_stopped() and client.initialized then
+          log.debug('LSP: Functional %s already exists (ID: %d), skipping setup', client_name, client.id)
+          container_init_status[container_id] = 'completed'
+          return
+        end
+      end
     end
 
     -- Clean up ALL existing container_gopls clients to ensure clean state
@@ -231,20 +231,47 @@ function M._setup_auto_initialization()
       end
     end, 200)
 
-    -- Look for loaded Go buffers
-    local go_buffers = {}
+    -- Look for loaded buffers of supported languages
+    local supported_buffers = {}
+    local detected_languages = {}
+
     for _, buf in ipairs(vim.api.nvim_list_bufs()) do
       if vim.api.nvim_buf_is_loaded(buf) then
         local filetype = vim.bo[buf].filetype
         local filename = vim.api.nvim_buf_get_name(buf)
-        if filetype == 'go' or (filename and filename:match('%.go$')) then
-          table.insert(go_buffers, buf)
+
+        -- Check if this buffer matches any supported language
+        local lang_config = language_registry.get_by_filetype(filetype)
+        if lang_config then
+          table.insert(supported_buffers, { buf = buf, language = filetype, config = lang_config })
+          detected_languages[filetype] = (detected_languages[filetype] or 0) + 1
+        else
+          -- Also check by filename pattern
+          if filename then
+            local matches = language_registry.match_file_pattern(vim.fs.basename(filename))
+            if #matches > 0 then
+              -- Only use first match to avoid duplicates
+              local match = matches[1]
+              table.insert(supported_buffers, { buf = buf, language = match.language, config = match.config })
+              detected_languages[match.language] = (detected_languages[match.language] or 0) + 1
+            end
+          end
         end
       end
     end
 
-    if #go_buffers > 0 then
-      log.info('LSP: Found %d Go buffer(s), auto-initializing container_gopls for %s', #go_buffers, container_id)
+    if #supported_buffers > 0 then
+      local lang_summary = {}
+      for lang, count in pairs(detected_languages) do
+        table.insert(lang_summary, string.format('%s(%d)', lang, count))
+      end
+      log.info(
+        'LSP: Found %d buffer(s) for languages: %s, auto-initializing container LSP for %s',
+        #supported_buffers,
+        table.concat(lang_summary, ', '),
+        container_id
+      )
+
       M.set_container_id(container_id)
       M.setup_lsp_in_container()
 
@@ -254,7 +281,7 @@ function M._setup_auto_initialization()
         log.debug('LSP: Auto-initialization completed for container %s', container_id)
       end, 2000)
     else
-      log.debug('LSP: No Go buffers found, skipping LSP setup for container %s', container_id)
+      log.debug('LSP: No supported language buffers found, skipping LSP setup for container %s', container_id)
       container_init_status[container_id] = nil -- Clear status since no setup needed
     end
   end
@@ -268,7 +295,7 @@ function M._setup_auto_initialization()
       if container_id then
         log.debug('LSP: Container detected: %s', container_id)
         vim.defer_fn(function()
-          check_go_buffers_and_setup(container_id)
+          check_language_buffers_and_setup(container_id)
         end, 100)
       end
     end,
@@ -283,7 +310,7 @@ function M._setup_auto_initialization()
       if container_id then
         log.debug('LSP: Container operation completed: %s', container_id)
         vim.defer_fn(function()
-          check_go_buffers_and_setup(container_id)
+          check_language_buffers_and_setup(container_id)
         end, 500) -- Longer delay for container operations
       end
     end,
@@ -307,7 +334,7 @@ function M._setup_auto_initialization()
 
         if state.current_container then
           log.debug('LSP: FileType fallback triggered for container %s', state.current_container)
-          check_go_buffers_and_setup(state.current_container)
+          check_language_buffers_and_setup(state.current_container)
         else
           log.debug('LSP: FileType fallback - no container available yet')
         end
@@ -759,13 +786,27 @@ function M._prepare_lsp_config(name, server_config)
               and client.config._container_metadata.strategy == 'intercept'
             if has_interceptor then
               log.info('LSP: Client %s confirmed ready with interceptor, starting file registration', name)
-              M._register_existing_go_files(client)
+              -- Get language config for this server
+              local language_registry = require('container.lsp.language_registry')
+              local lang_config = language_registry.get_by_server_name(name)
+              if lang_config then
+                M._register_existing_files(client, lang_config)
+              else
+                log.warn('LSP: No language configuration found for server %s', name)
+              end
             else
               log.warn('LSP: Interceptor not yet set up for %s, retrying in 500ms', name)
               vim.defer_fn(function()
                 if client and not client.is_stopped() and client.initialized then
                   log.info('LSP: Client %s ready on retry, starting file registration', name)
-                  M._register_existing_go_files(client)
+                  -- Get language config for this server
+                  local language_registry = require('container.lsp.language_registry')
+                  local lang_config = language_registry.get_by_server_name(name)
+                  if lang_config then
+                    M._register_existing_files(client, lang_config)
+                  else
+                    log.warn('LSP: No language configuration found for server %s', name)
+                  end
                 else
                   log.error('LSP: Client %s still not ready, skipping initial file registration', name)
                 end
@@ -777,7 +818,14 @@ function M._prepare_lsp_config(name, server_config)
             vim.defer_fn(function()
               if client and not client.is_stopped() and client.initialized then
                 log.info('LSP: Client %s ready on retry, starting file registration', name)
-                M._register_existing_go_files(client)
+                -- Get language config for this server
+                local language_registry = require('container.lsp.language_registry')
+                local lang_config = language_registry.get_by_server_name(name)
+                if lang_config then
+                  M._register_existing_files(client, lang_config)
+                else
+                  log.warn('LSP: No language configuration found for server %s', name)
+                end
               else
                 log.error('LSP: Client %s still not ready, skipping initial file registration', name)
               end
@@ -1044,9 +1092,10 @@ function M._setup_gopls_commands(client_id)
   log.info('LSP: Setup gopls commands autocommand and attach handler')
 end
 
--- Register existing Go files with the LSP server for proper initial diagnostics
+-- Register existing project files with the LSP server for proper initial diagnostics
 -- @param client table: LSP client
-function M._register_existing_go_files(client)
+-- @param language_config table: Language configuration from registry
+function M._register_existing_files(client, language_config)
   if not client or client.is_stopped() then
     log.warn('LSP: Cannot register files - client is stopped or invalid')
     return
@@ -1055,39 +1104,48 @@ function M._register_existing_go_files(client)
   local registered_count = 0
   local workspace_root = vim.fn.getcwd()
 
-  -- Find Go project root if available
+  -- Find project root if available
   local util = require('lspconfig.util')
-  local go_root = util.root_pattern('go.mod', 'go.work')(vim.fn.expand('%:p'))
-  if go_root then
-    workspace_root = go_root
+  local project_root = util.root_pattern(table.unpack(language_config.root_patterns))(vim.fn.expand('%:p'))
+  if project_root then
+    workspace_root = project_root
   end
 
-  log.info('LSP: Registering existing Go files in workspace: %s', workspace_root)
+  log.info('LSP: Registering existing %s files in workspace: %s', language_config.filetype, workspace_root)
 
-  -- Find all Go files in the workspace
-  local go_files = {}
-  local find_cmd = string.format('find %s -name "*.go" -type f', vim.fn.shellescape(workspace_root))
-  local result = vim.fn.system(find_cmd)
+  -- Find all files matching language patterns in the workspace
+  local project_files = {}
+  for _, pattern in ipairs(language_config.file_patterns) do
+    -- Convert glob pattern to find-compatible pattern
+    local find_pattern = pattern:gsub('%*', '*')
+    local find_cmd = string.format('find %s -name "%s" -type f', vim.fn.shellescape(workspace_root), find_pattern)
+    local result = vim.fn.system(find_cmd)
 
-  if vim.v.shell_error == 0 then
-    for file in result:gmatch('[^\r\n]+') do
-      table.insert(go_files, file)
+    if vim.v.shell_error == 0 then
+      for file in result:gmatch('[^\r\n]+') do
+        table.insert(project_files, file)
+      end
     end
-  else
-    log.warn('LSP: Failed to find Go files using find command, falling back to loaded buffers')
-    -- Fallback: use currently loaded buffers
+  end
+
+  -- Fallback: use currently loaded buffers if find command failed
+  if #project_files == 0 then
+    log.warn(
+      'LSP: Failed to find %s files using find command, falling back to loaded buffers',
+      language_config.filetype
+    )
     for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
       if vim.api.nvim_buf_is_loaded(bufnr) then
         local filename = vim.api.nvim_buf_get_name(bufnr)
-        if filename:match('%.go$') then
-          table.insert(go_files, filename)
+        if filename and vim.bo[bufnr].filetype == language_config.filetype then
+          table.insert(project_files, filename)
         end
       end
     end
   end
 
-  -- Register each Go file with textDocument/didOpen
-  for _, file_path in ipairs(go_files) do
+  -- Register each project file with textDocument/didOpen
+  for _, file_path in ipairs(project_files) do
     -- Read file content
     local file_handle = io.open(file_path, 'r')
     if file_handle then
@@ -1120,7 +1178,12 @@ function M._register_existing_go_files(client)
     end
   end
 
-  log.info('LSP: Successfully registered %d Go files with gopls', registered_count)
+  log.info(
+    'LSP: Successfully registered %d %s files with %s',
+    registered_count,
+    language_config.filetype,
+    language_config.server_name
+  )
 
   -- Request diagnostics for the workspace to refresh initial state
   if registered_count > 0 then

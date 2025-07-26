@@ -115,6 +115,16 @@ function M.setup(user_config)
     log.warn('Failed to initialize LSP integration: %s', lsp_err)
   end
 
+  -- Initialize ftplugin manager for LSP conflict prevention
+  local ftplugin_ok, ftplugin_err = pcall(function()
+    local ftplugin_manager = require('container.lsp.ftplugin_manager')
+    ftplugin_manager.setup_autocmds()
+  end)
+
+  if not ftplugin_ok then
+    log.warn('Failed to initialize ftplugin manager: %s', ftplugin_err)
+  end
+
   state.initialized = true
   log.debug('container.nvim initialized successfully')
 
