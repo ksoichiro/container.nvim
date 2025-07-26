@@ -1,10 +1,12 @@
 #!/usr/bin/env lua
 
--- Comprehensive unit tests for container.lsp.init module
--- This test suite aims to achieve high test coverage for the LSP initialization module
+-- Comprehensive LSP init module test for maximum coverage
+-- Target: Achieve 70%+ coverage for lua/container/lsp/init.lua
 
--- Add project lua directory to package path
 package.path = './lua/?.lua;./lua/?/init.lua;../lua/?.lua;../lua/?/init.lua;' .. package.path
+
+print('=== LSP Init Comprehensive Coverage Test ===')
+print('Target: lsp/init.lua module coverage improvement from 9.04% to 70%+')
 
 -- Mock system for comprehensive testing
 local test_state = {
