@@ -94,13 +94,13 @@ _G.vim = {
       table.insert(test_state.job_calls, {
         cmd_args = cmd_args,
         opts = opts,
-        job_id = job_id
+        job_id = job_id,
       })
 
       -- Simulate job execution
       vim.schedule(function()
         if opts.on_stdout then
-          opts.on_stdout(job_id, {'test output line'}, 'stdout')
+          opts.on_stdout(job_id, { 'test output line' }, 'stdout')
         end
         if opts.on_exit then
           opts.on_exit(job_id, 0, 'exit')
@@ -115,7 +115,7 @@ _G.vim = {
     end,
 
     jobwait = function(job_ids, timeout)
-      return {-1} -- Still running
+      return { -1 } -- Still running
     end,
 
     localtime = function()
@@ -149,7 +149,7 @@ _G.vim = {
   defer_fn = function(callback, delay)
     table.insert(test_state.timer_calls, {
       callback = callback,
-      delay = delay
+      delay = delay,
     })
     callback()
   end,
@@ -187,16 +187,18 @@ _G.vim = {
     decode = function(str)
       -- Simple mock JSON decode
       if str:match('\\[\\{.*\\}\\]') then
-        return {{
-          State = { Status = 'running' },
-          NetworkSettings = {
-            Ports = {
-              ['8080/tcp'] = {
-                { HostPort = '8080', HostIp = '0.0.0.0' }
-              }
-            }
-          }
-        }}
+        return {
+          {
+            State = { Status = 'running' },
+            NetworkSettings = {
+              Ports = {
+                ['8080/tcp'] = {
+                  { HostPort = '8080', HostIp = '0.0.0.0' },
+                },
+              },
+            },
+          },
+        }
       end
       return {}
     end,
@@ -290,8 +292,14 @@ local test_results = {}
 
 local function assert_eq(actual, expected, message)
   if actual ~= expected then
-    error(string.format('Assertion failed: %s\nExpected: %s\nActual: %s',
-          message or 'values should be equal', tostring(expected), tostring(actual)))
+    error(
+      string.format(
+        'Assertion failed: %s\nExpected: %s\nActual: %s',
+        message or 'values should be equal',
+        tostring(expected),
+        tostring(actual)
+      )
+    )
   end
 end
 
@@ -561,11 +569,11 @@ end)
 -- Test 11: E2E test environment detection
 run_test('E2E test environment is detected correctly', function()
   -- Set up E2E test environment
-  vim.v.argv = {'--headless'}
+  vim.v.argv = { '--headless' }
   vim.env.NVIM_E2E_TEST = '1'
 
   -- This should trigger E2E-specific code paths
-  local result = docker_init.run_docker_command({'version'})
+  local result = docker_init.run_docker_command({ 'version' })
 
   assert_not_nil(result, 'Should return result in E2E environment')
   assert_true(result.success, 'Should succeed in E2E environment')
@@ -573,7 +581,7 @@ end)
 
 -- Test 12: run_docker_command basic functionality
 run_test('run_docker_command executes commands correctly', function()
-  local result = docker_init.run_docker_command({'version'})
+  local result = docker_init.run_docker_command({ 'version' })
 
   assert_not_nil(result, 'Should return result object')
   assert_true(result.success, 'Should report success')
@@ -593,9 +601,9 @@ end)
 
 -- Test 13: run_docker_command with options
 run_test('run_docker_command respects options', function()
-  local result = docker_init.run_docker_command({'ps'}, {
+  local result = docker_init.run_docker_command({ 'ps' }, {
     cwd = '/test/dir',
-    verbose = true
+    verbose = true,
   })
 
   assert_not_nil(result, 'Should return result with options')
@@ -620,7 +628,7 @@ run_test('run_docker_command handles command failure', function()
     return 'Command failed'
   end
 
-  local result = docker_init.run_docker_command({'nonexistent'})
+  local result = docker_init.run_docker_command({ 'nonexistent' })
 
   assert_not_nil(result, 'Should return result even on failure')
   assert_false(result.success, 'Should report failure')
@@ -633,7 +641,7 @@ run_test('run_docker_command_async executes commands asynchronously', function()
   local callback_called = false
   local callback_result = nil
 
-  docker_init.run_docker_command_async({'version'}, {}, function(result)
+  docker_init.run_docker_command_async({ 'version' }, {}, function(result)
     callback_called = true
     callback_result = result
   end)
@@ -719,7 +727,7 @@ end)
 run_test('generate_container_name creates unique names', function()
   local config = {
     name = 'Test Project',
-    base_path = '/test/project/path'
+    base_path = '/test/project/path',
   }
 
   local container_name = docker_init.generate_container_name(config)
@@ -738,25 +746,25 @@ run_test('_build_create_args builds correct arguments', function()
     workspace_folder = '/workspace',
     environment = {
       TEST_VAR = 'test_value',
-      PATH = '/usr/local/bin:/usr/bin:/bin'
+      PATH = '/usr/local/bin:/usr/bin:/bin',
     },
     mounts = {
       {
         type = 'volume',
         source = 'test-volume',
         target = '/data',
-        readonly = false
-      }
+        readonly = false,
+      },
     },
     ports = {
       {
         host_port = 8080,
-        container_port = 80
-      }
+        container_port = 80,
+      },
     },
     privileged = true,
     init = true,
-    remote_user = 'developer'
+    remote_user = 'developer',
   }
 
   local args = docker_init._build_create_args(config)
@@ -783,7 +791,7 @@ end)
 run_test('create_container creates container successfully', function()
   local config = {
     name = 'test-project',
-    image = 'ubuntu:20.04'
+    image = 'ubuntu:20.04',
   }
 
   local container_id = docker_init.create_container(config)
@@ -800,7 +808,7 @@ run_test('create_container_async creates container asynchronously', function()
 
   local config = {
     name = 'test-project',
-    image = 'ubuntu:20.04'
+    image = 'ubuntu:20.04',
   }
 
   docker_init.create_container_async(config, function(container_id, error)
@@ -873,8 +881,8 @@ run_test('list_containers returns container list', function()
   vim.fn.system = function(cmd)
     table.insert(test_state.system_calls, cmd)
     if cmd:match('docker.*ps') then
-      return 'abc123\ttest-container\tUp 2 minutes\tubuntu:20.04\n' ..
-             'def456\tother-container\tExited (0) 1 hour ago\tnode:16'
+      return 'abc123\ttest-container\tUp 2 minutes\tubuntu:20.04\n'
+        .. 'def456\tother-container\tExited (0) 1 hour ago\tnode:16'
     end
     return ''
   end
@@ -897,7 +905,7 @@ run_test('exec_command executes commands in container', function()
     on_complete = function(result)
       completed = true
       exec_result = result
-    end
+    end,
   })
 
   -- Wait for completion

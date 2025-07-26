@@ -14,7 +14,7 @@ _G.vim = {
         read_start = function(self, callback)
           -- Simulate successful read
           vim.schedule(function()
-            callback(nil, "test output\n")
+            callback(nil, 'test output\n')
             callback(nil, nil) -- End of stream
           end)
         end,
@@ -23,7 +23,7 @@ _G.vim = {
         end,
         is_closing = function(self)
           return self._closed or false
-        end
+        end,
       }
     end,
     spawn = function(cmd, options, callback)
@@ -34,7 +34,7 @@ _G.vim = {
         end,
         is_closing = function(self)
           return self._closed or false
-        end
+        end,
       }
 
       -- Simulate process completion
@@ -62,7 +62,7 @@ _G.vim = {
     end,
     fs_read = function(fd, size, offset, callback)
       if fd == 123 then
-        callback(nil, "Hello, world!")
+        callback(nil, 'Hello, world!')
       else
         callback('EBADF: bad file descriptor', nil)
       end
@@ -113,14 +113,14 @@ _G.vim = {
         end,
         close = function(self)
           -- Timer closed
-        end
+        end,
       }
-    end
+    end,
   },
   schedule = function(callback)
     -- Immediate execution for testing
     callback()
-  end
+  end,
 }
 
 -- Load the module to test
@@ -133,8 +133,14 @@ local test_results = {}
 
 local function assert_eq(actual, expected, message)
   if actual ~= expected then
-    error(string.format('Assertion failed: %s\nExpected: %s\nActual: %s',
-          message or 'values should be equal', tostring(expected), tostring(actual)))
+    error(
+      string.format(
+        'Assertion failed: %s\nExpected: %s\nActual: %s',
+        message or 'values should be equal',
+        tostring(expected),
+        tostring(actual)
+      )
+    )
   end
 end
 
@@ -182,7 +188,7 @@ run_test('run_command executes successfully', function()
   local result = nil
   local completed = false
 
-  local handle = async.run_command('echo', {'hello'}, {}, function(res)
+  local handle = async.run_command('echo', { 'hello' }, {}, function(res)
     result = res
     completed = true
   end)
@@ -212,7 +218,12 @@ run_test('run_command handles command failure', function()
     vim.schedule(function()
       callback(1, 0) -- exit code 1
     end)
-    return { close = function() end, is_closing = function() return false end }
+    return {
+      close = function() end,
+      is_closing = function()
+        return false
+      end,
+    }
   end
 
   async.run_command('false', {}, {}, function(res)
@@ -236,23 +247,23 @@ end)
 
 -- Test 4: run_command with options (cwd, env, callbacks)
 run_test('run_command respects options', function()
-  local stdout_data = ""
-  local stderr_data = ""
+  local stdout_data = ''
+  local stderr_data = ''
   local result = nil
   local completed = false
 
   local options = {
     cwd = '/tmp',
-    env = {'TEST_VAR=test_value'},
+    env = { 'TEST_VAR=test_value' },
     on_stdout = function(data)
       stdout_data = stdout_data .. data
     end,
     on_stderr = function(data)
       stderr_data = stderr_data .. data
-    end
+    end,
   }
 
-  async.run_command('echo', {'test'}, options, function(res)
+  async.run_command('echo', { 'test' }, options, function(res)
     result = res
     completed = true
   end)
@@ -301,7 +312,7 @@ end)
 -- Test 6: run_command_sync requires coroutine
 run_test('run_command_sync requires coroutine', function()
   local success, error_msg = pcall(function()
-    async.run_command_sync('echo', {'test'}, {})
+    async.run_command_sync('echo', { 'test' }, {})
   end)
 
   assert_true(not success, 'run_command_sync should fail outside coroutine')
@@ -327,7 +338,7 @@ run_test('read_file reads file successfully', function()
   end
 
   assert_true(completed, 'File read should complete')
-  assert_eq(content, "Hello, world!", 'File content should match')
+  assert_eq(content, 'Hello, world!', 'File content should match')
   assert_eq(error_msg, nil, 'No error should occur')
 end)
 

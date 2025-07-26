@@ -25,7 +25,7 @@ local function setup_comprehensive_mocks()
     buffer_filetypes = {},
     registered_files = {},
     lsp_config_calls = {},
-    path_transformations = {}
+    path_transformations = {},
   }
 
   -- Comprehensive vim mock
@@ -33,13 +33,15 @@ local function setup_comprehensive_mocks()
     -- Table utilities
     tbl_contains = function(t, value)
       for _, v in ipairs(t) do
-        if v == value then return true end
+        if v == value then
+          return true
+        end
       end
       return false
     end,
     tbl_deep_extend = function(behavior, ...)
       local result = {}
-      for _, source in ipairs({...}) do
+      for _, source in ipairs({ ... }) do
         if type(source) == 'table' then
           for k, v in pairs(source) do
             result[k] = v
@@ -68,7 +70,9 @@ local function setup_comprehensive_mocks()
           name = config.name,
           config = config,
           stop = function() end,
-          is_stopped = function() return false end
+          is_stopped = function()
+            return false
+          end,
         }
         table.insert(_G.test_state.lsp_clients, client)
         return client.id
@@ -79,8 +83,8 @@ local function setup_comprehensive_mocks()
       handlers = {
         ['textDocument/hover'] = function() end,
         ['textDocument/definition'] = function() end,
-        ['textDocument/references'] = function() end
-      }
+        ['textDocument/references'] = function() end,
+      },
     },
 
     -- Diagnostic API
@@ -90,7 +94,7 @@ local function setup_comprehensive_mocks()
       end,
       set = function(namespace, bufnr, diagnostics, opts)
         -- Track diagnostic calls
-      end
+      end,
     },
 
     -- API functions
@@ -117,7 +121,7 @@ local function setup_comprehensive_mocks()
       end,
       nvim_buf_set_keymap = function(bufnr, mode, lhs, rhs, opts)
         -- Track keymap settings
-      end
+      end,
     },
 
     -- File system
@@ -139,7 +143,7 @@ local function setup_comprehensive_mocks()
           return _G.test_state.current_buf
         end
         return -1
-      end
+      end,
     },
 
     -- Loop/timer
@@ -150,10 +154,14 @@ local function setup_comprehensive_mocks()
             self._callback = callback
             return self
           end,
-          stop = function(self) return self end,
-          close = function(self) return self end
+          stop = function(self)
+            return self
+          end,
+          close = function(self)
+            return self
+          end,
         }
-      end
+      end,
     },
 
     -- Scheduling
@@ -165,8 +173,8 @@ local function setup_comprehensive_mocks()
     -- Logging
     notify = function(msg, level) end,
     log = {
-      levels = { INFO = 1, WARN = 2, ERROR = 3 }
-    }
+      levels = { INFO = 1, WARN = 2, ERROR = 3 },
+    },
   }
 end
 
@@ -179,8 +187,7 @@ end
 
 local function assert_eq(actual, expected, message)
   if actual ~= expected then
-    error(string.format('%s: expected %s, got %s', message or 'Assertion failed',
-                       tostring(expected), tostring(actual)))
+    error(string.format('%s: expected %s, got %s', message or 'Assertion failed', tostring(expected), tostring(actual)))
   end
 end
 
@@ -236,8 +243,8 @@ run_test('setup accepts custom diagnostic configuration', function()
     diagnostic_config = {
       virtual_text = false,
       signs = true,
-      underline = true
-    }
+      underline = true,
+    },
   }
 
   lsp_init.setup(config)
@@ -255,7 +262,7 @@ run_test('start_container_lsp_client creates LSP client correctly', function()
     name = 'test_lsp',
     cmd = { 'test-language-server' },
     filetypes = { 'test' },
-    root_dir = '/workspace'
+    root_dir = '/workspace',
   }
 
   local client_id = lsp_init.start_container_lsp_client(config)
@@ -276,7 +283,7 @@ run_test('register_file_for_container_lsp handles file registration', function()
   -- Mock container as running
   _G.test_state.container_state = {
     current_container = 'test-container',
-    container_status = 'running'
+    container_status = 'running',
   }
 
   local success = pcall(function()
@@ -307,21 +314,21 @@ run_test('LSP client accepts custom configuration options', function()
     root_dir = '/custom/workspace',
     settings = {
       custom = {
-        enableFeature = true
-      }
+        enableFeature = true,
+      },
     },
     init_options = {
-      usePlaceholders = true
+      usePlaceholders = true,
     },
     capabilities = {
       textDocument = {
         completion = {
           completionItem = {
-            snippetSupport = true
-          }
-        }
-      }
-    }
+            snippetSupport = true,
+          },
+        },
+      },
+    },
   }
 
   local client_id = lsp_init.start_container_lsp_client(config)
@@ -375,13 +382,13 @@ run_test('LSP init integrates with container state properly', function()
   package.loaded['container'] = {
     get_state = function()
       return _G.test_state.container_state
-    end
+    end,
   }
 
   -- Test with stopped container
   _G.test_state.container_state = {
     current_container = nil,
-    container_status = 'stopped'
+    container_status = 'stopped',
   }
 
   local success1 = pcall(function()
@@ -391,7 +398,7 @@ run_test('LSP init integrates with container state properly', function()
   -- Test with running container
   _G.test_state.container_state = {
     current_container = 'test-container',
-    container_status = 'running'
+    container_status = 'running',
   }
 
   local success2 = pcall(function()
@@ -422,10 +429,14 @@ run_test('LSP init integrates with path transformation', function()
     end,
     get_instance = function()
       return {
-        transform_host_to_container = function(path) return path:gsub('/host', '/container') end,
-        transform_container_to_host = function(path) return path:gsub('/container', '/host') end
+        transform_host_to_container = function(path)
+          return path:gsub('/host', '/container')
+        end,
+        transform_container_to_host = function(path)
+          return path:gsub('/container', '/host')
+        end,
       }
-    end
+    end,
   }
 
   local success = pcall(function()
@@ -441,7 +452,7 @@ run_test('LSP init integrates with LSP commands', function()
   package.loaded['container.lsp.commands'] = {
     initialize = function()
       return true
-    end
+    end,
   }
 
   local success = pcall(function()
@@ -455,7 +466,9 @@ end)
 run_test('LSP init sets up ftplugin integration', function()
   -- Mock ftplugin manager
   package.loaded['container.lsp.ftplugin_manager'] = {
-    initialize = function() return true end
+    initialize = function()
+      return true
+    end,
   }
 
   local success = pcall(function()
@@ -471,13 +484,13 @@ run_test('LSP init handles multiple concurrent LSP clients', function()
   local client1 = lsp_init.start_container_lsp_client({
     name = 'gopls',
     cmd = { 'gopls' },
-    filetypes = { 'go' }
+    filetypes = { 'go' },
   })
 
   local client2 = lsp_init.start_container_lsp_client({
     name = 'pylsp',
     cmd = { 'pylsp' },
-    filetypes = { 'python' }
+    filetypes = { 'python' },
   })
 
   assert_not_nil(client1, 'First client should be created')
@@ -489,9 +502,9 @@ end)
 run_test('LSP init validates configurations properly', function()
   -- Test various invalid configurations
   local invalid_configs = {
-    { name = nil, cmd = { 'test' } },  -- missing name
-    { name = 'test', cmd = nil },      -- missing cmd
-    { name = 'test', cmd = {} },       -- empty cmd
+    { name = nil, cmd = { 'test' } }, -- missing name
+    { name = 'test', cmd = nil }, -- missing cmd
+    { name = 'test', cmd = {} }, -- empty cmd
   }
 
   for _, config in ipairs(invalid_configs) do
@@ -526,13 +539,13 @@ run_test('LSP init properly manages resources', function()
   lsp_init.start_container_lsp_client({
     name = 'test1',
     cmd = { 'test1' },
-    filetypes = { 'test' }
+    filetypes = { 'test' },
   })
 
   lsp_init.start_container_lsp_client({
     name = 'test2',
     cmd = { 'test2' },
-    filetypes = { 'test' }
+    filetypes = { 'test' },
   })
 
   -- Should manage resources without memory leaks
@@ -559,11 +572,11 @@ run_test('LSP init integrates with external LSP configurations', function()
       settings = {
         gopls = {
           analyses = {
-            unusedparams = true
-          }
-        }
-      }
-    }
+            unusedparams = true,
+          },
+        },
+      },
+    },
   }
 
   local success = pcall(function()
