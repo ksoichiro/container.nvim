@@ -252,7 +252,7 @@ function M.debounce(fn, delay)
     timer:start(delay, 0, function()
       timer:close()
       vim.schedule(function()
-        fn(unpack(args))
+        fn(table.unpack(args))
       end)
     end)
   end
