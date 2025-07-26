@@ -23,15 +23,15 @@ _G.vim = {
     argv = {},
     shell_error = 0,
   },
-  
+
   -- Environment
   env = {},
-  
+
   -- File system functions
   fn = {
     system = function(cmd)
       table.insert(test_state.system_calls, cmd)
-      
+
       -- Mock different command responses
       if cmd:match('docker %-%-version') then
         vim.v.shell_error = 0
@@ -69,26 +69,26 @@ _G.vim = {
         return 'success'
       end
     end,
-    
+
     shellescape = function(str)
       return "'" .. str:gsub("'", "'\"'\"'") .. "'"
     end,
-    
+
     getcwd = function()
       return '/test/workspace'
     end,
-    
+
     sha256 = function(str)
       return '1234567890abcdef1234567890abcdef12345678'
     end,
-    
+
     fnamemodify = function(path, modifier)
       if modifier == ':t' then
         return path:match('([^/]+)$') or path
       end
       return path
     end,
-    
+
     jobstart = function(cmd_args, opts)
       local job_id = #test_state.job_calls + 1
       table.insert(test_state.job_calls, {
@@ -96,7 +96,7 @@ _G.vim = {
         opts = opts,
         job_id = job_id
       })
-      
+
       -- Simulate job execution
       vim.schedule(function()
         if opts.on_stdout then
@@ -106,46 +106,46 @@ _G.vim = {
           opts.on_exit(job_id, 0, 'exit')
         end
       end)
-      
+
       return job_id
     end,
-    
+
     jobstop = function(job_id)
       return true
     end,
-    
+
     jobwait = function(job_ids, timeout)
       return {-1} -- Still running
     end,
-    
+
     localtime = function()
       return test_state.current_time
     end,
-    
+
     timer_stop = function(timer_id)
       return true
     end,
   },
-  
+
   -- Loop/UV functions
   loop = {
     hrtime = function()
       return test_state.current_time * 1e9
     end,
   },
-  
+
   -- UV functions (alias for loop)
   uv = {
     hrtime = function()
       return test_state.current_time * 1e9
     end,
   },
-  
+
   -- Scheduling functions
   schedule = function(callback)
     callback()
   end,
-  
+
   defer_fn = function(callback, delay)
     table.insert(test_state.timer_calls, {
       callback = callback,
@@ -153,7 +153,7 @@ _G.vim = {
     })
     callback()
   end,
-  
+
   wait = function(timeout, condition, interval)
     local count = 0
     while count < 10 do
@@ -164,7 +164,7 @@ _G.vim = {
     end
     return false
   end,
-  
+
   -- Table utilities
   tbl_contains = function(tbl, value)
     for _, v in ipairs(tbl) do
@@ -174,14 +174,14 @@ _G.vim = {
     end
     return false
   end,
-  
+
   list_extend = function(dst, src)
     for _, v in ipairs(src) do
       table.insert(dst, v)
     end
     return dst
   end,
-  
+
   -- JSON functions
   json = {
     decode = function(str)
@@ -201,12 +201,12 @@ _G.vim = {
       return {}
     end,
   },
-  
+
   -- Inspection utility
   inspect = function(obj)
     return tostring(obj)
   end,
-  
+
   -- NIL constant
   NIL = {},
 }
@@ -233,13 +233,13 @@ local function reset_test_state()
   vim.v.shell_error = 0
   vim.v.argv = {}
   vim.env = {}
-  
+
   -- Reset vim.fn.system to default mock (don't override custom mocks in tests)
   -- Only reset if it's still the default mock function
   if not test_state.custom_system_mock then
     vim.fn.system = function(cmd)
       table.insert(test_state.system_calls, cmd)
-      
+
       -- Mock different command responses
       if cmd:match('docker %-%-version') then
         vim.v.shell_error = 0
@@ -290,7 +290,7 @@ local test_results = {}
 
 local function assert_eq(actual, expected, message)
   if actual ~= expected then
-    error(string.format('Assertion failed: %s\nExpected: %s\nActual: %s', 
+    error(string.format('Assertion failed: %s\nExpected: %s\nActual: %s',
           message or 'values should be equal', tostring(expected), tostring(actual)))
   end
 end
@@ -363,12 +363,12 @@ run_test('check_docker_availability works with Docker available', function()
     vim.v.shell_error = 0
     return 'success'
   end
-  
+
   local success, error_msg = docker_init.check_docker_availability()
-  
+
   assert_true(success, 'Should return success when Docker is available')
   assert_eq(error_msg, nil, 'Should not return error message on success')
-  
+
   -- Check that docker commands were called
   local found_version = false
   local found_ps = false
@@ -395,9 +395,9 @@ run_test('check_docker_availability handles Docker not found', function()
     vim.v.shell_error = 1
     return 'error'
   end
-  
+
   local success, error_msg = docker_init.check_docker_availability()
-  
+
   assert_false(success, 'Should return false when Docker is not available')
   assert_not_nil(error_msg, 'Should return error message')
   assert_true(error_msg:match('Docker command not found'), 'Error should mention docker not found')
@@ -410,7 +410,7 @@ run_test('check_docker_availability handles daemon not running', function()
   vim.fn.system = function(cmd)
     call_count = call_count + 1
     table.insert(test_state.system_calls, cmd)
-    
+
     if call_count == 1 and cmd:match('docker --version') then
       vim.v.shell_error = 0
       return 'Docker version 20.10.21'
@@ -420,9 +420,9 @@ run_test('check_docker_availability handles daemon not running', function()
     end
     return ''
   end
-  
+
   local success, error_msg = docker_init.check_docker_availability()
-  
+
   assert_false(success, 'Should return false when daemon is not running')
   assert_not_nil(error_msg, 'Should return error message')
   assert_true(error_msg:match('daemon is not running'), 'Error should mention daemon not running')
@@ -433,19 +433,19 @@ run_test('check_docker_availability_async works with Docker available', function
   local callback_called = false
   local callback_success = nil
   local callback_error = nil
-  
+
   docker_init.check_docker_availability_async(function(success, error)
     callback_called = true
     callback_success = success
     callback_error = error
   end)
-  
+
   -- Wait for async completion
   local wait_count = 0
   while not callback_called and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(callback_called, 'Async callback should be called')
   assert_true(callback_success, 'Should report success when Docker is available')
   assert_eq(callback_error, nil, 'Should not return error on success')
@@ -456,7 +456,7 @@ run_test('detect_shell finds bash when available', function()
   -- Mock system calls to simulate container running and bash available
   vim.fn.system = function(cmd)
     table.insert(test_state.system_calls, cmd)
-    
+
     if cmd:match('docker inspect.*Status') then
       vim.v.shell_error = 0
       return 'running'
@@ -468,11 +468,11 @@ run_test('detect_shell finds bash when available', function()
       return 'success'
     end
   end
-  
+
   local shell = docker_init.detect_shell('test-container')
-  
+
   assert_eq(shell, 'bash', 'Should detect bash when available')
-  
+
   -- Check that which command was called
   local found_which = false
   for _, cmd in ipairs(test_state.system_calls) do
@@ -488,10 +488,10 @@ end)
 run_test('detect_shell falls back to sh when bash not available', function()
   -- Clear shell cache first to ensure clean test
   docker_init.clear_shell_cache('fallback-container')
-  
+
   vim.fn.system = function(cmd)
     table.insert(test_state.system_calls, cmd)
-    
+
     if cmd:match('docker inspect.*Status') then
       vim.v.shell_error = 0
       return 'running'
@@ -507,9 +507,9 @@ run_test('detect_shell falls back to sh when bash not available', function()
     end
     return ''
   end
-  
+
   local shell = docker_init.detect_shell('fallback-container')
-  
+
   assert_eq(shell, 'sh', 'Should fallback to sh when bash unavailable')
 end)
 
@@ -517,19 +517,19 @@ end)
 run_test('detect_shell handles container not running', function()
   -- Clear shell cache first to ensure clean test
   docker_init.clear_shell_cache('stopped-container')
-  
+
   vim.fn.system = function(cmd)
     table.insert(test_state.system_calls, cmd)
-    
+
     if cmd:match('docker inspect.*Status.*stopped%-container') then
       vim.v.shell_error = 1
       return 'exited'
     end
     return ''
   end
-  
+
   local shell = docker_init.detect_shell('stopped-container')
-  
+
   assert_eq(shell, 'sh', 'Should return sh when container not running')
 end)
 
@@ -537,10 +537,10 @@ end)
 run_test('clear_shell_cache works for specific container', function()
   -- First detect shell to populate cache
   docker_init.detect_shell('test-container')
-  
+
   -- Clear cache for specific container
   docker_init.clear_shell_cache('test-container')
-  
+
   -- This should work without error
   assert_true(true, 'clear_shell_cache should not error')
 end)
@@ -550,10 +550,10 @@ run_test('clear_shell_cache clears all caches', function()
   -- Detect shells to populate cache
   docker_init.detect_shell('container1')
   docker_init.detect_shell('container2')
-  
+
   -- Clear all caches
   docker_init.clear_shell_cache()
-  
+
   -- This should work without error
   assert_true(true, 'clear_shell_cache() should clear all caches')
 end)
@@ -563,10 +563,10 @@ run_test('E2E test environment is detected correctly', function()
   -- Set up E2E test environment
   vim.v.argv = {'--headless'}
   vim.env.NVIM_E2E_TEST = '1'
-  
+
   -- This should trigger E2E-specific code paths
   local result = docker_init.run_docker_command({'version'})
-  
+
   assert_not_nil(result, 'Should return result in E2E environment')
   assert_true(result.success, 'Should succeed in E2E environment')
 end)
@@ -574,12 +574,12 @@ end)
 -- Test 12: run_docker_command basic functionality
 run_test('run_docker_command executes commands correctly', function()
   local result = docker_init.run_docker_command({'version'})
-  
+
   assert_not_nil(result, 'Should return result object')
   assert_true(result.success, 'Should report success')
   assert_eq(result.code, 0, 'Should have exit code 0')
   assert_not_nil(result.stdout, 'Should have stdout')
-  
+
   -- Check that command was executed
   local found_command = false
   for _, cmd in ipairs(test_state.system_calls) do
@@ -597,9 +597,9 @@ run_test('run_docker_command respects options', function()
     cwd = '/test/dir',
     verbose = true
   })
-  
+
   assert_not_nil(result, 'Should return result with options')
-  
+
   -- Check that cd command was included
   local found_cd = false
   for _, cmd in ipairs(test_state.system_calls) do
@@ -619,9 +619,9 @@ run_test('run_docker_command handles command failure', function()
     vim.v.shell_error = 1
     return 'Command failed'
   end
-  
+
   local result = docker_init.run_docker_command({'nonexistent'})
-  
+
   assert_not_nil(result, 'Should return result even on failure')
   assert_false(result.success, 'Should report failure')
   assert_eq(result.code, 1, 'Should have non-zero exit code')
@@ -632,22 +632,22 @@ end)
 run_test('run_docker_command_async executes commands asynchronously', function()
   local callback_called = false
   local callback_result = nil
-  
+
   docker_init.run_docker_command_async({'version'}, {}, function(result)
     callback_called = true
     callback_result = result
   end)
-  
+
   -- Wait for async completion
   local wait_count = 0
   while not callback_called and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(callback_called, 'Async callback should be called')
   assert_not_nil(callback_result, 'Should provide result to callback')
   assert_true(callback_result.success, 'Should report success')
-  
+
   -- Check that job was started
   assert_true(#test_state.job_calls > 0, 'Should start job for async execution')
 end)
@@ -664,11 +664,11 @@ run_test('check_image_exists detects existing image', function()
     vim.v.shell_error = 0
     return 'success'
   end
-  
+
   local exists = docker_init.check_image_exists('test-image')
-  
+
   assert_true(exists, 'Should detect existing image')
-  
+
   -- Check that images command was called
   local found_images = false
   for _, cmd in ipairs(test_state.system_calls) do
@@ -689,9 +689,9 @@ run_test('check_image_exists handles non-existent image', function()
     end
     return 'success'
   end
-  
+
   local exists = docker_init.check_image_exists('nonexistent-image')
-  
+
   assert_false(exists, 'Should not detect non-existent image')
 end)
 
@@ -699,18 +699,18 @@ end)
 run_test('check_image_exists_async works correctly', function()
   local callback_called = false
   local callback_exists = nil
-  
+
   docker_init.check_image_exists_async('test-image', function(exists, image_id)
     callback_called = true
     callback_exists = exists
   end)
-  
+
   -- Wait for async completion
   local wait_count = 0
   while not callback_called and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(callback_called, 'Async callback should be called')
   assert_true(callback_exists, 'Should detect existing image asynchronously')
 end)
@@ -721,9 +721,9 @@ run_test('generate_container_name creates unique names', function()
     name = 'Test Project',
     base_path = '/test/project/path'
   }
-  
+
   local container_name = docker_init.generate_container_name(config)
-  
+
   assert_not_nil(container_name, 'Should generate container name')
   assert_true(container_name:match('test%-project'), 'Should include cleaned project name')
   assert_true(container_name:match('devcontainer$'), 'Should end with devcontainer')
@@ -758,12 +758,12 @@ run_test('_build_create_args builds correct arguments', function()
     init = true,
     remote_user = 'developer'
   }
-  
+
   local args = docker_init._build_create_args(config)
-  
+
   assert_not_nil(args, 'Should build arguments')
   assert_true(#args > 0, 'Should have arguments')
-  
+
   -- Check for specific arguments
   local args_str = table.concat(args, ' ')
   assert_true(args_str:match('create'), 'Should include create command')
@@ -785,9 +785,9 @@ run_test('create_container creates container successfully', function()
     name = 'test-project',
     image = 'ubuntu:20.04'
   }
-  
+
   local container_id = docker_init.create_container(config)
-  
+
   assert_not_nil(container_id, 'Should return container ID')
   assert_true(container_id:match('%w+'), 'Container ID should be alphanumeric')
 end)
@@ -797,24 +797,24 @@ run_test('create_container_async creates container asynchronously', function()
   local callback_called = false
   local callback_container_id = nil
   local callback_error = nil
-  
+
   local config = {
     name = 'test-project',
     image = 'ubuntu:20.04'
   }
-  
+
   docker_init.create_container_async(config, function(container_id, error)
     callback_called = true
     callback_container_id = container_id
     callback_error = error
   end)
-  
+
   -- Wait for async completion
   local wait_count = 0
   while not callback_called and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(callback_called, 'Async callback should be called')
   assert_not_nil(callback_container_id, 'Should provide container ID')
   assert_eq(callback_error, nil, 'Should not have error on success')
@@ -824,7 +824,7 @@ end)
 run_test('get_container_status returns correct status', function()
   -- Set custom mock flag
   test_state.custom_system_mock = true
-  
+
   -- Mock system call to return container status
   vim.fn.system = function(cmd)
     table.insert(test_state.system_calls, cmd)
@@ -835,11 +835,11 @@ run_test('get_container_status returns correct status', function()
     vim.v.shell_error = 0
     return 'success'
   end
-  
+
   local status = docker_init.get_container_status('status-container')
-  
+
   assert_eq(status, 'running', 'Should return running status')
-  
+
   -- Check that inspect command was called
   local found_inspect = false
   for _, cmd in ipairs(test_state.system_calls) do
@@ -849,7 +849,7 @@ run_test('get_container_status returns correct status', function()
     end
   end
   assert_true(found_inspect, 'Should call docker inspect command')
-  
+
   -- Reset custom mock flag
   test_state.custom_system_mock = false
 end)
@@ -862,9 +862,9 @@ run_test('get_container_status handles non-existent container', function()
     vim.v.shell_error = 1
     return 'No such container'
   end
-  
+
   local status = docker_init.get_container_status('nonexistent-container')
-  
+
   assert_eq(status, nil, 'Should return nil for non-existent container')
 end)
 
@@ -878,9 +878,9 @@ run_test('list_containers returns container list', function()
     end
     return ''
   end
-  
+
   local containers = docker_init.list_containers()
-  
+
   assert_not_nil(containers, 'Should return container list')
   assert_eq(#containers, 2, 'Should have 2 containers')
   assert_eq(containers[1].name, 'test-container', 'Should parse container name')
@@ -892,20 +892,20 @@ end)
 run_test('exec_command executes commands in container', function()
   local completed = false
   local exec_result = nil
-  
+
   docker_init.exec_command('test-container', 'echo hello', {
     on_complete = function(result)
       completed = true
       exec_result = result
     end
   })
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Exec command should complete')
   assert_not_nil(exec_result, 'Should provide execution result')
 end)
@@ -914,18 +914,18 @@ end)
 run_test('exec_command_async executes commands asynchronously', function()
   local callback_called = false
   local callback_result = nil
-  
+
   docker_init.exec_command_async('test-container', 'echo hello', {}, function(result)
     callback_called = true
     callback_result = result
   end)
-  
+
   -- Wait for async completion
   local wait_count = 0
   while not callback_called and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(callback_called, 'Async callback should be called')
   assert_not_nil(callback_result, 'Should provide result to callback')
 end)
@@ -933,7 +933,7 @@ end)
 -- Test 28: Error message builders
 run_test('_build_docker_not_found_error creates helpful error', function()
   local error_msg = docker_init._build_docker_not_found_error()
-  
+
   assert_not_nil(error_msg, 'Should create error message')
   assert_true(error_msg:match('Docker command not found'), 'Should mention Docker not found')
   assert_true(error_msg:match('install Docker'), 'Should mention installation')
@@ -943,7 +943,7 @@ end)
 -- Test 29: Docker daemon error message
 run_test('_build_docker_daemon_error creates helpful error', function()
   local error_msg = docker_init._build_docker_daemon_error()
-  
+
   assert_not_nil(error_msg, 'Should create error message')
   assert_true(error_msg:match('daemon is not running'), 'Should mention daemon not running')
   assert_true(error_msg:match('systemctl start docker'), 'Should include start instructions')
@@ -952,7 +952,7 @@ end)
 -- Test 30: Network error handling
 run_test('handle_network_error creates helpful error message', function()
   local error_msg = docker_init.handle_network_error('Connection timeout')
-  
+
   assert_not_nil(error_msg, 'Should create error message')
   assert_true(error_msg:match('Network operation failed'), 'Should mention network failure')
   assert_true(error_msg:match('internet connection'), 'Should mention connectivity')

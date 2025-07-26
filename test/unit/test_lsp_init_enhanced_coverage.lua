@@ -55,7 +55,7 @@ local function setup_comprehensive_mocks()
       end
       return keys
     end,
-    
+
     -- LSP API
     lsp = {
       get_clients = function()
@@ -82,7 +82,7 @@ local function setup_comprehensive_mocks()
         ['textDocument/references'] = function() end
       }
     },
-    
+
     -- Diagnostic API
     diagnostic = {
       config = function(opts)
@@ -92,7 +92,7 @@ local function setup_comprehensive_mocks()
         -- Track diagnostic calls
       end
     },
-    
+
     -- API functions
     api = {
       nvim_get_current_buf = function()
@@ -119,7 +119,7 @@ local function setup_comprehensive_mocks()
         -- Track keymap settings
       end
     },
-    
+
     -- File system
     fn = {
       fnamemodify = function(path, modifiers)
@@ -141,7 +141,7 @@ local function setup_comprehensive_mocks()
         return -1
       end
     },
-    
+
     -- Loop/timer
     uv = {
       new_timer = function()
@@ -155,13 +155,13 @@ local function setup_comprehensive_mocks()
         }
       end
     },
-    
+
     -- Scheduling
     schedule = function(fn)
       -- Execute immediately for testing
       fn()
     end,
-    
+
     -- Logging
     notify = function(msg, level) end,
     log = {
@@ -179,7 +179,7 @@ end
 
 local function assert_eq(actual, expected, message)
   if actual ~= expected then
-    error(string.format('%s: expected %s, got %s', message or 'Assertion failed', 
+    error(string.format('%s: expected %s, got %s', message or 'Assertion failed',
                        tostring(expected), tostring(actual)))
   end
 end
@@ -192,10 +192,10 @@ end
 
 local function run_test(name, test_func)
   setup_comprehensive_mocks()
-  
+
   print('Testing:', name)
   local success, error_msg = pcall(test_func)
-  
+
   if success then
     print('✓', name)
     tests_passed = tests_passed + 1
@@ -222,10 +222,10 @@ end)
 -- Test 2: Basic setup functionality
 run_test('setup initializes LSP module correctly', function()
   lsp_init.setup({})
-  
+
   -- Should have set up diagnostic configuration
   assert_true(#_G.test_state.diagnostic_calls > 0, 'Diagnostic configuration should be called')
-  
+
   -- Should have created autocmds
   assert_true(#_G.test_state.autocmds > 0, 'Autocmds should be created')
 end)
@@ -239,9 +239,9 @@ run_test('setup accepts custom diagnostic configuration', function()
       underline = true
     }
   }
-  
+
   lsp_init.setup(config)
-  
+
   -- Check that custom config was applied
   local diagnostic_call = _G.test_state.diagnostic_calls[1]
   assert_not_nil(diagnostic_call, 'Diagnostic config should be called')
@@ -257,12 +257,12 @@ run_test('start_container_lsp_client creates LSP client correctly', function()
     filetypes = { 'test' },
     root_dir = '/workspace'
   }
-  
+
   local client_id = lsp_init.start_container_lsp_client(config)
-  
+
   assert_not_nil(client_id, 'Client ID should be returned')
   assert_true(#_G.test_state.lsp_config_calls > 0, 'LSP client should be started')
-  
+
   local lsp_call = _G.test_state.lsp_config_calls[1]
   assert_eq(lsp_call.config.name, 'test_lsp', 'Client name should match')
   assert_eq(lsp_call.config.root_dir, '/workspace', 'Root dir should match')
@@ -272,24 +272,24 @@ end)
 run_test('register_file_for_container_lsp handles file registration', function()
   _G.test_state.buffer_filetypes[1] = 'go'
   _G.test_state.current_buf = 1
-  
+
   -- Mock container as running
   _G.test_state.container_state = {
     current_container = 'test-container',
     container_status = 'running'
   }
-  
+
   local success = pcall(function()
     lsp_init.register_file_for_container_lsp('/workspace/test.go', 'go')
   end)
-  
+
   assert_true(success, 'File registration should succeed')
 end)
 
 -- Test 6: Container LSP setup with different languages
 run_test('setup_lsp_in_container handles multiple languages', function()
   local languages = { 'go', 'python', 'rust', 'typescript', 'javascript', 'c', 'cpp' }
-  
+
   for _, lang in ipairs(languages) do
     local success = pcall(function()
       lsp_init.setup_lsp_in_container(lang, '/workspace')
@@ -323,10 +323,10 @@ run_test('LSP client accepts custom configuration options', function()
       }
     }
   }
-  
+
   local client_id = lsp_init.start_container_lsp_client(config)
   assert_not_nil(client_id, 'Custom LSP client should be created')
-  
+
   local lsp_call = _G.test_state.lsp_config_calls[1]
   assert_not_nil(lsp_call.config.settings, 'Settings should be preserved')
   assert_not_nil(lsp_call.config.init_options, 'Init options should be preserved')
@@ -339,12 +339,12 @@ run_test('LSP setup handles invalid configurations gracefully', function()
   local success1 = pcall(function()
     lsp_init.start_container_lsp_client(nil)
   end)
-  
+
   -- Test with empty config
   local success2 = pcall(function()
     lsp_init.start_container_lsp_client({})
   end)
-  
+
   -- Should not crash, but may return nil or handle gracefully
   assert_true(success1 or success2, 'Invalid config should be handled gracefully')
 end)
@@ -352,11 +352,11 @@ end)
 -- Test 9: Autocmd creation for LSP lifecycle management
 run_test('setup creates necessary autocmds for LSP management', function()
   lsp_init.setup({})
-  
+
   -- Check for specific autocmd events
   local found_bufenter = false
   local found_filetype = false
-  
+
   for _, autocmd in ipairs(_G.test_state.autocmds) do
     if vim.tbl_contains(autocmd.events, 'BufEnter') then
       found_bufenter = true
@@ -365,7 +365,7 @@ run_test('setup creates necessary autocmds for LSP management', function()
       found_filetype = true
     end
   end
-  
+
   assert_true(found_bufenter or found_filetype, 'Buffer/filetype autocmds should be created')
 end)
 
@@ -377,27 +377,27 @@ run_test('LSP init integrates with container state properly', function()
       return _G.test_state.container_state
     end
   }
-  
+
   -- Test with stopped container
   _G.test_state.container_state = {
     current_container = nil,
     container_status = 'stopped'
   }
-  
+
   local success1 = pcall(function()
     lsp_init.setup_lsp_in_container('go', '/workspace')
   end)
-  
+
   -- Test with running container
   _G.test_state.container_state = {
     current_container = 'test-container',
     container_status = 'running'
   }
-  
+
   local success2 = pcall(function()
     lsp_init.setup_lsp_in_container('go', '/workspace')
   end)
-  
+
   assert_true(success1, 'Should handle stopped container')
   assert_true(success2, 'Should handle running container')
 end)
@@ -408,7 +408,7 @@ run_test('LSP init integrates with language registry', function()
   local success = pcall(function()
     lsp_init.setup_lsp_in_container('go', '/workspace')
   end)
-  
+
   assert_true(success, 'Should integrate with language registry')
 end)
 
@@ -427,11 +427,11 @@ run_test('LSP init integrates with path transformation', function()
       }
     end
   }
-  
+
   local success = pcall(function()
     lsp_init.setup_lsp_in_container('go', '/workspace')
   end)
-  
+
   assert_true(success, 'Should integrate with path transformation')
 end)
 
@@ -443,11 +443,11 @@ run_test('LSP init integrates with LSP commands', function()
       return true
     end
   }
-  
+
   local success = pcall(function()
     lsp_init.setup({})
   end)
-  
+
   assert_true(success, 'Should integrate with LSP commands')
 end)
 
@@ -457,11 +457,11 @@ run_test('LSP init sets up ftplugin integration', function()
   package.loaded['container.lsp.ftplugin_manager'] = {
     initialize = function() return true end
   }
-  
+
   local success = pcall(function()
     lsp_init.setup({})
   end)
-  
+
   assert_true(success, 'Should integrate with ftplugin manager')
 end)
 
@@ -473,13 +473,13 @@ run_test('LSP init handles multiple concurrent LSP clients', function()
     cmd = { 'gopls' },
     filetypes = { 'go' }
   })
-  
+
   local client2 = lsp_init.start_container_lsp_client({
     name = 'pylsp',
     cmd = { 'pylsp' },
     filetypes = { 'python' }
   })
-  
+
   assert_not_nil(client1, 'First client should be created')
   assert_not_nil(client2, 'Second client should be created')
   assert_true(client1 ~= client2, 'Clients should have different IDs')
@@ -493,7 +493,7 @@ run_test('LSP init validates configurations properly', function()
     { name = 'test', cmd = nil },      -- missing cmd
     { name = 'test', cmd = {} },       -- empty cmd
   }
-  
+
   for _, config in ipairs(invalid_configs) do
     local success = pcall(function()
       lsp_init.start_container_lsp_client(config)
@@ -506,7 +506,7 @@ end)
 -- Test 17: Event-driven LSP initialization
 run_test('LSP init responds to container events', function()
   lsp_init.setup({})
-  
+
   -- Simulate container start event
   local success = pcall(function()
     -- This would typically be triggered by container events
@@ -516,7 +516,7 @@ run_test('LSP init responds to container events', function()
       end
     end
   end)
-  
+
   assert_true(success, 'Should handle container events properly')
 end)
 
@@ -528,13 +528,13 @@ run_test('LSP init properly manages resources', function()
     cmd = { 'test1' },
     filetypes = { 'test' }
   })
-  
+
   lsp_init.start_container_lsp_client({
     name = 'test2',
     cmd = { 'test2' },
     filetypes = { 'test' }
   })
-  
+
   -- Should manage resources without memory leaks
   assert_true(#_G.test_state.lsp_clients <= 10, 'Should not create excessive clients')
 end)
@@ -543,11 +543,11 @@ end)
 run_test('LSP init handles buffer-specific LSP attachment', function()
   _G.test_state.current_buf = 5
   _G.test_state.buffer_filetypes[5] = 'go'
-  
+
   local success = pcall(function()
     lsp_init.register_file_for_container_lsp('/workspace/test.go', 'go')
   end)
-  
+
   assert_true(success, 'Should handle buffer-specific attachment')
 end)
 
@@ -565,11 +565,11 @@ run_test('LSP init integrates with external LSP configurations', function()
       }
     }
   }
-  
+
   local success = pcall(function()
     lsp_init.setup_lsp_in_container('go', '/workspace')
   end)
-  
+
   assert_true(success, 'Should integrate with external configurations')
 end)
 

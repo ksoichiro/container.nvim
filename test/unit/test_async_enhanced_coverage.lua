@@ -36,12 +36,12 @@ _G.vim = {
           return self._closed or false
         end
       }
-      
+
       -- Simulate process completion
       vim.schedule(function()
         callback(0, 0) -- exit code 0, signal 0
       end)
-      
+
       return handle
     end,
     fs_open = function(path, flags, mode, callback)
@@ -133,7 +133,7 @@ local test_results = {}
 
 local function assert_eq(actual, expected, message)
   if actual ~= expected then
-    error(string.format('Assertion failed: %s\nExpected: %s\nActual: %s', 
+    error(string.format('Assertion failed: %s\nExpected: %s\nActual: %s',
           message or 'values should be equal', tostring(expected), tostring(actual)))
   end
 end
@@ -181,20 +181,20 @@ end)
 run_test('run_command executes successfully', function()
   local result = nil
   local completed = false
-  
+
   local handle = async.run_command('echo', {'hello'}, {}, function(res)
     result = res
     completed = true
   end)
-  
+
   assert_not_nil(handle, 'Handle should be returned')
-  
+
   -- Wait for completion (simulate async)
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Command should complete')
   assert_not_nil(result, 'Result should be provided')
   assert_eq(result.code, 0, 'Exit code should be 0')
@@ -205,7 +205,7 @@ end)
 run_test('run_command handles command failure', function()
   local result = nil
   local completed = false
-  
+
   -- Mock spawn to fail
   local original_spawn = vim.loop.spawn
   vim.loop.spawn = function(cmd, options, callback)
@@ -214,22 +214,22 @@ run_test('run_command handles command failure', function()
     end)
     return { close = function() end, is_closing = function() return false end }
   end
-  
+
   async.run_command('false', {}, {}, function(res)
     result = res
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Failed command should complete')
   assert_eq(result.code, 1, 'Exit code should be 1')
   assert_true(not result.success, 'Command should not be successful')
-  
+
   -- Restore original function
   vim.loop.spawn = original_spawn
 end)
@@ -240,7 +240,7 @@ run_test('run_command respects options', function()
   local stderr_data = ""
   local result = nil
   local completed = false
-  
+
   local options = {
     cwd = '/tmp',
     env = {'TEST_VAR=test_value'},
@@ -251,18 +251,18 @@ run_test('run_command respects options', function()
       stderr_data = stderr_data .. data
     end
   }
-  
+
   async.run_command('echo', {'test'}, options, function(res)
     result = res
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Command with options should complete')
   assert_not_nil(result, 'Result should be provided')
 end)
@@ -271,29 +271,29 @@ end)
 run_test('run_command handles spawn failure', function()
   local result = nil
   local completed = false
-  
+
   -- Mock spawn to return nil (failure)
   local original_spawn = vim.loop.spawn
   vim.loop.spawn = function(cmd, options, callback)
     return nil -- Spawn failed
   end
-  
+
   async.run_command('nonexistent_command', {}, {}, function(res)
     result = res
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Spawn failure should be handled')
   assert_eq(result.code, -1, 'Exit code should be -1 for spawn failure')
   assert_true(not result.success, 'Spawn failure should not be successful')
   assert_true(result.stderr:match('Failed to spawn process'), 'Error message should mention spawn failure')
-  
+
   -- Restore original function
   vim.loop.spawn = original_spawn
 end)
@@ -303,7 +303,7 @@ run_test('run_command_sync requires coroutine', function()
   local success, error_msg = pcall(function()
     async.run_command_sync('echo', {'test'}, {})
   end)
-  
+
   assert_true(not success, 'run_command_sync should fail outside coroutine')
   assert_true(error_msg:match('must be called from within a coroutine'), 'Error should mention coroutine requirement')
 end)
@@ -313,19 +313,19 @@ run_test('read_file reads file successfully', function()
   local content = nil
   local error_msg = nil
   local completed = false
-  
+
   async.read_file('/test/file.txt', function(data, err)
     content = data
     error_msg = err
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'File read should complete')
   assert_eq(content, "Hello, world!", 'File content should match')
   assert_eq(error_msg, nil, 'No error should occur')
@@ -336,19 +336,19 @@ run_test('read_file handles nonexistent file', function()
   local content = nil
   local error_msg = nil
   local completed = false
-  
+
   async.read_file('/nonexistent/file.txt', function(data, err)
     content = data
     error_msg = err
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Nonexistent file read should complete')
   assert_eq(content, nil, 'Content should be nil for nonexistent file')
   assert_not_nil(error_msg, 'Error should be provided')
@@ -360,24 +360,24 @@ run_test('write_file writes successfully', function()
   local success = nil
   local error_msg = nil
   local completed = false
-  
+
   -- Mock fs_open_write to succeed
   vim.loop.fs_open_write = function(path, flags, mode, callback)
     callback(nil, 789) -- success
   end
-  
+
   async.write_file('/test/write.txt', 'test content', function(ok, err)
     success = ok
     error_msg = err
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'File write should complete')
   assert_true(success, 'Write should be successful')
   assert_eq(error_msg, nil, 'No error should occur')
@@ -388,19 +388,19 @@ run_test('write_file handles nonexistent directory', function()
   local success = nil
   local error_msg = nil
   local completed = false
-  
+
   async.write_file('/readonly/file.txt', 'test content', function(ok, err)
     success = ok
     error_msg = err
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Write to readonly should complete')
   assert_true(not success, 'Write should fail')
   assert_not_nil(error_msg, 'Error should be provided')
@@ -410,18 +410,18 @@ end)
 run_test('dir_exists detects existing directory', function()
   local exists = nil
   local completed = false
-  
+
   async.dir_exists('/existing/directory', function(result)
     exists = result
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Directory check should complete')
   assert_true(exists, 'Existing directory should be detected')
 end)
@@ -430,18 +430,18 @@ end)
 run_test('dir_exists handles nonexistent directory', function()
   local exists = nil
   local completed = false
-  
+
   async.dir_exists('/nonexistent/directory', function(result)
     exists = result
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Directory check should complete')
   assert_true(not exists, 'Nonexistent directory should not be detected')
 end)
@@ -450,18 +450,18 @@ end)
 run_test('file_exists detects existing file', function()
   local exists = nil
   local completed = false
-  
+
   async.file_exists('/existing/file.txt', function(result)
     exists = result
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'File check should complete')
   assert_true(exists, 'Existing file should be detected')
 end)
@@ -470,18 +470,18 @@ end)
 run_test('file_exists handles nonexistent file', function()
   local exists = nil
   local completed = false
-  
+
   async.file_exists('/nonexistent/file.txt', function(result)
     exists = result
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'File check should complete')
   assert_true(not exists, 'Nonexistent file should not be detected')
 end)
@@ -491,19 +491,19 @@ run_test('mkdir_p creates directory successfully', function()
   local success = nil
   local error_msg = nil
   local completed = false
-  
+
   async.mkdir_p('/new/directory', function(ok, err)
     success = ok
     error_msg = err
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Directory creation should complete')
   assert_true(success, 'Directory creation should succeed')
   assert_eq(error_msg, nil, 'No error should occur')
@@ -514,19 +514,19 @@ run_test('mkdir_p handles existing directory', function()
   local success = nil
   local error_msg = nil
   local completed = false
-  
+
   async.mkdir_p('/existing/directory', function(ok, err)
     success = ok
     error_msg = err
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Existing directory check should complete')
   assert_true(success, 'Existing directory should be handled successfully')
 end)
@@ -536,7 +536,7 @@ run_test('mkdir_p creates directories recursively', function()
   local success = nil
   local error_msg = nil
   local completed = false
-  
+
   -- Mock multiple mkdir calls for recursive creation
   local mkdir_calls = 0
   local original_mkdir = vim.loop.fs_mkdir
@@ -544,22 +544,22 @@ run_test('mkdir_p creates directories recursively', function()
     mkdir_calls = mkdir_calls + 1
     callback(nil) -- success
   end
-  
+
   async.mkdir_p('/new/nested/deep/directory', function(ok, err)
     success = ok
     error_msg = err
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Recursive directory creation should complete')
   assert_true(success, 'Recursive creation should succeed')
-  
+
   -- Restore original function
   vim.loop.fs_mkdir = original_mkdir
 end)
@@ -568,18 +568,18 @@ end)
 run_test('delay executes after timeout', function()
   local executed = false
   local completed = false
-  
+
   async.delay(100, function()
     executed = true
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Delay should complete')
   assert_true(executed, 'Delay callback should execute')
 end)
@@ -590,12 +590,12 @@ run_test('debounce creates debounced function', function()
   local debounced_func = async.debounce(function()
     call_count = call_count + 1
   end, 50)
-  
+
   -- Call multiple times rapidly
   debounced_func()
   debounced_func()
   debounced_func()
-  
+
   -- Only the last call should execute after delay
   assert_not_nil(debounced_func, 'Debounced function should be created')
 end)
@@ -607,29 +607,29 @@ run_test('handles read errors gracefully', function()
   local content = nil
   local error_msg = nil
   local completed = false
-  
+
   -- Mock fstat to fail
   local original_fstat = vim.loop.fs_fstat
   vim.loop.fs_fstat = function(fd, callback)
     callback('EBADF: bad file descriptor', nil)
   end
-  
+
   async.read_file('/test/file.txt', function(data, err)
     content = data
     error_msg = err
     completed = true
   end)
-  
+
   -- Wait for completion
   local wait_count = 0
   while not completed and wait_count < 10 do
     wait_count = wait_count + 1
   end
-  
+
   assert_true(completed, 'Failed read should complete')
   assert_eq(content, nil, 'Content should be nil on error')
   assert_not_nil(error_msg, 'Error should be provided')
-  
+
   -- Restore original function
   vim.loop.fs_fstat = original_fstat
 end)

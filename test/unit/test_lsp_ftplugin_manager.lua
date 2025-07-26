@@ -599,11 +599,11 @@ function M.run_tests()
   end
 
   -- Additional coverage tests for edge cases and error handling
-  
+
   -- Additional test coverage for edge cases
   local function test_additional_coverage()
     setup_test_state()
-    
+
     -- Mock language registry to return nil for unknown filetype
     local original_get_by_filetype = mock_language_registry.get_by_filetype
     mock_language_registry.get_by_filetype = function(filetype)
@@ -612,25 +612,25 @@ function M.run_tests()
       end
       return original_get_by_filetype(filetype)
     end
-    
+
     -- Should not crash when called with unknown filetype
     local success = pcall(function()
       test_state.ftplugin_manager.setup_for_filetype('unknown_filetype')
     end)
-    
+
     assert(success, 'setup_for_filetype should handle unknown filetypes gracefully')
-    
+
     -- Restore original function
     mock_language_registry.get_by_filetype = original_get_by_filetype
   end
-  
+
   local success, err = pcall(test_additional_coverage)
   if success then
     print('✓ Additional coverage tests passed')
   else
     print('✗ Additional coverage tests failed:', err)
   end
-  
+
   -- Additional comprehensive test coverage
 
   return failed == 0
