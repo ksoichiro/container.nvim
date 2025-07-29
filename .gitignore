@@ -22,6 +22,7 @@ Thumbs.db
 # Coverage files
 luacov.stats.out
 luacov.report.out
+luacov-coverage-report.html
 
 # Debug files
 debug/

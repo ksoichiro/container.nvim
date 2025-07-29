@@ -1,6 +1,6 @@
 # Makefile for container.nvim
 
-.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage test-coverage-check install-dev clean install-hooks help-tags pre-commit coverage-report coverage-quick
+.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage test-coverage-check install-dev clean install-hooks help-tags pre-commit coverage-report coverage-quick coverage-html
 
 # Default target
 help:
@@ -20,6 +20,7 @@ help:
 	@echo "  test-quick   Run essential tests for development"
 	@echo "  test-coverage Run tests with coverage measurement"
 	@echo "  test-coverage-check Run tests with coverage and fail if below 70%"
+	@echo "  coverage-html Generate HTML coverage report with visual line coverage"
 	@echo "  install-dev  Install development dependencies"
 	@echo "  install-hooks Install pre-commit hooks"
 	@echo "  help-tags    Generate Neovim help tags"
@@ -377,5 +378,27 @@ coverage-quick:
 		echo "Full report: luacov.report.out"; \
 	else \
 		echo "Error: Failed to generate quick coverage report"; \
+		exit 1; \
+	fi
+
+# Generate HTML coverage report with line-by-line visualization
+coverage-html:
+	@echo "Generating HTML coverage report with visual line coverage..."
+	@if [ ! -f "luacov.stats.out" ]; then \
+		echo "No coverage data found. Running tests first..."; \
+		make coverage-quick; \
+	fi
+	@echo "Creating HTML coverage report..."
+	@luacov -r html
+	@if [ -f "luacov.report.out" ]; then \
+		mv luacov.report.out luacov-coverage-report.html; \
+		echo "✅ HTML coverage report generated: luacov-coverage-report.html"; \
+		echo "📊 Open luacov-coverage-report.html in your browser to see:"; \
+		echo "   • Line-by-line coverage with green/red highlighting"; \
+		echo "   • Interactive source code navigation"; \
+		echo "   • Module-by-module coverage statistics"; \
+		echo "   • Visual identification of untested code paths"; \
+	else \
+		echo "❌ Failed to generate HTML coverage report"; \
 		exit 1; \
 	fi
