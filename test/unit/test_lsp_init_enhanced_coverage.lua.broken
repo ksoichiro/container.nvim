@@ -306,7 +306,7 @@ run_test('LSP client accepts custom configuration options', function()
       },
     })
   end)
-  
+
   assert_true(success, 'Custom LSP client creation should succeed')
 end)
 

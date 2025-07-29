@@ -940,8 +940,10 @@ function M._build_create_args(config)
   -- Port forwarding
   if config.ports then
     for _, port in ipairs(config.ports) do
-      table.insert(args, '-p')
-      table.insert(args, string.format('%d:%d', port.host_port, port.container_port))
+      if port.host_port and port.container_port then
+        table.insert(args, '-p')
+        table.insert(args, string.format('%d:%d', port.host_port, port.container_port))
+      end
     end
   end
 
@@ -1027,8 +1029,10 @@ function M.create_container(config)
   -- Port forwarding
   if config.ports then
     for _, port in ipairs(config.ports) do
-      table.insert(args, '-p')
-      table.insert(args, string.format('%d:%d', port.host_port, port.container_port))
+      if port.host_port and port.container_port then
+        table.insert(args, '-p')
+        table.insert(args, string.format('%d:%d', port.host_port, port.container_port))
+      end
     end
   end
 

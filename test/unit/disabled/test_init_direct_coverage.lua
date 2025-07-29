@@ -18,7 +18,7 @@ local function setup_comprehensive_vim_mocks()
       argv = { 'nvim' },
       shell_error = 0,
     },
-    
+
     -- Environment variables
     env = {
       HOME = '/home/test',
@@ -27,25 +27,49 @@ local function setup_comprehensive_vim_mocks()
 
     -- API functions
     api = {
-      nvim_get_current_buf = function() return 1 end,
-      nvim_buf_get_name = function(buf) return '/workspace/test.go' end,
+      nvim_get_current_buf = function()
+        return 1
+      end,
+      nvim_buf_get_name = function(buf)
+        return '/workspace/test.go'
+      end,
       nvim_buf_get_option = function(buf, opt)
-        if opt == 'filetype' then return 'go' end
+        if opt == 'filetype' then
+          return 'go'
+        end
         return nil
       end,
-      nvim_get_current_win = function() return 1 end,
-      nvim_win_get_buf = function(win) return 1 end,
-      nvim_list_bufs = function() return {1, 2, 3} end,
-      nvim_buf_is_valid = function(buf) return true end,
-      nvim_buf_is_loaded = function(buf) return true end,
-      nvim_create_autocmd = function(events, opts) return 1 end,
-      nvim_create_augroup = function(name, opts) return 1 end,
+      nvim_get_current_win = function()
+        return 1
+      end,
+      nvim_win_get_buf = function(win)
+        return 1
+      end,
+      nvim_list_bufs = function()
+        return { 1, 2, 3 }
+      end,
+      nvim_buf_is_valid = function(buf)
+        return true
+      end,
+      nvim_buf_is_loaded = function(buf)
+        return true
+      end,
+      nvim_create_autocmd = function(events, opts)
+        return 1
+      end,
+      nvim_create_augroup = function(name, opts)
+        return 1
+      end,
       nvim_create_user_command = function(name, cmd, opts) end,
       nvim_exec_autocmds = function(event, opts) end,
       nvim_command = function(cmd) end,
       nvim_echo = function(chunks, history, opts) end,
-      nvim_err_writeln = function(msg) print('ERROR:', msg) end,
-      nvim_notify = function(msg, level, opts) print('NOTIFY:', msg) end,
+      nvim_err_writeln = function(msg)
+        print('ERROR:', msg)
+      end,
+      nvim_notify = function(msg, level, opts)
+        print('NOTIFY:', msg)
+      end,
     },
 
     -- File system functions
@@ -61,21 +85,30 @@ local function setup_comprehensive_vim_mocks()
         return path
       end,
       expand = function(expr)
-        if expr == '%:p' then return '/workspace/test.go'
-        elseif expr == '%:h' then return '/workspace'
-        elseif expr == '~' then return '/home/test'
+        if expr == '%:p' then
+          return '/workspace/test.go'
+        elseif expr == '%:h' then
+          return '/workspace'
+        elseif expr == '~' then
+          return '/home/test'
         end
         return expr
       end,
-      getcwd = function() return '/workspace' end,
-      isdirectory = function(path) return 1 end,
+      getcwd = function()
+        return '/workspace'
+      end,
+      isdirectory = function(path)
+        return 1
+      end,
       filereadable = function(path)
-        if path:match('devcontainer%.json') then return 1 end
+        if path:match('devcontainer%.json') then
+          return 1
+        end
         return 0
       end,
       readfile = function(path)
         if path:match('devcontainer%.json') then
-          return {'{"name": "test", "image": "ubuntu:20.04"}'}
+          return { '{"name": "test", "image": "ubuntu:20.04"}' }
         end
         return {}
       end,
@@ -94,19 +127,25 @@ local function setup_comprehensive_vim_mocks()
         end
         return 1
       end,
-      jobstop = function(job) return 1 end,
+      jobstop = function(job)
+        return 1
+      end,
     },
 
     -- Scheduling
-    schedule = function(fn) fn() end,
-    defer_fn = function(fn, delay) fn() end,
+    schedule = function(fn)
+      fn()
+    end,
+    defer_fn = function(fn, delay)
+      fn()
+    end,
 
     -- Loop/UV functions
     loop = {
       fs_stat = function(path, callback)
         vim.schedule(function()
           if path:match('devcontainer%.json') then
-            callback(nil, {type = 'file'})
+            callback(nil, { type = 'file' })
           else
             callback('ENOENT', nil)
           end
@@ -118,24 +157,30 @@ local function setup_comprehensive_vim_mocks()
             vim.schedule(callback)
             return self
           end,
-          stop = function(self) return self end,
-          close = function(self) return self end,
+          stop = function(self)
+            return self
+          end,
+          close = function(self)
+            return self
+          end,
         }
       end,
     },
 
-    uv = {},  -- Alias for loop
+    uv = {}, -- Alias for loop
 
     -- Logging
     log = {
       levels = { DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3 },
     },
-    notify = function(msg, level) print('NOTIFY:', msg) end,
+    notify = function(msg, level)
+      print('NOTIFY:', msg)
+    end,
 
     -- Table utilities
     tbl_deep_extend = function(behavior, ...)
       local result = {}
-      for _, tbl in ipairs({...}) do
+      for _, tbl in ipairs({ ... }) do
         if type(tbl) == 'table' then
           for k, v in pairs(tbl) do
             result[k] = v
@@ -146,7 +191,9 @@ local function setup_comprehensive_vim_mocks()
     end,
     tbl_contains = function(tbl, value)
       for _, v in ipairs(tbl) do
-        if v == value then return true end
+        if v == value then
+          return true
+        end
       end
       return false
     end,
@@ -156,7 +203,7 @@ local function setup_comprehensive_vim_mocks()
       end
       return dst
     end,
-    
+
     -- Keymaps
     keymap = {
       set = function(mode, lhs, rhs, opts) end,
@@ -164,7 +211,9 @@ local function setup_comprehensive_vim_mocks()
 
     -- Options
     opt = setmetatable({}, {
-      __index = function() return '' end,
+      __index = function()
+        return ''
+      end,
       __newindex = function() end,
     }),
 
@@ -195,8 +244,10 @@ local function setup_module_mocks()
 
   -- Config module
   package.loaded['container.config'] = {
-    setup = function(config) return config or {} end,
-    get = function() 
+    setup = function(config)
+      return config or {}
+    end,
+    get = function()
       return {
         auto_open = 'immediate',
         auto_open_delay = 2000,
@@ -237,13 +288,17 @@ local function setup_module_mocks()
       return true, nil
     end,
     check_docker_availability_async = function(callback)
-      vim.schedule(function() callback(true, nil) end)
+      vim.schedule(function()
+        callback(true, nil)
+      end)
     end,
     create_container = function(config)
       return 'container_id_123'
     end,
     create_container_async = function(config, callback)
-      vim.schedule(function() callback('container_id_123', nil) end)
+      vim.schedule(function()
+        callback('container_id_123', nil)
+      end)
     end,
     start_container = function(container_id)
       return true, nil
@@ -256,7 +311,7 @@ local function setup_module_mocks()
     end,
     list_containers = function()
       return {
-        {name = 'test-container', id = 'container_id_123', status = 'running'}
+        { name = 'test-container', id = 'container_id_123', status = 'running' },
       }
     end,
   }
@@ -265,15 +320,21 @@ local function setup_module_mocks()
   package.loaded['container.lsp.init'] = {
     setup = function(config) end,
     setup_lsp_in_container = function() end,
-    get_state = function() return {} end,
+    get_state = function()
+      return {}
+    end,
     stop_all = function() end,
   }
 
   -- Terminal module
   package.loaded['container.terminal.init'] = {
     setup = function(config) end,
-    open_terminal = function(container_id, opts) return 1 end,
-    get_active_sessions = function() return {} end,
+    open_terminal = function(container_id, opts)
+      return 1
+    end,
+    get_active_sessions = function()
+      return {}
+    end,
   }
 
   -- UI modules
@@ -283,19 +344,27 @@ local function setup_module_mocks()
 
   package.loaded['container.ui.statusline'] = {
     setup = function(config) end,
-    get_status = function() return 'Container: ready' end,
+    get_status = function()
+      return 'Container: ready'
+    end,
   }
 
   -- Utils modules
   package.loaded['container.utils.notify'] = {
-    notify = function(msg, level) print('NOTIFY:', msg) end,
+    notify = function(msg, level)
+      print('NOTIFY:', msg)
+    end,
     setup = function(config) end,
   }
 
   package.loaded['container.utils.port'] = {
-    allocate_port = function(port, project_id) return port end,
+    allocate_port = function(port, project_id)
+      return port
+    end,
     release_port = function(port) end,
-    get_allocated_ports = function() return {} end,
+    get_allocated_ports = function()
+      return {}
+    end,
   }
 end
 
@@ -303,7 +372,7 @@ end
 local function run_test(name, test_func)
   setup_comprehensive_vim_mocks()
   setup_module_mocks()
-  
+
   print('Testing:', name)
   local success, error_msg = pcall(test_func)
 
@@ -327,9 +396,9 @@ run_test('Main module loads and sets up correctly', function()
     auto_open = 'immediate',
     log_level = 'debug',
   }
-  
+
   container_init.setup(config)
-  
+
   -- This should exercise the setup function and all its dependencies
   assert(type(container_init) == 'table', 'Module should load as table')
 end)
@@ -337,7 +406,7 @@ end)
 -- Test 2: Container detection and parsing
 run_test('Container detection works', function()
   local detected = container_init.detect_devcontainer()
-  
+
   -- Should parse devcontainer.json and return config
   assert(type(detected) == 'table' or detected == nil, 'Detection should return table or nil')
 end)
@@ -350,7 +419,7 @@ run_test('Container creation workflow', function()
       image = 'ubuntu:20.04',
     })
   end)
-  
+
   assert(success, 'Container creation should not crash')
 end)
 
@@ -374,7 +443,7 @@ run_test('LSP integration functions', function()
   local success = pcall(function()
     container_init.setup_lsp_in_container()
   end)
-  
+
   assert(success, 'LSP setup should not crash')
 end)
 
@@ -383,7 +452,7 @@ run_test('Terminal integration functions', function()
   local success = pcall(function()
     container_init.open_terminal('container_id_123')
   end)
-  
+
   assert(success, 'Terminal opening should not crash')
 end)
 
@@ -393,7 +462,7 @@ run_test('Auto-open functionality', function()
     -- This should trigger auto detection and opening
     container_init.handle_auto_open()
   end)
-  
+
   assert(success, 'Auto-open should not crash')
 end)
 
@@ -403,7 +472,7 @@ run_test('Event handling system', function()
     container_init.handle_buffer_enter()
     container_init.handle_vim_enter()
   end)
-  
+
   assert(success, 'Event handlers should not crash')
 end)
 
@@ -412,12 +481,12 @@ run_test('Configuration management', function()
   local success = pcall(function()
     local config = container_init.get_config()
     assert(type(config) == 'table', 'Config should be table')
-    
+
     container_init.update_config({
-      auto_open = 'off'
+      auto_open = 'off',
     })
   end)
-  
+
   assert(success, 'Config management should work')
 end)
 
@@ -426,10 +495,10 @@ run_test('State management functions', function()
   local success = pcall(function()
     local state = container_init.get_state()
     assert(type(state) == 'table', 'State should be table')
-    
+
     container_init.set_current_container('test-container')
   end)
-  
+
   assert(success, 'State management should work')
 end)
 
@@ -438,11 +507,11 @@ run_test('Error handling and recovery', function()
   local success = pcall(function()
     -- Test with invalid container ID
     container_init.get_container_status('nonexistent-container')
-    
+
     -- Test with invalid config
     container_init.create_and_start_container({})
   end)
-  
+
   assert(success, 'Error handling should not crash')
 end)
 
@@ -452,7 +521,7 @@ run_test('Cleanup and shutdown functions', function()
     container_init.stop_all_containers()
     container_init.cleanup()
   end)
-  
+
   assert(success, 'Cleanup should not crash')
 end)
 
@@ -467,7 +536,7 @@ run_test('Plugin command functions', function()
     container_init.cmd_container_logs()
     container_init.cmd_container_debug()
   end)
-  
+
   assert(success, 'Plugin commands should not crash')
 end)
 
@@ -484,7 +553,7 @@ run_test('Full integration workflows', function()
       end
     end
   end)
-  
+
   assert(success, 'Full workflow should not crash')
 end)
 
@@ -494,14 +563,14 @@ run_test('Edge cases and boundary conditions', function()
     -- Test with nil inputs
     container_init.get_container_status(nil)
     container_init.setup_lsp_in_container(nil)
-    
+
     -- Test with empty strings
     container_init.get_container_status('')
-    
+
     -- Test with invalid types
     container_init.create_and_start_container('invalid')
   end)
-  
+
   assert(success, 'Edge cases should be handled gracefully')
 end)
 

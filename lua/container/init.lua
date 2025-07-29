@@ -1735,7 +1735,7 @@ function M.get_state()
   local container_status = nil
 
   if state.current_container and docker and state.current_container ~= '' then
-    local now = vim.loop.now()
+    local now = vim.uv and vim.uv.now() or vim.loop.now()
     local cache = state.status_cache
 
     -- Check if we have cached status and it's still valid

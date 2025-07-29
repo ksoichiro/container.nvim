@@ -1,6 +1,6 @@
 # Makefile for container.nvim
 
-.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage test-coverage-check install-dev clean install-hooks help-tags pre-commit
+.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage test-coverage-check install-dev clean install-hooks help-tags pre-commit coverage-report coverage-quick
 
 # Default target
 help:
@@ -332,3 +332,50 @@ help-tags:
 # Lint and format check before commit (git hook helper)
 pre-commit: lint format-check test-quick
 	@echo "Pre-commit checks passed!"
+
+# Generate coverage report from existing luacov.stats.out
+coverage-report:
+	@echo "Generating coverage report..."
+	@if [ ! -f "luacov.stats.out" ]; then \
+		echo "Error: luacov.stats.out not found. Run 'make test-coverage' first."; \
+		exit 1; \
+	fi
+	@export LUA_PATH="./lua/?.lua;./lua/?/init.lua;$$HOME/.luarocks/share/lua/5.4/?.lua;$$HOME/.luarocks/share/lua/5.4/?/init.lua" && \
+	export LUA_CPATH="$$HOME/.luarocks/lib/lua/5.4/?.so" && \
+	$$HOME/.luarocks/bin/luacov
+	@if [ -f "luacov.report.out" ]; then \
+		echo "Coverage report generated successfully:"; \
+		echo ""; \
+		tail -1 luacov.report.out | grep "Total"; \
+		echo ""; \
+		echo "Full report: luacov.report.out"; \
+	else \
+		echo "Error: Failed to generate coverage report"; \
+		exit 1; \
+	fi
+
+# Quick coverage check - run essential tests and generate report
+coverage-quick:
+	@echo "Running quick tests with coverage..."
+	@export LUA_PATH="./lua/?.lua;./lua/?/init.lua;$$HOME/.luarocks/share/lua/5.4/?.lua;$$HOME/.luarocks/share/lua/5.4/?/init.lua" && \
+	export LUA_CPATH="$$HOME/.luarocks/lib/lua/5.4/?.so" && \
+	rm -f luacov.stats.out luacov.report.out && \
+	lua -lluacov test/unit/test_config_core.lua && \
+	lua -lluacov test/unit/test_basic.lua && \
+	lua -lluacov test/unit/test_fs_comprehensive.lua && \
+	lua -lluacov test/unit/test_environment_comprehensive.lua && \
+	lua -lluacov test/unit/test_stage1_immediate.lua && \
+	lua -lluacov test/unit/test_stage2_docker_basics.lua && \
+	lua -lluacov test/unit/test_stage3_lsp_basics.lua && \
+	lua -lluacov test/unit/test_docker_comprehensive_boost.lua && \
+	lua -lluacov test/unit/test_init_comprehensive_boost.lua && \
+	$$HOME/.luarocks/bin/luacov
+	@if [ -f "luacov.report.out" ]; then \
+		echo ""; \
+		echo "=== Quick Coverage Report ==="; \
+		tail -1 luacov.report.out | grep "Total"; \
+		echo "Full report: luacov.report.out"; \
+	else \
+		echo "Error: Failed to generate quick coverage report"; \
+		exit 1; \
+	fi

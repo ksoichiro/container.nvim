@@ -26,7 +26,9 @@ end
 -- Path joining
 function M.join_path(...)
   local parts = {}
-  for _, part in ipairs({ ... }) do
+  local args = { ... }
+  for i = 1, select('#', ...) do
+    local part = args[i]
     if part and part ~= '' then
       table.insert(parts, M.normalize_path(part))
     end

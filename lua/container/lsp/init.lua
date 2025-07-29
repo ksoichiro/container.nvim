@@ -348,7 +348,11 @@ end
 -- Set the container ID for LSP operations
 function M.set_container_id(container_id)
   state.container_id = container_id
-  log.debug('LSP: Set container ID: ' .. container_id)
+  if container_id then
+    log.debug('LSP: Set container ID: ' .. container_id)
+  else
+    log.debug('LSP: Container ID set to nil')
+  end
 end
 
 -- Detect available LSP servers in the container

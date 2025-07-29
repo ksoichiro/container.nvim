@@ -132,6 +132,9 @@ end
 
 -- Build environment variable arguments for docker exec
 function M.build_env_args(config, context_type)
+  if not config then
+    return {}
+  end
   local env = get_environment(config, context_type)
   local args = {}
 

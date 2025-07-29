@@ -9,13 +9,14 @@ package.path = './lua/?.lua;./lua/?/init.lua;../lua/?.lua;../lua/?/init.lua;' ..
 -- Setup vim mock for testing
 _G.vim = _G.vim or {}
 -- Add essential vim functions for this test
-_G.vim.split = _G.vim.split or function(str, sep)
-  local result = {}
-  for part in str:gmatch('([^' .. sep .. ']+)') do
-    table.insert(result, part)
+_G.vim.split = _G.vim.split
+  or function(str, sep)
+    local result = {}
+    for part in str:gmatch('([^' .. sep .. ']+)') do
+      table.insert(result, part)
+    end
+    return result
   end
-  return result
-end
 vim.uv = vim.uv or {}
 vim.fn = vim.fn or {}
 vim.api = vim.api or {}
