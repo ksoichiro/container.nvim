@@ -1190,25 +1190,6 @@ function M.start_container_async(container_id, callback)
   vim.defer_fn(check_ready, 500)
 end
 
--- Simple container startup test
-function M.start_container_simple(container_id)
-  log.info('Starting container (simple): %s', container_id)
-
-  -- Start container
-  local result = M.run_docker_command({ 'start', container_id })
-  if not result.success then
-    local error_msg = result.stderr or 'unknown error'
-    log.error('Failed to start container: %s', error_msg)
-    return false, error_msg
-  end
-
-  log.info('Container start command completed: %s', container_id)
-
-  -- Status check (once only)
-  local status = M.get_container_status(container_id)
-  return status == 'running', status
-end
-
 -- Container stop (synchronous version - kept for compatibility)
 function M.stop_container(container_id, timeout)
   timeout = timeout or 30

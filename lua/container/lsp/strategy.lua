@@ -266,13 +266,6 @@ function M._get_strategy_config(strategy, server_name, config)
   return vim.tbl_deep_extend('force', base_config, config or {})
 end
 
--- Update strategy configuration
--- @param config table: new configuration
-function M.update_config(config)
-  strategy_config = vim.tbl_deep_extend('force', strategy_config, config)
-  log.info('Strategy Selector: Configuration updated')
-end
-
 -- Get current strategy configuration
 -- @return table: current configuration
 function M.get_config()
