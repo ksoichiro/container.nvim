@@ -384,10 +384,8 @@ coverage-quick:
 # Generate HTML coverage report with line-by-line visualization
 coverage-html:
 	@echo "Generating HTML coverage report with visual line coverage..."
-	@if [ ! -f "luacov.stats.out" ]; then \
-		echo "No coverage data found. Running tests first..."; \
-		make coverage-quick; \
-	fi
+	@echo "Running complete test suite for accurate coverage measurement..."
+	@make test-coverage
 	@echo "Creating HTML coverage report..."
 	@luacov -r html
 	@if [ -f "luacov.report.out" ]; then \
@@ -398,6 +396,9 @@ coverage-html:
 		echo "   • Interactive source code navigation"; \
 		echo "   • Module-by-module coverage statistics"; \
 		echo "   • Visual identification of untested code paths"; \
+		echo ""; \
+		echo "Coverage summary:"; \
+		tail -1 luacov-coverage-report.html | grep -o 'Total[^<]*' || echo "See HTML file for detailed coverage"; \
 	else \
 		echo "❌ Failed to generate HTML coverage report"; \
 		exit 1; \
