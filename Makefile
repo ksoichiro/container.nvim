@@ -1,6 +1,6 @@
 # Makefile for container.nvim
 
-.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage test-coverage-check install-dev clean install-hooks help-tags pre-commit coverage-report coverage-quick coverage-html
+.PHONY: help lint lint-fix format format-check test test-unit test-integration test-e2e test-e2e-sequential test-quick test-coverage test-coverage-check install-dev clean install-hooks help-tags pre-commit coverage-report coverage-quick coverage-detailed
 
 # Default target
 help:
@@ -20,7 +20,7 @@ help:
 	@echo "  test-quick   Run essential tests for development"
 	@echo "  test-coverage Run tests with coverage measurement"
 	@echo "  test-coverage-check Run tests with coverage and fail if below 70%"
-	@echo "  coverage-html Generate HTML coverage report with visual line coverage"
+	@echo "  coverage-detailed Generate detailed line-by-line coverage analysis"
 	@echo "  install-dev  Install development dependencies"
 	@echo "  install-hooks Install pre-commit hooks"
 	@echo "  help-tags    Generate Neovim help tags"
@@ -382,24 +382,18 @@ coverage-quick:
 	fi
 
 # Generate HTML coverage report with line-by-line visualization
-coverage-html:
-	@echo "Generating HTML coverage report with visual line coverage..."
+coverage-detailed:
+	@echo "Generating detailed line-by-line coverage analysis..."
 	@echo "Running complete test suite for accurate coverage measurement..."
-	@make test-coverage
-	@echo "Creating HTML coverage report..."
-	@luacov -r html
-	@if [ -f "luacov.report.out" ]; then \
-		mv luacov.report.out luacov-coverage-report.html; \
-		echo "✅ HTML coverage report generated: luacov-coverage-report.html"; \
-		echo "📊 Open luacov-coverage-report.html in your browser to see:"; \
-		echo "   • Line-by-line coverage with green/red highlighting"; \
-		echo "   • Interactive source code navigation"; \
-		echo "   • Module-by-module coverage statistics"; \
-		echo "   • Visual identification of untested code paths"; \
-		echo ""; \
-		echo "Coverage summary:"; \
-		tail -1 luacov-coverage-report.html | grep -o 'Total[^<]*' || echo "See HTML file for detailed coverage"; \
-	else \
-		echo "❌ Failed to generate HTML coverage report"; \
-		exit 1; \
-	fi
+	@$(MAKE) test-coverage
+	@echo ""
+	@echo "📊 Detailed Coverage Analysis Generated:"
+	@echo "   • Line-by-line report: luacov.report.out"
+	@echo "     - Numbers show execution count per line"
+	@echo "     - Blank lines were not executed (need testing)"
+	@echo "   • Raw coverage data: luacov.stats.out"
+	@echo ""
+	@echo "🔍 Quick analysis commands:"
+	@echo "   • View specific file: grep -A 50 'lua/container/[filename]' luacov.report.out"
+	@echo "   • Find untested lines: grep -n '^[ ]*$$' luacov.report.out"
+	@echo "   • Coverage summary: make coverage-quick"
